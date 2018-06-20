@@ -1,0 +1,55 @@
+// id服务的持久化
+// 很多TODO
+// 要仔细看看各个service在多个服务器同步问题是否解决
+// 过滤系统,敏感字：即国际化里面，可以研究一下，显然可以在ToClientException中过滤即可
+// 部署
+// 测试工具
+
+short类型的opcode和event改成int
+runOnEveryServer改为singleService
+在BeanHelper中添加一个方法,通过注解获取方法列表,方便用户自定义服务组件
+文档的注释
+// 小游戏
+
+// 添加一个异步存储的功能：调用线程立即返回的，比如在room中用
+// 需要看看事务嵌套事务开始与结束
+// 事务失败，事务缓存中的数据是否需要处理：需要主动抛弃吗
+
+// gm的名称是可以获取形参名字的，用javassist或asm
+
+写服务器说明文档之后考虑的东西：
+// 运营：初步考虑
+// 权限系统
+// 加密：
+// excel的文本类型可能导致问题,如果文本类型里面填写的是数字类型,导致:100->100.0
+// 防沉迷
+// 对于分区分服的游戏的跨服service:我觉得这个不属于这个系统要解决的问题,可以定义相应的service和entrance来实现
+
+// 心跳
+
+//单运行服务 这些功能包括:加载的持久化的job,单服务器运行的update,但服务器中运行的东西:id服务,locker服务,异步服务,场景,singleService,gm
+// 每日变更变量，清零，随机变化，或定时变更
+// 断线重连：如切换后台重连机制还没有做，
+// 考虑把远程调用方法写成私有的，不能被普通的调用可见，通过反射调用应该可以吧，
+
+
+//-------要看具体项目了
+// 社交
+// 支付
+// 版本控制
+
+// lock(String)采用系统的lock方法，不用sleep，
+
+
+
+弄个小游戏试一下游戏：活到最后，一群人在一个房间中打架，不打自动掉血，打吸血，看谁活的时间长，可加机器人
+
+
+
+Controler:Aop,EventService,GmService,JobService,NetEventService,UpdateService,RequestService,RoomService,
+Data:DataService,CacheService(),SessionService,AccountService,DataSet,SysParaService,AsyncService,LockerService,TxCacheService,
+Net:ServerClient,Entrance(sorts of entrance)
+Security:MMException,ToClientException,MonitorService
+Server:Configure,IdService,SysConstantDefine,ServerType
+Tool:BeanHepler,Util
+SysBean:

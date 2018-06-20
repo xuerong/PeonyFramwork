@@ -1,0 +1,130 @@
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd">
+    <!--
+        除了指定ehcache.xml文件所遵循的schema之外，我们的ehcache元素还可以指定很多的属性，主要有如下这些。
+           name:指定当前CacheManager的名称。
+           dynamicConfig：boolean类型。表示是否可以动态的更新配置，默认为true。当设置为false的时候，我们在运行期通过CacheManager的Configuration来改变配置信息时将不会发生作用。使用代码进行配置时我们可以通过Configuration对象的dynamicConfig(boolean dynamicConfig)方法来指定该配置。
+           maxBytesLocalDisk：在CacheManager级别指定能够使用的本地磁盘的最大容量。当指定了该属性后隐式的使所有Cache的overflowToDisk变为true，如需关闭则需要在对应的Cache上设置overflowToDisk为false。
+           maxBytesLocalHeap：在CacheManager级别指定能够使用的堆内存的最大容量。
+           maxBytesLocalOffHeap：在CacheManager级别指定能够使用的非堆内存的最大容量。当指定了该属性后会隐式的使所有Cache的overflowToDisk变为true，如需关闭则需在对应的Cache上设置overflowToOffHeap为false。该属性只对企业版Ehcache有用。
+           defaultTransactionTimeoutInSeconds:
+           updateCheck：boolean类型，是否检查更新，默认为true。当设置为true时，CacheManager会定期的从网上去检查当前的Ehcache是否是最新的版本，如果不是，则会将比当前版本新的版本列出来。
+
+           需要注意的是当我们在CacheManager级别上指定了maxBytesLocalOffHeap时会使overflowToOffHeap的默认值变为true。也就是说该CacheManager里面所有的Cache在没有显示的指定overflowToOffHeap属性值时其值默认都是true，原本默认是false。
+    -->
+
+    <cacheManagerEventListenerFactory class="" properties="" />
+    <!--
+        如果不希望Ehcache创建磁盘存储的路径，则可以不定义diskStore元素。在没有定义diskStore，但有cache需要使用磁盘存储时会默认使用java.io.tmpdir作为磁盘存储的路径。
+           diskStore元素的path属性使用如下值时将自动替换为实际对应的值。
+        l  java.io.tmpdir：默认的临时文件存放路径。
+        l  user.home：用户的主目录。
+        l  user.dir：用户的当前工作目录，即当前程序所对应的工作路径。
+        l  其它通过命令行指定的系统属性，如“java –DdiskStore.path=D:\\abc ……”。
+    -->
+    <diskStore path="java.io.tmpdir"/>
+    <terracottaConfig url="192.168.3.105:9510"/> <!--terracotta服务器配置,默认端口为9510,多个服务器用,分隔  -->
+
+
+    <!-- cache参数：
+        name：指定cache的名称。
+       maxEntriesLocalDisk：指定允许在硬盘上存放元素的最大数量，0表示不限制。这个属性我们也可以在运行期通过CacheConfiguration来更改。
+       maxEntriesLocalHeap：指定允许在内存中存放元素的最大数量，0表示不限制。这个属性也可以在运行期动态修改。
+       maxEntriesInCache：指定缓存中允许存放元素的最大数量。这个属性也可以在运行期动态修改。但是这个属性只对Terracotta分布式缓存有用。
+       maxBytesLocalDisk：指定当前缓存能够使用的硬盘的最大字节数，其值可以是数字加单位，单位可以是K、M或者G，不区分大小写，如：30G。当在CacheManager级别指定了该属性后，Cache级别也可以用百分比来表示，如：60%，表示最多使用CacheManager级别指定硬盘容量的60%。该属性也可以在运行期指定。当指定了该属性后会隐式的使当前Cache的overflowToDisk为true。
+       maxBytesLocalHeap：指定当前缓存能够使用的堆内存的最大字节数，其值的设置规则跟maxBytesLocalDisk是一样的。
+       maxBytesLocalOffHeap：指定当前Cache允许使用的非堆内存的最大字节数。当指定了该属性后，会使当前Cache的overflowToOffHeap的值变为true，如果我们需要关闭overflowToOffHeap，那么我们需要显示的指定overflowToOffHeap的值为false。
+       overflowToDisk：boolean类型，默认为false。当内存里面的缓存已经达到预设的上限时是否允许将按驱除策略驱除的元素保存在硬盘上，默认是LRU（最近最少使用）。当指定为false的时候表示缓存信息不会保存到磁盘上，只会保存在内存中。该属性现在已经废弃，推荐使用cache元素的子元素persistence来代替，如：<persistence strategy=”localTempSwap”/>。
+       diskSpoolBufferSizeMB：当往磁盘上写入缓存信息时缓冲区的大小，单位是MB，默认是30。
+       overflowToOffHeap：boolean类型，默认为false。表示是否允许Cache使用非堆内存进行存储，非堆内存是不受Java GC影响的。该属性只对企业版Ehcache有用。
+       copyOnRead：当指定该属性为true时，我们在从Cache中读数据时取到的是Cache中对应元素的一个copy副本，而不是对应的一个引用。默认为false。
+       copyOnWrite：当指定该属性为true时，我们在往Cache中写入数据时用的是原对象的一个copy副本，而不是对应的一个引用。默认为false。
+       timeToIdleSeconds：单位是秒，表示一个元素所允许闲置的最大时间，也就是说一个元素在不被请求的情况下允许在缓存中待的最大时间。默认是0，表示不限制。
+       timeToLiveSeconds：单位是秒，表示无论一个元素闲置与否，其允许在Cache中存在的最大时间。默认是0，表示不限制。
+       eternal：boolean类型，表示是否永恒，默认为false。如果设为true，将忽略timeToIdleSeconds和timeToLiveSeconds，Cache内的元素永远都不会过期，也就不会因为元素的过期而被清除了。
+       diskExpiryThreadIntervalSeconds ：单位是秒，表示多久检查元素是否过期的线程多久运行一次，默认是120秒。
+       clearOnFlush：boolean类型。表示在调用Cache的flush方法时是否要清空MemoryStore。默认为true。
+       memoryStoreEvictionPolicy：当内存里面的元素数量或大小达到指定的限制后将采用的驱除策略。默认是LRU（最近最少使用），可选值还有LFU（最不常使用）和FIFO（先进先出）。
+
+       子元素
+       persistence：表示Cache的持久化，它只有一个属性strategy，表示当前Cache对应的持久化策略。其可选值如下：
+        l  localTempSwap：当堆内存或者非堆内存里面的元素已经满了的时候，将其中的元素临时的存放在磁盘上，一旦重启就会消失。
+        l  localRestartable：该策略只对企业版Ehcache有用。它可以在重启的时候将堆内存或者非堆内存里面的元素持久化到硬盘上，重启之后再从硬盘上恢复元素到内存中。
+        l  none：不持久化缓存的元素
+        l  distributed：该策略不适用于单机，是用于分布式的。
+
+               copyStrategy：当我们指定了copyOnRead或copyOnWrite为true时，就会用到我们的copyStrategy，即拷贝策略了。默认的copyStrategy是通过序列化来实现的，我们可以通过实现net.sf.ehcache.store.compound.CopyStrategy接口来实现自己的CopyStrategy，然后只需在cache元素下定义一个copyStrategy元素并指定其class属性为我们的CopyStrategy实现类。如：<copyStrategy class="xxx.xxx.xxx"/>。
+
+               pinning：表示将缓存内的元素固定住，除非过期，否则不会对它进行删除和驱除到其它储存容器中。pinning元素只定义了一个属性store，表示将把元素固定在哪个位置。其可选值有localMemory和inCache。
+        l  localMemory：表示将元素固定在内存中。
+        l  inCache：表示将元素固定在任何其正在保存的容器中。
+    -->
+    <defaultCache
+        maxElementsInMemory="10000"
+        eternal="false"
+        timeToIdleSeconds="600"
+        overflowToDisk="false"
+    >
+        <terracotta clustered="true" /> <!-- 开启集群 -->
+    </defaultCache>
+
+    <cache
+        name="configCache"
+        maxElementsInMemory="1000"
+        maxElementsOnDisk="1000"
+        eternal="false"
+        timeToIdleSeconds="300"
+        timeToLiveSeconds="1000"
+        overflowToDisk="false"
+    >
+        <terracotta clustered="true" /> <!-- 开启集群 -->
+    </cache>
+    <!--
+        分布式缓存
+        1）RMI集群模式
+         A、手工发现:需要指定节点发现模式peerDiscovery值为manual，rmiUrls设置为另一台服务器的IP、端口和缓存名等信息。
+        <cacheManagerPeerProviderFactory
+            class="net.sf.ehcache.distribution.RMICacheManagerPeerProviderFactory"
+            properties="peerDiscovery=manual,
+            rmiUrls=//192.168.0.12:4567/oschina_cache|//192.168.0.13:4567/oschina_cache"
+        />
+        B、自动发现:需要指定节点发现模式peerDiscovery值为automatic自动，同时组播地址可以指定D类IP地址空间，范围从 224.0.1.0 到 238.255.255.255 中的任何一个地址。
+        <cacheManagerPeerProviderFactory
+            class="net.sf.ehcache.distribution.RMICacheManagerPeerProviderFactory"
+            properties="peerDiscovery=automatic, multicastGroupAddress=230.0.0.1,
+            multicastGroupPort=4446, timeToLive=32"
+        />
+
+        需要在每个cache属性中加入:
+        <cacheEventListenerFactory class="net.sf.ehcache.distribution.RMICacheReplicatorFactory"
+        监听缓存中element的put, remove, update和expire事件
+            properties="replicateAsynchronously=true,
+             replicatePuts=true,
+             replicateUpdates=true,
+             replicateUpdatesViaCopy=true,
+             replicateRemovals=true "
+        />
+
+        <cache name="demoCache"
+            maxElementsInMemory="10000"
+            eternal="true"
+            overflowToDisk="true">
+            <cacheEventListenerFactory class="net.sf.ehcache.distribution.RMICacheReplicatorFactory"/>
+        </cache>
+
+        bootstrapCacheLoaderFactory - 启动时加载缓存的element每个用来做分布式缓存都必须设定element的事件监听器，用来在各个CacheManager节点复制消息
+        <bootstrapCacheLoaderFactory
+        class="net.sf.ehcache.distribution.jgroups.JGroupsBootstrapCacheLoaderFactory"
+        properties="bootstrapAsynchronously=true"/>
+
+        DiskStoreBootstrapCacheLoaderFactory：从硬盘加载数据到堆栈
+        <bootstrapCacheLoaderFactory
+        class="net.sf.ehcache.store.DiskStoreBootstrapCacheLoaderFactory"
+        properties="bootstrapAsynchronously=true"/>
+
+        TerracottaBootstrapCacheLoaderFactory：从terracotta的L2中加载数据
+        <bootstrapCacheLoaderFactory
+        class="net.sf.ehcache.store.TerracottaStoreBootstrapCacheLoaderFactory"
+        properties="bootstrapAsynchronously=true"/>
+    -->
+
+</ehcache>
