@@ -1,10 +1,14 @@
 package com.peony.engine.framework.control.netEvent;
 
+import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
+
 import java.io.Serializable;
 
 /**
  * Created by a on 2016/8/31.
+ * // TODO 变量命名需要修改
  */
+@DBEntity(tableName = "serverinfo",pks = {"id"})
 public class ServerInfo implements Serializable {
     private int id;
     private String name;
@@ -129,4 +133,5 @@ public class ServerInfo implements Serializable {
     public void setState(int state) {
         this.state = state;
     }
+
 }

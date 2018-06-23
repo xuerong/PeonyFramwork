@@ -425,6 +425,14 @@ public class DataService {
         }
         return true;
     }
+    // TODO 按照条件删除对象，可以优化
+    public <T> boolean delete(Class<T> entityClass, String condition, Object... params){
+        T t = selectObject(entityClass,condition,params);
+        if(t != null){
+            return delete(t);
+        }
+        return true;
+    }
 
 
     ///////////////-------------------下面是直接操作数据库的-----------------------

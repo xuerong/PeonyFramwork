@@ -33,6 +33,7 @@ public class RemoteCallService {
 
     /**
      * 异步远程调用
+     * TODO 删除之
      */
     public void remoteCallMainServer(Class cls,String methodName,Object... params){
         NetEventData netEventData = new NetEventData(SysConstantDefine.remoteCall);
@@ -48,7 +49,7 @@ public class RemoteCallService {
         remoteCallData.setMethodName(methodName);
         remoteCallData.setParams(params);
         netEventData.setParam(remoteCallData);
-        netEventService.fireMainServerNetEvent(netEventData);
+        netEventService.fireServerNetEvent(1,netEventData);
     }
 
     @NetEventListener(netEvent = SysConstantDefine.remoteCall)
@@ -101,6 +102,7 @@ public class RemoteCallService {
 
     /**
      * 同步远程调用
+     * TODO 删除之
      */
     public Object remoteCallMainServerSyn(Class cls,String methodName,Object... params){
         NetEventData netEventData = new NetEventData(SysConstantDefine.remoteCall);
@@ -110,7 +112,7 @@ public class RemoteCallService {
         remoteCallData.setParams(params);
         netEventData.setParam(remoteCallData);
 
-        NetEventData retData = netEventService.fireMainServerNetEventSyn(netEventData);
+        NetEventData retData = netEventService.fireServerNetEventSyn(1,netEventData);
         return handlerRetParam(retData);
     }
 
@@ -124,10 +126,6 @@ public class RemoteCallService {
      * @return
      */
     public Object remoteCallSyn(int serverId, Class serviceClass, String methodName, Object[] params) {
-        ServerInfo serverInfo = netEventService.getServerInfo(serverId);
-        if(serverInfo == null) {
-            throw new MMException("找不到 serverId = "+serverId+" 对应的配置.");
-        }
 
         NetEventData netEventData = new NetEventData(SysConstantDefine.remoteCall);
         RemoteCallData remoteCallData = new RemoteCallData();
@@ -136,7 +134,7 @@ public class RemoteCallService {
         remoteCallData.setParams(params);
         netEventData.setParam(remoteCallData);
 
-        NetEventData retData = netEventService.fireServerNetEventSyn(serverInfo, netEventData);
+        NetEventData retData = netEventService.fireServerNetEventSyn(serverId, netEventData);
 
         return handlerRetParam(retData);
     }

@@ -65,7 +65,7 @@ public class ConfigHelper {
      *
      * @since 2.2
      */
-    public static Map<String, Object> getMap(String prefix) {
+    public static Map<String, String> getMap(String prefix) {
         return PropsUtil.getMap(configProps, prefix);
     }
 }

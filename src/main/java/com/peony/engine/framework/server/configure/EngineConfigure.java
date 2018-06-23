@@ -1,6 +1,6 @@
 package com.peony.engine.framework.server.configure;
 
-import com.peony.engine.framework.control.job.JobStorage;
+import com.peony.engine.framework.control.netEvent.ServerInfo;
 import com.peony.engine.framework.data.cache.CacheCenter;
 import com.peony.engine.framework.data.entity.account.sendMessage.SendMessageGroupStorage;
 import com.peony.engine.framework.data.persistence.dao.DataAccessor;
@@ -45,7 +45,6 @@ public final class EngineConfigure {
         configureBeans.put(DataSourceFactory.class,getBeanFromConfigure("frameBean.dataSourceFactory"));
         configureBeans.put(DataAccessor.class,getBeanFromConfigure("frameBean.dataAccessor"));
         configureBeans.put(CacheCenter.class,getBeanFromConfigure("frameBean.cacheCenter"));
-        configureBeans.put(JobStorage.class,getBeanFromConfigure("frameBean.jobStorage"));
         configureBeans.put(SysParaStorage.class,getBeanFromConfigure("frameBean.sysParaStorage"));
         configureBeans.put(SendMessageGroupStorage.class,getBeanFromConfigure("frameBean.sendMessageGroupStorage"));
 
@@ -77,9 +76,9 @@ public final class EngineConfigure {
 
     private void initEntrance(){
         // entrance
-        Map<String, Object> entranceMap = ConfigHelper.getMap("entrance");
+        Map<String, String> entranceMap = ConfigHelper.getMap("entrance");
         Set<String> nameSet = new HashSet<>();
-        for(Map.Entry<String,Object> entry : entranceMap.entrySet()){
+        for(Map.Entry<String,String> entry : entranceMap.entrySet()){
             String name = entry.getKey().replace("entrance.","").replace(".port","").replace(".class","");
             if(nameSet.contains(name)){
                 continue;
@@ -200,8 +199,13 @@ public final class EngineConfigure {
         return requestEntrance.getPort();
     }
 
-    public String getMainServerNetEventAdd(){
-        return ConfigHelper.getString("mainServer");
+    public ServerInfo getMainServerInfo(){
+        Map<String, String> mainServerMap = ConfigHelper.getMap("mainServer");
+        ServerInfo ret = new ServerInfo();
+        ret.setId((Integer.parseInt(mainServerMap.get("mainServer.id"))));
+        ret.setHost(mainServerMap.get("mainServer.host"));
+        ret.setNetEventPort((Integer.parseInt(mainServerMap.get("mainServer.port"))));
+        return ret;
     }
 
 }

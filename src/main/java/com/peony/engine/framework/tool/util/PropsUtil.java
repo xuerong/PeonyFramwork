@@ -157,8 +157,8 @@ public class PropsUtil {
     /**
      * 获取指定前缀的相关属性
      */
-    public static Map<String, Object> getMap(Properties props, String prefix) {
-        Map<String, Object> kvMap = new LinkedHashMap<String, Object>();
+    public static Map<String, String> getMap(Properties props, String prefix) {
+        Map<String, String> kvMap = new LinkedHashMap<String, String>();
         Set<String> keySet = props.stringPropertyNames();
         if (CollectionUtils.isNotEmpty(keySet)) {
             for (String key : keySet) {

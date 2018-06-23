@@ -24,7 +24,6 @@ public final class SysConstantDefine {
     public static final int GETASYNCDATABELONGLISTKEY = 1005; // 从异步数据更新从DB获取的list
     public static final int TellMainServerSelfInfo = 1006; // 通知mainServer自己的服务器信息
     public static final int TellServersNewInfo = 1007; // 通知其它服务器新增了服务器
-    public static final int checkJobId = 1008; // 检查job的id,返回是否插入当前jobId
     public static final int removeJobOnServer = 1008; // 通知job所在服务器,删除一个job
     public static final int broadcastEvent = 1009; // 事件的广播
     public static final int remoteCall = 1010; // 远程调用

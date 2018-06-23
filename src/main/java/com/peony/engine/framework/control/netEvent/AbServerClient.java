@@ -6,7 +6,7 @@ import java.net.InetSocketAddress;
  * Created by apple on 16-8-28.
  */
 public abstract class AbServerClient implements ServerClient {
-    protected int serverType;
+    protected int serverType; // TODO 这个要去掉吧
     protected InetSocketAddress address;
 
     public int getServerType() {
@@ -32,4 +32,5 @@ public abstract class AbServerClient implements ServerClient {
                 ", address=" + address +
                 '}';
     }
+
 }
