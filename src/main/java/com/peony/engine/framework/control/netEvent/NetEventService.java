@@ -53,23 +53,13 @@ public class NetEventService {
                 logger.warn("NetEventService is busy drop task");
             });
 
-    // 所有已经添加的服务器
-//    private Map<Integer, ServerInfo> serverInfos = new ConcurrentHashMap<>();
     // 所有的serverClient 不包括自己 TODO 一个server可能既是这个server又是那个server
     private Map<Integer, ServerClient> serverClients = new ConcurrentHashMap<>();
 
     // mainServer 不包括自己
     private ServerClient asyncServerClient;
 
-    // mainServer client 不包括自己
-//    private ServerClient mainServerClient;
-    //
     private String selfAddress;
-//    private ServerInfo selfServerInfo;
-    //
-//    private MonitorService monitorService;
-
-//    private EventService eventService;
 
     public void init() {
         handlerMap = new HashMap<>();
@@ -81,15 +71,6 @@ public class NetEventService {
 
         selfAddress = getServerKey(Util.getHostAddress(), Server.getEngineConfigure().getNetEventPort());
         System.err.println("selfAddress " + selfAddress);
-//        // TODO 初始化自己的信息
-//        ServerInfo serverInfo = new ServerInfo();
-//        serverInfo.setId(Server.getServerId());
-//        serverInfo.setHost(Util.getHostAddress());
-//        serverInfo.setNetEventPort(Server.getEngineConfigure().getNetEventPort());
-//        serverInfo.setType(ServerType.getServerType());
-//        serverInfo.setRequestPort(Server.getEngineConfigure().getRequestPort());
-//
-//        selfServerInfo = serverInfo;
 
     }
 
@@ -102,127 +83,6 @@ public class NetEventService {
         logger.info("receive poing from {}", eventData.getChannel());
         return null;
     }
-
-
-
-
-//    public void notifyConnMainServer() {
-//        if (ServerType.isMainServer()) {
-//            logger.info("不需要连接mainServer,本服务器即为mainServer");
-//            return;
-//        }
-//        String mainServerAdd = Server.getEngineConfigure().getMainServerNetEventAdd();
-//        String[] items = mainServerAdd.split(":");
-//        if (items.length < 2) {
-//            throw new MMException("mainServerAdd error:" + mainServerAdd);
-//        }
-//        if (!items[0].equalsIgnoreCase("localhost") && !Util.isIP(items[0])) {
-//            throw new MMException("mainServerAdd error:" + mainServerAdd);
-//        }
-//        String host = items[0];
-//        int port = Integer.parseInt(items[1]);
-//        int localPort = Server.getEngineConfigure().getNetEventPort();
-//        if (Util.isLocalHost(host) && port == localPort) {
-//            logger.info("本服务器被配置为mainServer，但未按照mainServer启动，请重新配置mainServer或按照mainServer启动");
-//            return;
-//        }
-//        NettyServerClient nettyServerClient = new NettyServerClient(ServerType.MAIN_SERVER,1, host, port);
-//        // 这里必须一直等 直到成功
-//        nettyServerClient.connectSync(Integer.MAX_VALUE);
-//        serverClients.put(nettyServerClient.getServerId(), nettyServerClient);
-//        mainServerClient = nettyServerClient;
-//        // 告诉mainServer 自己是谁，并且从mainServer哪里获取其它服务器，并连接之
-//        tellMainServer();
-//    }
-
-
-    // 主服务器：别人请求添加，并请求返回其它服务器信息，并告诉其他服务器它的存在
-//    @NetEventListener(netEvent = SysConstantDefine.TellMainServerSelfInfo)
-//    public NetEventData registerServerToMain(NetEventData eventData) {
-//        if (!ServerType.isMainServer()) {
-//            throw new MMException("this server is not mainServer , serverType=" + ServerType.getServerTypeName());
-//        }
-//        // 添加到serverList，返回其它server的List
-//        ServerInfo serverInfo = (ServerInfo) eventData.getParam();
-//        ServerInfo old = serverInfos.putIfAbsent(serverInfo.getId(), serverInfo);
-//        if (old == null) { // 没有添加它
-//            // 告诉其他服务器，它的存在
-//            NetEventData serverInfoData = new NetEventData(SysConstantDefine.TellServersNewInfo, eventData.getParam());
-//            broadcastNetEvent(serverInfoData, false); // 这个地方有可能发送给serverInfo，因为是异步发送的
-//
-//            // 创建NettyServerClient，并连接
-//            registerServerSyn(serverInfo, Integer.MAX_VALUE, true);
-//
-//            // 告诉它，所有其他的 ????
-//            NetEventData ret = new NetEventData(eventData.getNetEvent(), serverInfos);
-//            return ret;
-//        }
-//
-//        throw new MMException("该服务器已经注册完成，是否是断线重连？");
-//    }
-
-    // 其它服务器：主服务器推出其它服务器的存在：建立与其它服务器的连接
-//    @NetEventListener(netEvent = SysConstantDefine.TellServersNewInfo)
-//    public NetEventData receiveServerInfoFromMainServer(NetEventData eventData) {
-//        ServerInfo serverInfo = (ServerInfo) eventData.getParam();
-//        if (Util.isLocalHost(serverInfo.getHost()) &&
-//                serverInfo.getNetEventPort() == Server.getEngineConfigure().getNetEventPort()) { // 过滤掉自己
-//            return null;
-//        }
-//        ServerInfo old = serverInfos.putIfAbsent(serverInfo.getId(), serverInfo);
-//        if (old == null) {
-//            registerServerSyn(serverInfo, Integer.MAX_VALUE, true);
-//            return null;
-//        }
-//        throw new MMException("该服务器已经注册完成，是否是断线重连？");
-//    }
-
-    // nettyServerClient断线通知:如果是mainServer，则重连，否则，从client记录去掉它，它连上mainServer自然会重新通知
-//    @EventListener(event = SysConstantDefine.Event_NettyServerClient_Disconnect)
-//    public void nettyServerClientDisconnect(EventData eventData) {
-//        NettyServerClient client = (NettyServerClient) eventData.getData();
-//        if (mainServerClient == client) { //如果是mainServer,则重连
-//            // mainServer 应该设置为自动重连
-//            if (!client.isAutoReconnect()) {
-//                client.connectSync(3);
-//            }
-//            tellMainServer();
-//        } else { //
-//            ServerInfo serverInfo = serverInfos.remove(client.getServerId());
-//            if (serverInfo != null) {
-//                eventService.fireEventSyn(client.getServerId(), SysConstantDefine.Event_DisconnectNewServer);
-//            }
-//            serverClients.remove(client.getServerId());
-//            if (asyncServerClient == client) {
-//                asyncServerClient = null;
-//            }
-//        }
-//    }
-
-
-//    private void tellMainServer() {
-//        // 告诉mainServer 自己是谁，并且从mainServer哪里获取其它服务器，并连接之
-//        NetEventData netEventData = new NetEventData(SysConstantDefine.TellMainServerSelfInfo);
-//        netEventData.setParam(selfServerInfo);
-//
-//        NetEventData ret = fireMainServerNetEventSyn(netEventData); //通知主服务器，并获取其它服务器列表
-//
-//        Map<Integer, ServerInfo> retServers = (Map) ret.getParam();
-//        for (Map.Entry<Integer, ServerInfo> entry : retServers.entrySet()) {
-//            ServerInfo serverInfo = entry.getValue();
-//            if (entry.getKey() == selfServerInfo.getId()) { // 把自己过滤出来
-//                continue;
-//            }
-//            // 创建NettyServerClient，并连接
-//            ServerInfo old = serverInfos.putIfAbsent(entry.getKey(), entry.getValue());
-//            if (old == null) {
-//                // TODO 这个地方不能同步的，否则一个服务器失败，会影响它的启动
-//                registerServerSyn(serverInfo, Integer.MAX_VALUE, true);
-//            } else {
-//                logger.warn("mainServer reStart?");
-//            }
-//        }
-//    }
 
     /**
      * 同步注册服务器，连接上该服务器之后，才返回
@@ -274,13 +134,6 @@ public class NetEventService {
         addClient(client);
         return client;
     }
-
-//    // 用于自动重连后更新 client
-//    @EventListener(event = SysConstantDefine.Event_ConnectNewServer)
-//    public void onClientConnected(EventData eventData) {
-//        NettyServerClient client = (NettyServerClient) eventData.getData();
-//        addClient(client);
-//    }
 
     private void addClient(NettyServerClient client) {
         serverClients.put(client.getServerId(), client);
