@@ -6,6 +6,8 @@ import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -17,6 +19,7 @@ import java.util.Map;
  */
 @Service(init = "init")
 public class GmService {
+    private static final Logger log = LoggerFactory.getLogger(GmService.class);
     private RemoteCallService remoteCallService;
     private Map<String,GmSegment> gmSegments;
     public void init(){
@@ -78,7 +81,9 @@ public class GmService {
         }
         // 调用
         try {
+            log.info("dogm,request:[{}]  {}",id,params);
             Object result = gmSegment.getMethod().invoke(gmSegment.getService(), params);
+            log.info("dogm,response:[{}]  {}",id,result);
             return result;
         }catch (Throwable e){
             if(e instanceof ToClientException){

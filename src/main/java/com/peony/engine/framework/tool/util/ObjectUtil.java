@@ -84,6 +84,22 @@ public class ObjectUtil {
     }
 
     /**
+     * 通过反射创建实例
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T newInstance(Class<?> cls) {
+        T instance;
+        try {
+            instance = (T) cls.newInstance();
+        } catch (Exception e) {
+            logger.error("创建实例出错！", e);
+            throw new RuntimeException(e);
+        }
+        return instance;
+    }
+
+
+    /**
      * 获取对象的字段映射（字段名 => 字段值），忽略 static 字段
      */
     public static Map<String, Object> getFieldMap(Object obj) {

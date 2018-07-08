@@ -214,7 +214,7 @@ public class DataService {
             }
             try {
                 // TODO 这里从异步数据获取满足条件(listKey)的数据，并在查询数据库之后放进对应的list中
-                List<AsyncService.AsyncData> asyncDataList = asyncService.getAsyncDataBelongListKey(listKey);
+                List<AsyncService.AsyncData> asyncDataList = asyncService.getAsyncDataBelongListKey(entityClass,listKey);
                 objectList = DataSet.selectListWithCondition(entityClass, condition, params);
                 monitorService.addMonitorNum(MonitorNumType.SelectSqlNum,1);
                 if (objectList != null || (asyncDataList != null && asyncDataList.size() > 0)) { // 0个也缓存
@@ -282,11 +282,16 @@ public class DataService {
                                 map = new HashMap<>();
                                 cacheEntitys.set(map);
                             }
-                            for(Map.Entry<String,CacheEntity> entry : cacheEntityMap.entrySet()){
-                                if(txCacheService.isLockClass(entry.getValue().getEntity().getClass())){
+                            if(txCacheService.isLockClass(entityClass)){
+                                for(Map.Entry<String,CacheEntity> entry : cacheEntityMap.entrySet()){
                                     map.put(entry.getKey(),entry.getValue());
                                 }
                             }
+//                            for(Map.Entry<String,CacheEntity> entry : cacheEntityMap.entrySet()){
+//                                if(txCacheService.isLockClass(entry.getValue().getEntity().getClass())){
+//                                    map.put(entry.getKey(),entry.getValue());
+//                                }
+//                            }
                         }
                     }
                 }
@@ -317,12 +322,19 @@ public class DataService {
                             cacheEntitys.set(map);
                         }
                         int index = 0;
-                        for(CacheEntity cacheEntity : cacheEntitieList){
-                            if(txCacheService.isLockClass(cacheEntity.getEntity().getClass())){
+                        boolean isLockClass = txCacheService.isLockClass(entityClass);
+                        if(isLockClass){
+                            for(CacheEntity cacheEntity : cacheEntitieList){
                                 map.put(keys.get(index),cacheEntity);
+                                index++;
                             }
-                            index++;
                         }
+//                        for(CacheEntity cacheEntity : cacheEntitieList){
+//                            if(txCacheService.isLockClass(cacheEntity.getEntity().getClass())){
+//                                map.put(keys.get(index),cacheEntity);
+//                            }
+//                            index++;
+//                        }
                     }
                 }else{
                     // TODO 取出多个值,如果有不存在的还要去数据库中取

@@ -1,10 +1,16 @@
 package com.peony.engine.framework.data.cache;
 
 import com.peony.engine.framework.tool.util.ObjectUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by a on 2016/8/12.
@@ -13,6 +19,10 @@ import java.util.List;
  * 这里面可以记录一些特殊的点
  */
 public class CacheEntity implements Serializable{
+    private static final Logger logger = LoggerFactory.getLogger(CacheEntity.class);
+
+    private static Map<Class<?>,Field[]> clsFieldMap = new ConcurrentHashMap<>();
+
     private Object entity;
     private CacheEntityState state;
     private long casUnique;
@@ -67,9 +77,41 @@ public class CacheEntity implements Serializable{
             }
             cacheEntity.setEntity(target);
         }else {
-            Object target = ObjectUtil.newInstance(entity.getClass().getName());
+
+            // TODO 这个地方有两种优化的方向：完全可行的是，不用反射创建，而是用生成代码创建，另一种是缓存，对象池
+
+            Class<?> cls = entity.getClass();
+            Object target = ObjectUtil.newInstance(cls);
+            Field[] fields = clsFieldMap.get(cls);
+            if(fields == null){
+                Field[] fs = cls.getDeclaredFields();
+                List<Field> fieldsList = new ArrayList<>();
+                for(Field field : fs){
+                    if (!Modifier.isStatic(field.getModifiers())) {
+                        fieldsList.add(field);
+                    }
+                }
+                fields =new Field[fieldsList.size()];
+                int i=0;
+                for(Field field:fieldsList){
+                    field.setAccessible(true);
+                    fields[i++] = field;
+                }
+                clsFieldMap.putIfAbsent(cls,fields);
+            }
+
+            try {
+                for (Field field : fields) {
+                    //
+                    field.set(target, field.get(entity));
+                }
+            } catch (Exception e) {
+                logger.error("复制成员变量出错！", e);
+                throw new RuntimeException(e);
+            }
+
 //            t2 = System.nanoTime();
-            ObjectUtil.copyFields(entity,target);
+//            ObjectUtil.copyFields(entity,target);
 //            t3 = System.nanoTime();
             cacheEntity.setEntity(target);
         }
@@ -90,7 +132,7 @@ public class CacheEntity implements Serializable{
          __________--------------------110,82
          */
 //        log.info("__________--------------------"+(t2-t1)+","+(t3-t2)+"");
-        // TODO 这个地方的赋值有时间优化一下
+
 
         return cacheEntity;
     }

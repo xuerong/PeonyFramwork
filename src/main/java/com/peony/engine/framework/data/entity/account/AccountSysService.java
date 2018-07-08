@@ -82,6 +82,7 @@ public class AccountSysService {
             eventService.fireEventSyn(regEventData,SysConstantDefine.Event_AccountRegister);
 //            throw new MMException("account is not exist, id="+id);
             newUser = true;
+            log.info("new user register,uid={}",account.getId());
         }
         account.setLastLoginTime(new Timestamp(System.currentTimeMillis()));
 

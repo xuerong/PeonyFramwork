@@ -45,7 +45,7 @@ public class WebSocketEntrance extends Entrance {
     @Override
     public void stop() throws Exception {
         // 停止网络
-
+        channel.close();
     }
 
     public static class WebSocketHandler extends SimpleChannelInboundHandler {

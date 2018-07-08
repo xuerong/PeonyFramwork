@@ -16,8 +16,8 @@ import java.util.*;
  */
 public class KeyParser {
     private static final Logger log = LoggerFactory.getLogger(KeyParser.class);
-    private static final String LISTSEPARATOR ="#";
-    private static final String SEPARATOR ="_";
+    public static final String LISTSEPARATOR ="#";
+    public static final String SEPARATOR ="_";
 
 //    private static Map<Class<?>,List<String>> pkMap = new HashMap<>();
     static {

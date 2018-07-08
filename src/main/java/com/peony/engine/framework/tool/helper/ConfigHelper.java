@@ -17,6 +17,10 @@ public class ConfigHelper {
      * 属性文件对象
      */
     private static final Properties configProps = PropsUtil.loadProps("mmserver.properties");
+    /**
+     *
+     */
+    private static final Properties serviceConfigProps = PropsUtil.loadProps("service.properties");
 
     /**
      * 获取 String 类型的属性值
@@ -67,5 +71,14 @@ public class ConfigHelper {
      */
     public static Map<String, String> getMap(String prefix) {
         return PropsUtil.getMap(configProps, prefix);
+    }
+
+    /**
+     * 获取指定前缀的相关属性
+     *
+     * @since 2.2
+     */
+    public static Map<String, String> getServiceMap(String prefix) {
+        return PropsUtil.getMap(serviceConfigProps, prefix);
     }
 }

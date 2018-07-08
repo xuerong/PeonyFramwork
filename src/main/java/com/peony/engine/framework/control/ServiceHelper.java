@@ -5,6 +5,7 @@ import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
 import com.peony.engine.framework.control.rpc.IRoute;
 import com.peony.engine.framework.control.rpc.Remotable;
+import com.peony.engine.framework.control.service.ServiceRunOnServer;
 import com.peony.engine.framework.security.Monitor;
 import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.tool.helper.BeanHelper;
@@ -24,6 +25,8 @@ import com.peony.engine.framework.data.entity.session.Session;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.ServerType;
 import com.peony.engine.framework.tool.helper.ClassHelper;
+import com.peony.engine.framework.tool.helper.ConfigHelper;
+import com.peony.engine.framework.tool.util.ClassUtil;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TShortObjectHashMap;
 import javassist.*;
@@ -70,8 +73,10 @@ public final class ServiceHelper {
     private static Map<String, Method> gmMethod = new HashMap<>();
     private static Map<String, Method> statisticsMethods = new HashMap<>();
 
+
     static {
         try {
+            //
             Map<Class<?>, List<Method>> requestMap = new HashMap<>();
             Map<Class<?>, List<Method>> eventListenerMap = new HashMap<>();
             Map<Class<?>, List<Method>> netEventListenerMap = new HashMap<>();
@@ -181,6 +186,7 @@ public final class ServiceHelper {
                 Class<?> newServiceClass = serviceClass;
 
                 Service service = serviceClass.getAnnotation(Service.class);
+
 
                 // 单一服的某些特定 Service 如排行榜等
                 if (!service.runOnEveryServer() && !ServerType.isMainServer()) {
@@ -472,7 +478,7 @@ public final class ServiceHelper {
         }
     }
 
-    private static String praseBaseTypeStrToObjectTypeStr(String typeStr, String paramStr) {
+    public static String praseBaseTypeStrToObjectTypeStr(String typeStr, String paramStr) {
         if (typeStr.equals("byte")) {
             return "new Byte(" + paramStr + ")";
         } else if (typeStr.equals("short")) {
@@ -493,7 +499,7 @@ public final class ServiceHelper {
         return paramStr;
     }
 
-    private static String parseBaseTypeStrToObjectTypeStr(String typeStr) {
+    public static String parseBaseTypeStrToObjectTypeStr(String typeStr) {
         if (typeStr.equals("byte")) {
             return "((Byte)object).byteValue();";
         } else if (typeStr.equals("short")) {

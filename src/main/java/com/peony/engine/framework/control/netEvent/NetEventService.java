@@ -2,13 +2,9 @@ package com.peony.engine.framework.control.netEvent;
 
 import com.alibaba.fastjson.JSONObject;
 import com.peony.engine.framework.control.ServiceHelper;
-import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.NetEventListener;
 import com.peony.engine.framework.control.annotation.Service;
-import com.peony.engine.framework.control.event.EventData;
-import com.peony.engine.framework.control.event.EventService;
 import com.peony.engine.framework.security.exception.MMException;
-import com.peony.engine.framework.security.MonitorService;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.ServerType;
@@ -297,21 +293,30 @@ public class NetEventService {
 
         ServerClient serverClient = serverClients.get(id);
 
-        if (serverClient != null) {
+        if (serverClient != null && serverClient.isConnected()) {
             return sendNetEvent(serverClient, netEvent);
         }
-        throw new MMException("serverClient is null");
+        throw new MMException(MMException.ExceptionType.SendNetEventFail,"serverClient is null");
     }
 
     public NetEventData sendNetEvent(ServerClient serverClient, NetEventData netEvent) {
-        NetEventData ret = (NetEventData) serverClient.request(netEvent);
-        if (ret.getNetEvent() == SysConstantDefine.NETEVENTEXCEPTION || ret.getNetEvent() == SysConstantDefine.NETEVENTMMEXCEPTION) {
-            throw new MMException((String) ret.getParam());
-        } else if (ret.getNetEvent() == SysConstantDefine.NETEVENTTOCLIENTEXCEPTION) {
-            JSONObject object = JSONObject.parseObject((String) ret.getParam());
-            throw new ToClientException(object.getInteger("errCode"), object.getString("errMsg"));
+        try {
+            NetEventData ret = (NetEventData) serverClient.request(netEvent);
+            if(ret == null){
+                throw new MMException(MMException.ExceptionType.SendNetEventFail,"serverClient is null");
+            }
+
+            if (ret.getNetEvent() == SysConstantDefine.NETEVENTEXCEPTION || ret.getNetEvent() == SysConstantDefine.NETEVENTMMEXCEPTION) {
+                throw new MMException((String) ret.getParam());
+            } else if (ret.getNetEvent() == SysConstantDefine.NETEVENTTOCLIENTEXCEPTION) {
+                JSONObject object = JSONObject.parseObject((String) ret.getParam());
+                throw new ToClientException(object.getInteger("errCode"), object.getString("errMsg"));
+            }
+            return ret;
+        }catch (Throwable e){
+            logger.error("sendNetEvent error!");
+            throw new MMException(MMException.ExceptionType.SendNetEventFail,"serverClient is null");
         }
-        return ret;
     }
 
 }

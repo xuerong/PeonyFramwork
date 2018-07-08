@@ -231,9 +231,9 @@ public class NettyServerClient extends AbServerClient {
 
     @Override
     public Object request(Object msg) {
+        String id = UUID.randomUUID().toString();
         try {
             NetEventPacket packet = new NetEventPacket();
-            String id = UUID.randomUUID().toString();
             packet.setId(id);
             packet.setData(msg);
             CountDownLatch latch = new CountDownLatch(1);
@@ -245,6 +245,7 @@ public class NettyServerClient extends AbServerClient {
             }
             return packet.getReData();
         } catch (Throwable e) {
+            packetMap.remove(id);
             if (e instanceof InterruptedException) {
                 throw new MMException("请求超时:" + e);
             }

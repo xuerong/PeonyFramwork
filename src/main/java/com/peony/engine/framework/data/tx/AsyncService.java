@@ -17,6 +17,7 @@ import org.eclipse.jetty.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
@@ -33,14 +34,15 @@ public class AsyncService {
 //    private static LinkedBlockingQueue<AsyncData> asyncDataQueue = new LinkedBlockingQueue<AsyncData>();
     // 另一个队列，key为对象的类的名字,只存储增加和删除，根据异步对象的类型进行存储，在REFRESHDBLIST中起作用：
     // 1防止漏掉数据：插入数据库之后才删它，而asyncDataQueue在插入数据库之前就会被删掉了，2提高查询效率
-    private ConcurrentHashMap<String,List<AsyncData>> asyncDataMap = new ConcurrentHashMap<>();
-    private final int threadCount = Runtime.getRuntime().availableProcessors()+1;
+    private ConcurrentHashMap<String,Map<AsyncData,AsyncData>> asyncDataMap = new ConcurrentHashMap<>();
+    private final int threadCount = 10;//Runtime.getRuntime().availableProcessors()+1;
     private Random threadRand = new Random();
 //    private ThreadLocal<Integer> threadNum = new ThreadLocal<>();
     private Map<Integer,Worker> workerMap = new HashMap<>();
     // listKeys
     // key为对象的类的名字，值为其对应的listKeys
-    private ConcurrentHashMap<String,Set<String>> listKeysMap = new ConcurrentHashMap<>();
+//    private ConcurrentHashMap<String,Set<String>> listKeysMap = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Class<?>,Map<String,Map<String,String>>> listKeyIndex = new ConcurrentHashMap<>();
     //
     private CacheCenter cacheCenter;
     private NetEventService netEventService;
@@ -152,8 +154,8 @@ public class AsyncService {
      * 当从数据库中获取list之后，需要从异步服务器中获取满足该list且还没有更新到数据库中的对象，主要是插入和删除的
      * 同时将对应的listKey记录到异步服务器中，以便新数据插入时更新对应的list
      */
-    public List<AsyncData> getAsyncDataBelongListKey(String listKey){
-        return receiveRefreshDBList(listKey);
+    public List<AsyncData> getAsyncDataBelongListKey(Class<?> entityClass,String listKey){
+        return receiveRefreshDBList(entityClass,listKey);
     }
     /// 上面的四个函数，处理其他服务器发送过来的异步数据库请求
     public void receiveAsyncData(Object object){
@@ -169,21 +171,54 @@ public class AsyncService {
     }
 
     // 其他服务器发送来的，异步服务器有的对应list的对象和更新状态
-    public List<AsyncData> receiveRefreshDBList(String listKey){
+    public List<AsyncData> receiveRefreshDBList(Class<?> entityClass,String listKey){
         // 查看并插入listKeys插入
-        String classKey = KeyParser.getClassNameFromListKey(listKey);
-        Set<String> listKeys = listKeysMap.get(classKey);
-        if(listKeys == null){
-            listKeys = new ConcurrentHashSet<>();
-            listKeysMap.putIfAbsent(classKey,listKeys);
-            listKeys = listKeysMap.get(classKey);
+//        String classKey = KeyParser.getClassNameFromListKey(listKey);
+
+        String classKey = entityClass.getName();
+
+        Map<String,Map<String,String>> fieldMap = listKeyIndex.get(entityClass);
+        String[] listKeyStrs = listKey.split(KeyParser.LISTSEPARATOR); // 类，list，field，value
+        if(listKeyStrs.length<4 && listKeyStrs.length != 2){
+            log.error("listKey is Illegal : listKey = "+listKey);
+        }else {
+            if (fieldMap == null) {
+                fieldMap = new ConcurrentHashMap<>();
+                Map<String, Map<String, String>> old = listKeyIndex.putIfAbsent(entityClass, fieldMap);
+                if (old != null) {
+                    fieldMap = old;
+                }
+            }
+            String fieldKey = listKeyStrs.length == 2?"":listKeyStrs[2];
+            Map<String, String> valueMap = fieldMap.get(fieldKey);
+            if (valueMap == null) {
+                valueMap = new ConcurrentHashMap<>();
+                Map<String, String> old = fieldMap.putIfAbsent(fieldKey, valueMap);
+                if (old != null) {
+                    valueMap = old;
+                }
+            }
+            if (listKeyStrs.length == 2) { // 全表
+                valueMap.putIfAbsent("", listKey);
+            } else {
+                valueMap.putIfAbsent(listKeyStrs[3],listKey);
+            }
         }
-        listKeys.add(listKey);// 注意这里一定要先插入，再获取再插入，而不能创建-插入-放入listKeysMap，多线程下回出错
+
+//        Set<String> listKeys = listKeysMap.get(classKey);
+//        if(listKeys == null){
+//            listKeys = new ConcurrentHashSet<>();
+//            listKeysMap.putIfAbsent(classKey,listKeys);
+//            listKeys = listKeysMap.get(classKey);
+//        }
+//        listKeys.add(listKey);// 注意这里一定要先插入，再获取再插入，而不能创建-插入-放入listKeysMap，多线程下回出错
         // 从异步列表中获取相应的对象
         List<AsyncData> result = null;
-        List<AsyncData> asyncDataList = asyncDataMap.get(classKey);
+        Map<AsyncData,AsyncData> asyncDataList = asyncDataMap.get(classKey);
         if(asyncDataList != null){
-            for(AsyncData asyncData : asyncDataList){
+            Iterator<AsyncData> iterator = asyncDataList.values().iterator();
+            while (iterator.hasNext()){
+                AsyncData asyncData = iterator.next();
                 if(KeyParser.isObjectBelongToList(asyncData.getObject(),listKey)){
                     if(result == null){
                         result = new ArrayList<>();
@@ -194,49 +229,111 @@ public class AsyncService {
         }
         return result;
     }
+    // 返回是否移除该listkey
+    private boolean updateCacheList(AsyncData asyncData, String listKey){
+        if (!lockerService.lockKeys(listKey)) { // 要不要做成一起加锁， 解锁，增加效率？
+            throw new MMException("加锁失败,listKey = " + listKey);
+        }
+        // 从缓存中取数据
+        CacheEntity cacheEntity = cacheCenter.get(listKey);
+        if (cacheEntity == null) {
+            // 缓存中没有，删除掉这个listKey
+            lockerService.unlockKeys(listKey);
+            return true;
+        }
+        List<String> keyList = (List<String>) cacheEntity.getEntity();
+        if (asyncData.getOperType() == OperType.Insert){
+//                            if (!keyList.contains(asyncData.getKey())) // TODO 这里先不判断，影响效率，或者使用Set，会影响排序，这里要考虑一下了。。。。。。。。。，可以用LinkedHashSet 6666
+            keyList.add(asyncData.getKey());
+        }else if (asyncData.getOperType() == OperType.Delete){
+            keyList.remove(asyncData.getKey());
+        }
+        cacheCenter.update(listKey,cacheEntity); // 由于加了锁之后获取的，所以不用担心版本问题，第一次放入缓存的地方也加了锁
+        lockerService.unlockKeys(listKey);
+        return false;
+    }
+
     private void doReceiveAsyncData(AsyncData asyncData){
         if(asyncData.getOperType() == OperType.Insert || asyncData.getOperType() == OperType.Delete) {
-            List<AsyncData> asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
+            Map<AsyncData,AsyncData> asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
             if (asyncDataList == null) {
                 // TODO 这里用这个list怎么样呢，有没有更好的选择？因为后面有删除需求，这个删除在多线程会不会效率太低
-                asyncDataList = Collections.synchronizedList(new LinkedList<AsyncData>());
+                asyncDataList = new ConcurrentHashMap<>();//Collections.synchronizedList(new LinkedList<AsyncData>());
                 asyncDataMap.putIfAbsent(asyncData.getObject().getClass().getName(), asyncDataList);
                 asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
             }
-            asyncDataList.add(asyncData);
+            asyncDataList.put(asyncData,asyncData);
         }
         Worker worker = workerMap.get(asyncData.getThreadNum());
         boolean success = worker.addAsyncData(asyncData);
         // 插入可能存在的listKey
         if(asyncData.getOperType() == OperType.Insert || asyncData.getOperType() == OperType.Delete) {
-            Set<String> listKeys = listKeysMap.get(asyncData.getObject().getClass().getName());
-            if (listKeys != null && listKeys.size() > 0) {
-                for (Iterator<String> iter = listKeys.iterator(); iter.hasNext(); ) {
-                    String listKey = iter.next();
-                    if (KeyParser.isObjectBelongToList(asyncData.getObject(), listKey)) {
-                        if (!lockerService.lockKeys(listKey)) { // 要不要做成一起加锁， 解锁，增加效率？
-                            throw new MMException("加锁失败,listKey = " + listKey);
+            Map<String,Map<String,String>> fieldMap = listKeyIndex.get(asyncData.getObject().getClass());
+            if(fieldMap != null) {
+                Map<String,Method> getMethodMap = EntityHelper.getGetMethodMap(asyncData.getObject().getClass());
+                for (Map.Entry<String, Map<String, String>> entry : fieldMap.entrySet()) {
+                    if (entry.getKey().equals("")) { // 是全表
+                        String listKey = entry.getValue().get("");
+                        boolean remove = updateCacheList(asyncData, listKey);
+                        if (remove) {
+                            fieldMap.remove(entry.getKey());
                         }
-                        // 从缓存中取数据
-                        CacheEntity cacheEntity = cacheCenter.get(listKey);
-                        if (cacheEntity == null) {
-                            // 缓存中没有，删除掉这个listKey
-                            iter.remove();
-                            lockerService.unlockKeys(listKey);
-                            continue;
+                    } else {
+                        String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
+                        StringBuilder valueSb = new StringBuilder();
+                        try {
+                            for (String fieldName : fieldNames) {
+                                Method method = getMethodMap.get(fieldName);
+                                if (method == null) {
+                                    log.error("listKey is Illegal : fieldName is not exist in getMethodMap , fieldName = " + fieldName);
+                                }
+                                if(valueSb.length()>0){
+                                    valueSb.append(KeyParser.SEPARATOR);
+                                }
+                                valueSb.append(KeyParser.parseParamToString(method.invoke(asyncData.getObject())));
+                            }
+                        } catch (IllegalAccessException |InvocationTargetException e) {
+                            log.error("listKey is Illegal while invoke getMethodMap,entityClass={}",asyncData.getObject().getClass(),e);
                         }
-                        List<String> keyList = (List<String>) cacheEntity.getEntity();
-                        if (asyncData.getOperType() == OperType.Insert){
-//                            if (!keyList.contains(asyncData.getKey())) // 这里先不判断，影响效率，或者使用Set，会影响排序
-                            keyList.add(asyncData.getKey());
-                        }else if (asyncData.getOperType() == OperType.Delete){
-                            keyList.remove(asyncData.getKey());
+                        String valueKey = valueSb.toString();
+                        String listKey = entry.getValue().get(valueKey);
+                        if(listKey != null){
+                            boolean remove = updateCacheList(asyncData, listKey);
+                            if (remove) {
+                                entry.getValue().remove(valueKey);
+                            }
                         }
-                        cacheCenter.update(listKey,cacheEntity); // 由于加了锁之后获取的，所以不用担心版本问题，第一次放入缓存的地方也加了锁
-                        lockerService.unlockKeys(listKey);
                     }
                 }
             }
+//            Set<String> listKeys = listKeysMap.get(asyncData.getObject().getClass().getName());
+//            if (listKeys != null && listKeys.size() > 0) {
+//                for (Iterator<String> iter = listKeys.iterator(); iter.hasNext(); ) {
+//                    String listKey = iter.next();
+//                    if (KeyParser.isObjectBelongToList(asyncData.getObject(), listKey)) {
+//                        if (!lockerService.lockKeys(listKey)) { // 要不要做成一起加锁， 解锁，增加效率？
+//                            throw new MMException("加锁失败,listKey = " + listKey);
+//                        }
+//                        // 从缓存中取数据
+//                        CacheEntity cacheEntity = cacheCenter.get(listKey);
+//                        if (cacheEntity == null) {
+//                            // 缓存中没有，删除掉这个listKey
+//                            iter.remove();
+//                            lockerService.unlockKeys(listKey);
+//                            continue;
+//                        }
+//                        List<String> keyList = (List<String>) cacheEntity.getEntity();
+//                        if (asyncData.getOperType() == OperType.Insert){
+////                            if (!keyList.contains(asyncData.getKey())) // 这里先不判断，影响效率，或者使用Set，会影响排序
+//                            keyList.add(asyncData.getKey());
+//                        }else if (asyncData.getOperType() == OperType.Delete){
+//                            keyList.remove(asyncData.getKey());
+//                        }
+//                        cacheCenter.update(listKey,cacheEntity); // 由于加了锁之后获取的，所以不用担心版本问题，第一次放入缓存的地方也加了锁
+//                        lockerService.unlockKeys(listKey);
+//                    }
+//                }
+//            }
         }
         if(!success){
             throw new MMException("更新数据库队列满，异步服务器压力过大");
@@ -383,7 +480,7 @@ public class AsyncService {
                             }
                             if(success){ // 删除记录 TODO 这里删除是不是有点慢
                                 monitorService.addMonitorNum(MonitorNumType.SuccessSqlNum,1);
-                                List<AsyncData> asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
+                                Map<AsyncData,AsyncData> asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
                                 if(asyncDataList != null) {
                                     asyncDataList.remove(asyncData);
                                 }

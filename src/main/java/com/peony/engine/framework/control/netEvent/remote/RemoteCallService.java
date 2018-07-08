@@ -143,7 +143,7 @@ public class RemoteCallService {
         if(retData.getParam() instanceof RemoteCallError){
             RemoteCallError remoteCallError = (RemoteCallError)retData.getParam();
             // 同步远程调用失败
-            throw new MMException("remoteCallError!",remoteCallError);
+            throw new MMException("remoteCallError!{}",remoteCallError);
         }else if(retData.getErrorCode() == 3){
             ToClientException toClientException = ToClientException.parseFromParams((Object[]) retData.getParam());
             throw toClientException;
