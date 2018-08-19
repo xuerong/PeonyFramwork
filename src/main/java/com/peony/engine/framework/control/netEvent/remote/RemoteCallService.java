@@ -5,18 +5,26 @@ import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.netEvent.NetEventData;
 import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.control.netEvent.ServerInfo;
+import com.peony.engine.framework.control.rpc.RemoteExceptionHandler;
+import com.peony.engine.framework.security.Monitor;
+import com.peony.engine.framework.security.MonitorNumType;
+import com.peony.engine.framework.security.MonitorService;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.util.ReflectionUtil;
 import com.peony.engine.framework.tool.util.Util;
+import com.peony.engine.framework.tool.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created by apple on 16-9-15.
@@ -26,10 +34,14 @@ import java.util.*;
 public class RemoteCallService {
     private static final Logger logger = LoggerFactory.getLogger(RemoteCallService.class);
     private NetEventService netEventService;
+    private MonitorService monitorService;
+    private ExecutorService executorService = Executors.newFixedThreadPool(8);
+    ConcurrentLinkedDeque<Integer> timeQueue = new ConcurrentLinkedDeque<>();
 
     public void init(){
         netEventService = BeanHelper.getServiceBean(NetEventService.class);
     }
+
 
     /**
      * 异步远程调用
@@ -126,18 +138,93 @@ public class RemoteCallService {
      * @param params
      * @return
      */
-    public Object remoteCallSyn(int serverId, Class serviceClass, String methodName, Object[] params) {
+    public Object remoteCallSyn(int serverId, Class serviceClass, String methodName, Object[] params,RemoteExceptionHandler handler) {
+        long begin = System.currentTimeMillis();
+        try {
+            NetEventData netEventData = new NetEventData(SysConstantDefine.remoteCall);
+            RemoteCallData remoteCallData = new RemoteCallData();
+            remoteCallData.setServiceName(serviceClass.getName());
+            remoteCallData.setMethodName(methodName);
+            remoteCallData.setParams(params);
+            netEventData.setParam(remoteCallData);
 
-        NetEventData netEventData = new NetEventData(SysConstantDefine.remoteCall);
-        RemoteCallData remoteCallData = new RemoteCallData();
-        remoteCallData.setServiceName(serviceClass.getName());
-        remoteCallData.setMethodName(methodName);
-        remoteCallData.setParams(params);
-        netEventData.setParam(remoteCallData);
+            NetEventData retData = netEventService.fireServerNetEventSyn(serverId, netEventData);
 
-        NetEventData retData = netEventService.fireServerNetEventSyn(serverId, netEventData);
+            return handlerRetParam(retData);
+        }catch (RuntimeException e){
+            if(handler == null){
+                throw e;
+            }
+            return handler.handle(serverId,serviceClass,methodName,params,e);
+        }finally {
+            monitorService.addMonitorNum(MonitorNumType.RemoteCallNum,1);
+            int useTime = (int)(System.currentTimeMillis() - begin);
+            if(useTime > 3000){
+                logger.warn("remoteCallSyn use time = {},serverId={},serviceClass={},methodName={},params={}",useTime,serverId,serviceClass.getName()
+                        ,methodName,params);
+            }
+            timeQueue.add(useTime);
+        }
+    }
 
-        return handlerRetParam(retData);
+    @Monitor(name = "远程调用消耗时间")
+    public String monitorRequest(){
+        String date = DateUtils.formatNow("yyyy-MM-dd HH:mm:ss");
+        StringBuilder sb = new StringBuilder();
+        int size = timeQueue.size();
+        if(size > 0) {
+            int all = 0;
+            int min=timeQueue.poll();
+            int max = min;
+            Map<Integer,Integer> useTime = new TreeMap<>();
+            for (Integer value :timeQueue) {
+                all += value;
+                if(value >max){
+                    max = value;
+                }else if(value < min){
+                    min = value;
+                }
+                Integer num = useTime.get(value);
+                if(num==null){
+                    num=0;
+                }
+                num++;
+                int de = 1;
+                while (value/de>10) {
+                    de*=10;
+                }
+                useTime.put(value/de*de, num);
+            }
+
+            int average = all / size;
+
+            sb.append(date).append("   ").append("【数量:").append(size).append(",平均用时:").
+                    append(average).append(",最大用时：").append(max).append(",最小用时:").append(min).append("】;");
+            for (Map.Entry<Integer,Integer> useTimeEntry : useTime.entrySet()){
+                int value = useTimeEntry.getKey();
+                int de = 1;
+                while (value/de>=10) {
+                    de*=10;
+                }
+                sb.append("[").append(value).append("-").append(value+de).append(":").append(useTimeEntry.getValue()).append("]");
+            }
+            sb.append("\n");
+        }
+        if(size>2000000) { // 1千万则重置，否则太大了
+            ConcurrentLinkedDeque<Integer> newTimeQueue = new ConcurrentLinkedDeque<>();
+            timeQueue = newTimeQueue;
+        }
+        return sb.toString();
+    }
+
+    public void remoteCallAsync(int serverId, Class serviceClass, String methodName, Object[] params) {
+        executorService.execute(()->{
+            try{
+                remoteCallSyn(serverId, serviceClass, methodName, params, null);
+            }catch (Throwable e){
+                logger.error("remoteCallAsync error!",e);
+            }
+        });
     }
 
     private Object handlerRetParam(NetEventData retData){

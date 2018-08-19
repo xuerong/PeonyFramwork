@@ -60,6 +60,44 @@ public class TxCacheService {
         asyncService = BeanHelper.getServiceBean(AsyncService.class);
     }
 
+    //    @Gm(id="测试tx-----------------")
+    public void gmaaa(String uid){
+
+        for(int i =0;i<100;i++){
+            final int a = i;
+            new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+                    testTx(uid);
+                }
+            }){
+                {
+
+                    setName("thead-"+a);
+                }
+            }.start();
+        }
+    }
+
+    @Tx(lock = true)
+    public void testTx(String uid){
+//        UserMixed userMixed = dataService.selectObject(UserMixed.class,"uid=?",uid);
+//        if(userMixed == null) {
+//            System.err.println(Thread.currentThread().getName()+"  meiyounadao ");
+//            userMixed = new UserMixed();
+//            userMixed.setUid(uid);
+//            dataService.insert(userMixed);
+//        }else{
+//            System.err.println(Thread.currentThread().getName()+"  nadaole ");
+//        }
+//        userMixed.setAdRewardCount(userMixed.getAdRewardCount()+1);
+//        System.err.println(Thread.currentThread().getName()+"  --- "+userMixed.getAdRewardCount());
+//        dataService.update(userMixed);
+    }
+
+
+
     public boolean isLockClass(Class<?> cls){
         Set<Class<?>> lockClassSet = lockClasses.get();
         if(lockClassSet == null){

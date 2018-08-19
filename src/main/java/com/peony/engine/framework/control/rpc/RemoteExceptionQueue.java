@@ -1,6 +1,7 @@
 package com.peony.engine.framework.control.rpc;
 
-import com.mm.engine.framework.data.persistence.orm.annotation.DBEntity;
+
+import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
 
 import java.io.Serializable;
 

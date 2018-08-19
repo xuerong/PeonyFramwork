@@ -50,6 +50,8 @@ public final class SysConstantDefine {
 
     public static final int Event_ServerStartAsync = 1213; // server启动完成
 
+    public static final int Event_ConnectNewServerAsy = 1214; // 添加新的server
+
     // ----------------------------------------------------------------------------------------monitorService conditions
     public static final String NetEventServiceStart = "NetEventServiceStart";
     // ------------------------------------------------------------------------------------------request

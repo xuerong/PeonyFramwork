@@ -1,36 +1,38 @@
 package com.peony.engine.framework.control;
 
 import com.google.api.client.util.Maps;
+import com.peony.engine.framework.control.annotation.NetEventListener;
+import com.peony.engine.framework.control.annotation.Request;
+import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.annotation.Updatable;
+import com.peony.engine.framework.control.event.EventData;
+import com.peony.engine.framework.control.event.EventListenerHandler;
 import com.peony.engine.framework.control.gm.Gm;
+import com.peony.engine.framework.control.netEvent.NetEventData;
+import com.peony.engine.framework.control.netEvent.NetEventListenerHandler;
 import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
+import com.peony.engine.framework.control.request.RequestHandler;
 import com.peony.engine.framework.control.rpc.IRoute;
 import com.peony.engine.framework.control.rpc.Remotable;
-import com.peony.engine.framework.control.service.ServiceRunOnServer;
-import com.peony.engine.framework.security.Monitor;
-import com.peony.engine.framework.server.Server;
-import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.control.rpc.RemoteExceptionHandler;
 import com.peony.engine.framework.control.rpc.RouteType;
 import com.peony.engine.framework.control.statistics.Statistics;
 import com.peony.engine.framework.control.statistics.StatisticsData;
+import com.peony.engine.framework.data.entity.session.Session;
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
 import com.peony.engine.framework.data.tx.Tx;
-import com.peony.engine.framework.control.annotation.*;
-import com.peony.engine.framework.control.annotation.EventListener;
-import com.peony.engine.framework.control.event.EventListenerHandler;
-import com.peony.engine.framework.control.netEvent.NetEventListenerHandler;
-import com.peony.engine.framework.control.request.RequestHandler;
-import com.peony.engine.framework.control.event.EventData;
-import com.peony.engine.framework.control.netEvent.NetEventData;
-import com.peony.engine.framework.data.entity.session.Session;
+import com.peony.engine.framework.net.packet.RetPacket;
+import com.peony.engine.framework.security.Monitor;
 import com.peony.engine.framework.security.exception.MMException;
+import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.ServerType;
+import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.helper.ClassHelper;
-import com.peony.engine.framework.tool.helper.ConfigHelper;
-import com.peony.engine.framework.tool.util.ClassUtil;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TShortObjectHashMap;
 import javassist.*;
 import javassist.bytecode.MethodInfo;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.List;
+import com.peony.engine.framework.control.annotation.EventListener;
 
 /**
  * Created by Administrator on 2015/11/18.
@@ -74,11 +76,8 @@ public final class ServiceHelper {
     private static Map<String, Method> statisticsMethods = new HashMap<>();
     private static Map<String,Class> serviceNameClassMap = new HashMap<>();
 
-
-
     static {
         try {
-            //
             Map<Class<?>, List<Method>> requestMap = new HashMap<>();
             Map<Class<?>, List<Method>> eventListenerMap = new HashMap<>();
             Map<Class<?>, List<Method>> netEventListenerMap = new HashMap<>();
@@ -190,7 +189,6 @@ public final class ServiceHelper {
 
                 Service service = serviceClass.getAnnotation(Service.class);
 
-
                 // 单一服的某些特定 Service 如排行榜等
                 if (!service.runOnEveryServer() && !ServerType.isMainServer()) {
                     // 改写所有的public方法,使用远程调用
@@ -243,6 +241,7 @@ public final class ServiceHelper {
                     if(!Server.getEngineConfigure().getBoolean("server.is.test", false)) {
                         newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
                     }
+//                    newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
                 }
 
                 if (requestMap.containsKey(serviceClass)) {
@@ -396,15 +395,47 @@ public final class ServiceHelper {
 
                 body.append("{\n");
                 body.append(String.format("\t%s route = %s.%s;\n", IRoute.class.getName(), RouteType.class.getName(), remote.route()));
-                String param = "$"+remote.routeArgIndex();
-                if(remote.route().getFirstArgType().isAssignableFrom(int.class)){
-                    param = "new Integer($"+remote.routeArgIndex()+")";
+                if(remote.routeArgIndex()>0 && oldMethod.getParameterTypes().length>=remote.routeArgIndex()) {
+                    Class<?> paramClass = oldMethod.getParameterTypes()[remote.routeArgIndex()-1];
+                    String param = "$" + remote.routeArgIndex();
+                    if(Object.class.isAssignableFrom(paramClass)){
+
+                    }else{
+                        if(paramClass == int.class){
+//                            for(int i=0;i<oldMethod.getParameterTypes().length;i++){
+//                                System.out.println(oldMethod.getParameterTypes()[i]);
+//                            }
+//                            log.info("-------------------"+en.getKey()+","+en.getValue()+",");
+                            param = "new Integer($" + remote.routeArgIndex() + ")";
+                        }else if(paramClass == long.class){
+                            param = "new Long($" + remote.routeArgIndex() + ")";
+                        }else if(paramClass == boolean.class){
+                            param = "new Boolean($" + remote.routeArgIndex() + ")";
+                        }else if(paramClass == short.class){
+                            param = "new Short($" + remote.routeArgIndex() + ")";
+                        }else if(paramClass == byte.class){
+                            param = "new Byte($" + remote.routeArgIndex() + ")";
+                        }else if(paramClass == float.class){
+                            param = "new Float($" + remote.routeArgIndex() + ")";
+                        }else if(paramClass == double.class){
+                            param = "new Double($" + remote.routeArgIndex() + ")";
+                        }else if(paramClass == char.class){
+                            param = "new Character($" + remote.routeArgIndex() + ")";
+                        }
+
+                    }
+//                    if (remote.route().getFirstArgType().isAssignableFrom(int.class)) { // 这个地方改成判断第一个参数类型，如果是基本类型改成装箱
+//                        param = "new Integer($" + remote.routeArgIndex() + ")";
+//                    }
+                    body.append(String.format("\tint serverId = route.getServerId(" + param + ");\n"));
+                }else{
+                    // 有些远程调用不需要参数
+                    body.append(String.format("\tint serverId = route.getServerId(null);\n"));
                 }
-                body.append(String.format("\tint serverId = route.getServerId("+param+");\n"));
                 //praseBaseTypeStrToObjectTypeStr
                 // test
                 // body.append(String.format("\tif(serverId == 0 || serverId == %s.getServerId().intValue()) {\n", Server.class.getName()));
-                body.append(String.format("\tif((%s.getEngineConfigure().getBoolean(\"server.is.test\", false)) || serverId == %s.getServerId().intValue()) {\n", Server.class.getName(), Server.class.getName()));
+                body.append(String.format("\tif((%s.getEngineConfigure().getBoolean(\"server.is.test\", false)) || serverId == %s.getServerId().intValue() ) {\n", Server.class.getName(), Server.class.getName()));
 
 
                 if (oldMethod.getReturnType() != Void.TYPE) {
@@ -415,17 +446,16 @@ public final class ServiceHelper {
                 String remoteSerName = RemoteCallService.class.getName();
                 body.append(String.format("\t\t%s remoteService = (%s)%s.getServiceBean(%s.class);\n", remoteSerName, remoteSerName, BeanHelper.class.getName(), remoteSerName));
                 if (oldMethod.getReturnType() != Void.TYPE) {
-                    body.append(String.format("\t\tObject object = remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args);\n", serviceClass.getName(), ctMethod.getName()));
                     body.append(String.format("\t\tObject object = remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
                     //body.append(String.format("\t\treturn (%s)object;", oldMethod.getReturnType().getName()));
-                    body.append("\t\treturn "+parseBaseTypeStrToObjectTypeStr(oldMethod.getReturnType().getName())+";");
+                    body.append("\t\treturn "+parseBaseTypeStrToObjectTypeStr(oldMethod.getReturnType().getName()));
                 } else {
-                    body.append(String.format("remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args);\n", serviceClass.getName(), ctMethod.getName()));
+                    body.append(String.format("remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
                 }
                 body.append(String.format("\n\t}\n"));
                 body.append("}");
             }
-//            log.info("+++++++++++++++Remote Method++++++++++++++++++\n"+ctMethod.getLongName()+"\n"+body.toString()+"\n+++++++++++++++++++++++++++++++++++++++");
+            log.info("+++++++++++++++Remote Method++++++++++++++++++\n"+ctMethod.getLongName()+"\n"+body.toString()+"\n+++++++++++++++++++++++++++++++++++++++");
             proxyMethod.setBody(body.toString());
             proxyClazz.addMethod(proxyMethod);
         }
@@ -505,23 +535,23 @@ public final class ServiceHelper {
 
     public static String parseBaseTypeStrToObjectTypeStr(String typeStr) {
         if (typeStr.equals("byte")) {
-            return "((Byte)object).byteValue();";
+            return "object==null?0:((Byte)object).byteValue();";
         } else if (typeStr.equals("short")) {
-            return "((Short)object).shortValue();";//"Short";
+            return "object==null?0:((Short)object).shortValue();";//"Short";
         } else if (typeStr.equals("long")) {
-            return "((Long)object).longValue();";//"Long";
+            return "object==null?0:((Long)object).longValue();";//"Long";
         } else if (typeStr.equals("int")) {
-            return "((Integer)object).intValue();";//"Integer";
+            return "object==null?0:((Integer)object).intValue();";//"Integer";
         } else if (typeStr.equals("float")) {
-            return "((Float)object).floatValue();";//"Float";
+            return "object==null?0:((Float)object).floatValue();";//"Float";
         } else if (typeStr.equals("double")) {
-            return "((Double)object).doubleValue();";//"Double";
+            return "object==null?0:((Double)object).doubleValue();";//"Double";
         } else if (typeStr.equals("char")) {
-            return "((Character)object).charValue();";//"Character";
+            return "object==null?0:((Character)object).charValue();";//"Character";
         } else if (typeStr.equals("boolean")) {
-            return "((Boolean)object).booleanValue();";//"Boolean";
+            return "object==null?false:((Boolean)object).booleanValue();";//"Boolean";
         }
-        return "(" + typeStr + ")object";
+        return "(" + typeStr + ")object;";
     }
 
     //get set
@@ -607,7 +637,8 @@ public final class ServiceHelper {
 
     // 生成request的处理类
     private static Class generateRequestHandlerClass(Class clazz, Class<?> oriClass) throws Exception {
-        Map<Short, Method> opMethods = new TreeMap<>();
+        Map<Short, String> opMethods = new TreeMap<Short, String>();
+        Map<Short, String> jsonOpMethods = new TreeMap<Short, String>();
         Method[] methods = oriClass.getDeclaredMethods();
         for (Method method : methods) { //遍历所有方法，将其中标注了是包处理方法的方法名加入到opMethods中
             if (method.isAnnotationPresent(Request.class)) {
@@ -619,11 +650,16 @@ public final class ServiceHelper {
                     throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
                 }
                 // -----------------add
-                if (method.getReturnType() != Void.class) {
-                    if (parameterTypes[1] != Session.class) {
+                if (method.getReturnType() == RetPacket.class) {
+                    if (parameterTypes[0] != Object.class || parameterTypes[1] != Session.class) {
                         throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
                     }
-                    opMethods.put(op.opcode(), method);
+                    opMethods.put(op.opcode(), method.getName());
+                } else if (method.getReturnType() == JSONObject.class) {
+                    if (parameterTypes[0] != JSONObject.class || parameterTypes[1] != Session.class) {
+                        throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
+                    }
+                    jsonOpMethods.put(op.opcode(), method.getName());
                 } else {
                     throw new IllegalStateException("Method " + method.getName() + " ReturnType Error");
                 }
@@ -638,7 +674,7 @@ public final class ServiceHelper {
 //                opMethods.put(op.opcode(), method.getName());
             }
         }
-        if (opMethods.size() > 0) {
+        if (opMethods.size() > 0 || jsonOpMethods.size() > 0) {
             ClassPool pool = ClassPool.getDefault();
 
             CtClass oldClass = pool.get(clazz.getName());
@@ -646,27 +682,48 @@ public final class ServiceHelper {
             CtClass ct = pool.makeClass(oldClass.getName() + "$Proxy", oldClass); //这里需要生成一个新类，并且继承自原来的类
             CtClass superCt = pool.get(RequestHandler.class.getName());  //需要实现RequestHandler接口
             ct.addInterface(superCt);
-
-            //添加handler方法，在其中添上switch...case段
-//            StringBuilder sb = new StringBuilder("public com.peony.engine.framework.net.code.RetPacket handle(" +
-            StringBuilder sb = new StringBuilder("public Object handle(" +
-                    "int opcode,Object clientData,com.peony.engine.framework.data.entity.session.Session session) throws Exception{");
-            sb.append("Object rePacket=null;");
-            sb.append("short opCode = opcode;");//$1.getOpcode();");
-            sb.append("switch (opCode) {");
-            Iterator<Map.Entry<Short, Method>> ite = opMethods.entrySet().iterator();
-            while (ite.hasNext()) {
-                Map.Entry<Short, Method> entry = ite.next();
-                sb.append("case ").append(entry.getKey()).append(":");
-                sb.append("rePacket=").append(entry.getValue().getName()).append("(("+entry.getValue().getParameterTypes()[0].getName()+")$2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
-                sb.append("break;");
-                //opcodes.add(entry.getKey());
+            if (opMethods.size() > 0) {  // todo 为啥这个地方如果不进去，不创建handle方法，却不报错？？因为可以构建成功，且在调用的时候才检查，事实上可以让他有个空方法更保险
+                //添加handler方法，在其中添上switch...case段
+                StringBuilder sb = new StringBuilder("public com.peony.engine.framework.net.code.RetPacket handle(" +
+                        "int opcode,Object clientData,com.peony.engine.framework.data.entity.session.Session session) throws Exception{");
+                sb.append("com.peony.engine.framework.net.code.RetPacket rePacket=null;");
+                sb.append("short opCode = opcode;");//$1.getOpcode();");
+                sb.append("switch (opCode) {");
+                Iterator<Map.Entry<Short, String>> ite = opMethods.entrySet().iterator();
+                while (ite.hasNext()) {
+                    Map.Entry<Short, String> entry = ite.next();
+                    sb.append("case ").append(entry.getKey()).append(":");
+                    sb.append("rePacket=").append(entry.getValue()).append("($2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
+                    sb.append("break;");
+                    //opcodes.add(entry.getKey());
+                }
+                sb.append("}");
+                sb.append("return rePacket;");
+                sb.append("}");
+                CtMethod method = CtMethod.make(sb.toString(), ct);
+                ct.addMethod(method);
             }
-            sb.append("}");
-            sb.append("return rePacket;");
-            sb.append("}");
-            CtMethod method = CtMethod.make(sb.toString(), ct);
-            ct.addMethod(method);
+            if (jsonOpMethods.size() > 0) {
+                // 添加handlerJson方法
+                StringBuilder sb = new StringBuilder("public com.alibaba.fastjson.JSONObject handleJson(" +
+                        "int opcode,com.alibaba.fastjson.JSONObject clientData,com.peony.engine.framework.data.entity.session.Session session) throws Exception{");
+                sb.append("com.alibaba.fastjson.JSONObject rePacket=null;");
+                sb.append("short opCode = opcode;");//$1.getOpcode();");
+                sb.append("switch (opCode) {");
+                Iterator<Map.Entry<Short, String>> ite = jsonOpMethods.entrySet().iterator();
+                while (ite.hasNext()) {
+                    Map.Entry<Short, String> entry = ite.next();
+                    sb.append("case ").append(entry.getKey()).append(":");
+                    sb.append("rePacket=").append(entry.getValue()).append("($2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
+                    sb.append("break;");
+                    //opcodes.add(entry.getKey());
+                }
+                sb.append("}");
+                sb.append("return rePacket;");
+                sb.append("}");
+                CtMethod method = CtMethod.make(sb.toString(), ct);
+                ct.addMethod(method);
+            }
 
             return ct.toClass();
         } else {

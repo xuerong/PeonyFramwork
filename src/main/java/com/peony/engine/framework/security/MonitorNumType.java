@@ -28,6 +28,7 @@ public enum MonitorNumType {
 
     OnlineUserNum("在线用户数量"),
     RequestNum("用户请求数量"),
+    RemoteCallNum("rpc数量"),
     ;
     private final String key;
     MonitorNumType(String key){

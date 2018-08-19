@@ -10,6 +10,8 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.EventExecutorGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,6 +116,8 @@ public class NettyHelper {
             EventLoopGroup bossGroup = new NioEventLoopGroup(); // (1)
             EventLoopGroup workerGroup = new NioEventLoopGroup();
             //final EventExecutorGroup group = new NioEventLoopGroup();
+            // 业务线程池
+            EventExecutorGroup handlerGroup = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() * 4 + 2);
             try {
                 ServerBootstrap b = new ServerBootstrap(); // (2)
                 b.group(bossGroup, workerGroup)
@@ -138,7 +142,7 @@ public class NettyHelper {
                                     pipeline.addLast("aggregator", new HttpObjectAggregator(65536));
                                     pipeline.addLast("http-chunked", new ChunkedWriteHandler());
                                     //请求处理
-                                    pipeline.addLast("inboundHandler", (ChannelInboundHandlerAdapter) webSocketClass[0].newInstance());
+                                    pipeline.addLast(handlerGroup,"inboundHandler", (ChannelInboundHandlerAdapter) webSocketClass[0].newInstance());
                                     //关闭处理
 //                                    p.addLast("outboundHandler", webSocketChannelHandlerFactory.newWebSocketOutboundChannelHandler());
                                     //
@@ -152,7 +156,7 @@ public class NettyHelper {
                                 }
                             }
                         })
-                        .option(ChannelOption.SO_BACKLOG, 128)          // (5)backlog 指定了内核为此套接口排队的最大连接个数
+                        .option(ChannelOption.SO_BACKLOG, 1024)          // (5)backlog 指定了内核为此套接口排队的最大连接个数
                         .option(ChannelOption.TCP_NODELAY, true)
                         .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                         .childOption(ChannelOption.SO_KEEPALIVE, true); // (6)

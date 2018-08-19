@@ -22,5 +22,10 @@ public @interface Remotable {
      */
     int routeArgIndex() default 1;
 
+    /**
+     * 用于远程调用的异常处理
+     */
+    RemoteExceptionHandler remoteExceptionHandler() default RemoteExceptionHandler.Default;
+
 }
 

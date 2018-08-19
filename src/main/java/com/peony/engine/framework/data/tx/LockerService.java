@@ -189,6 +189,7 @@ public class LockerService {
         Integer count = threadLocalLockers.get().get(key);
         if(count == null || count <=1){
             if(lockers.remove(key) != null){
+                threadLocalLockers.get().put(key,0);
                 monitorService.addMonitorNum(MonitorNumType.DoUnLockNum,1);
             }
         }else{

@@ -45,6 +45,8 @@ public class RequestService {
     private volatile Map<Integer,ConcurrentLinkedDeque<Integer>> timeMap=new HashMap<>();
     private AtomicInteger requestNum = new AtomicInteger(0);// 当访问数量大于一定值时，才重置用时统计数据
 
+    private int resetCount = 0;
+
     public void init(){
         TIntObjectHashMap<Class<?>> requestHandlerClassMap = ServiceHelper.getRequestHandlerMap();
         requestHandlerClassMap.forEachEntry(new TIntObjectProcedure<Class<?>>(){
@@ -149,8 +151,9 @@ public class RequestService {
             int size = entry.getValue().size();
             if(size > 0) {
                 int all = 0;
-                int min=entry.getValue().poll();
+                int min=entry.getValue().peek();
                 int max = min;
+                Map<Integer,Integer> useTime = new TreeMap<>();
                 for (Integer value : entry.getValue()) {
                     all += value;
                     if(value >max){
@@ -158,16 +161,40 @@ public class RequestService {
                     }else if(value < min){
                         min = value;
                     }
+                    Integer num = useTime.get(value);
+                    if(num==null){
+                        num=0;
+                    }
+                    num++;
+                    int de = 1;
+                    while (value/de>10) {
+                        de*=10;
+                    }
+                    useTime.put(value/de*de, num);
                 }
 
                 int average = all / size;
 
                 sb.append(date).append("   ").append(opcodeNames.get(entry.getKey())).append("【数量:").append(size).append(",平均用时:").
-                        append(average).append(",最大用时：").append(max).append(",最小用时:").append(min).append("】;\n");
+                        append(average).append(",最大用时：").append(max).append(",最小用时:").append(min).append("】;");
+                for (Map.Entry<Integer,Integer> useTimeEntry : useTime.entrySet()){
+                    int value = useTimeEntry.getKey();
+                    int de = 1;
+                    while (value/de>=10) {
+                        de*=10;
+                    }
+                    sb.append("[").append(value).append("-").append(value+de).append(":").append(useTimeEntry.getValue()).append("]");
+                }
+                sb.append("\n");
             }
         }
+        sb.append(date).append("   ").append("requestNum:"+requestNum.get()).append("\n");
         // 清0
-        if(requestNum.get() > 100000) {
+        if(requestNum.get() > Integer.MAX_VALUE-1000000) {
+            requestNum.set(0);
+        }
+        // 每2000000重置一次
+        if(requestNum.get() > 2000000*(resetCount+1)){
             Map<Integer, ConcurrentLinkedDeque<Integer>> newTimeMap = new HashMap<>();
             TIntObjectHashMap<Class<?>> requestHandlerClassMap = ServiceHelper.getRequestHandlerMap();
             requestHandlerClassMap.forEachEntry(new TIntObjectProcedure<Class<?>>() {
@@ -178,7 +205,7 @@ public class RequestService {
                 }
             });
             this.timeMap = newTimeMap;
-            requestNum.set(0);
+            resetCount++;
         }
 
         return sb.toString();

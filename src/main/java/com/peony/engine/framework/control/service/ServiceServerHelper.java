@@ -1,6 +1,7 @@
 package com.peony.engine.framework.control.service;
 
 import com.google.api.client.util.Maps;
+import com.peony.engine.framework.control.ServiceHelper;
 import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
 import com.peony.engine.framework.control.rpc.IRoute;
 import com.peony.engine.framework.control.rpc.Remotable;
@@ -19,13 +20,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.management.ManagementFactory;
-import java.lang.reflect.Array;
-import java.lang.reflect.Method;
 import java.util.*;
 
-import static com.peony.engine.framework.control.ServiceHelper.parseBaseTypeStrToObjectTypeStr;
-import static com.peony.engine.framework.control.ServiceHelper.praseBaseTypeStrToObjectTypeStr;
 
 public class ServiceServerHelper {
     private static final Logger log = LoggerFactory.getLogger(ServiceServerHelper.class);
@@ -75,7 +71,8 @@ public class ServiceServerHelper {
 
     private static Object onceCall(RemoteCallService remoteCallService,int serverId,Class serviceClass, String methodName, Object[] params){
         try {
-            return remoteCallService.remoteCallSyn(serverId, serviceClass, methodName, params);
+            // TODO 远程调用异常暂时使用null
+            return remoteCallService.remoteCallSyn(serverId, serviceClass, methodName, params,null);
         }catch (Throwable e){
             if(e instanceof MMException){
                 MMException mmException = (MMException)e;
@@ -322,7 +319,7 @@ service.IdService.selfUseRule = false
                 }
                 sb.append(paramClass.getName() + " p" + i);
                 // 这个地方需要进行一步强制转换,基本类型不能编译成Object类型
-                paramsStr.append(praseBaseTypeStrToObjectTypeStr(paramClass.getName(), "p" + i));
+                paramsStr.append(ServiceHelper.praseBaseTypeStrToObjectTypeStr(paramClass.getName(), "p" + i));
                 i++;
             }
             sb.append(") {");
@@ -338,14 +335,14 @@ service.IdService.selfUseRule = false
                 sb.append(invokeStr);
             } else {
                 sb.append("Object object = " + invokeStr);
-                sb.append("return " + parseBaseTypeStrToObjectTypeStr(ctMethod.getReturnType().getName()));
+                sb.append("return " + ServiceHelper.parseBaseTypeStrToObjectTypeStr(ctMethod.getReturnType().getName()));
             }
             sb.append("}");
             log.info("==============================================\n"+sb.toString());
             CtMethod method = CtMethod.make(sb.toString(), cls);
             cls.addMethod(method);
         }
-        newServiceClass = proxyClazz.toClass();
+        newServiceClass = cls.toClass();
         return newServiceClass;
     }
 

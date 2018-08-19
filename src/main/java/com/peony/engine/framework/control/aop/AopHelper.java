@@ -6,6 +6,8 @@ import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.tool.helper.ClassHelper;
 import com.peony.engine.framework.tool.util.ReflectionUtil;
 import net.sf.cglib.proxy.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -15,6 +17,8 @@ import java.util.*;
  * 初始化时，将所有的类变成其对应的代理类
  */
 public final class AopHelper {
+    private static final Logger log = LoggerFactory.getLogger(AopHelper.class);
+
     private static Map<Class<?>,List<Proxy>> targetMap;
     static{
         try {
@@ -63,51 +67,65 @@ public final class AopHelper {
         enhancer.setCallback(new MethodInterceptor() {
             @Override
             public Object intercept(Object targetObject, Method method, Object[] methodParams, MethodProxy methodProxy) throws Throwable {
-                for (Proxy proxy :proxyList) {
-                    if(proxy.executeMethod(method)){
-                        try {
-                            proxy.before(targetObject, target, method, methodParams);
-                        }catch (Throwable e){
-                            e.printStackTrace();
+                int txTimes = 0;
+                while(true){
+                    for (Proxy proxy :proxyList) {
+                        if(proxy.executeMethod(method)){
+                            try {
+                                proxy.before(targetObject, target, method, methodParams);
+                            }catch (Throwable e){
+                                e.printStackTrace();
+                            }
                         }
                     }
-                }
-                int size=proxyList.size();
+                    int size=proxyList.size();
 
-                Object result = null;
-                try {
-                    result = methodProxy.invokeSuper(targetObject, methodParams);
-                } catch (Throwable e) {
-                    // 执行exception方法
+                    Object result = null;
+                    try {
+                        result = methodProxy.invokeSuper(targetObject, methodParams);
+                    } catch (Throwable e) {
+                        // 执行exception方法
+                        for (int i = size - 1; i >= 0; i--) {
+                            Proxy proxy = proxyList.get(i);
+                            if (proxy.executeMethod(method)) {
+                                try {
+                                    proxy.exceptionCatch(e);
+                                } catch (Throwable e2) {
+                                    e2.printStackTrace();
+                                }
+                            }
+                        }
+                        throw e;
+                    }
+                    // 执行after方法
+                    MMException txException=null;
                     for (int i = size - 1; i >= 0; i--) {
                         Proxy proxy = proxyList.get(i);
                         if (proxy.executeMethod(method)) {
                             try {
-                                proxy.exceptionCatch(e);
-                            } catch (Throwable e2) {
-                                e2.printStackTrace();
-                            }
-                        }
-                    }
-                    throw e;
-                }
-                // 执行after方法
-                for (int i = size - 1; i >= 0; i--) {
-                    Proxy proxy = proxyList.get(i);
-                    if (proxy.executeMethod(method)) {
-                        try {
-                            proxy.after(targetObject, target, method, methodParams, result);
-                        } catch (Throwable e) {
-                            if(e instanceof MMException){
-                                MMException exception = (MMException)e;
-                                if(exception.getExceptionType() == MMException.ExceptionType.TxCommitFail){
-                                    throw e;
+                                proxy.after(targetObject, target, method, methodParams, result);
+                            } catch (Throwable e) {
+                                if(e instanceof MMException){
+                                    MMException exception = (MMException)e;
+                                    if(exception.getExceptionType() == MMException.ExceptionType.TxCommitFail){
+//                                    throw e;
+                                        txException = exception;
+                                    }
                                 }
                             }
                         }
                     }
+                    if(txException != null){
+                        if(++txTimes>=5) {
+                            log.error("tx fail times {} ,fail!",txTimes);
+                            throw txException;
+                        }else{
+                            log.warn("tx fail times {} ,exec again",txTimes);
+                            continue;
+                        }
+                    }
+                    return result;
                 }
-                return result;
             }
         });//NoOp.INSTANCE
         return (T)enhancer.create();
