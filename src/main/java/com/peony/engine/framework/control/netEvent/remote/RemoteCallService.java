@@ -87,8 +87,9 @@ public class RemoteCallService {
                 e = e.getCause();
             }
             if(e instanceof ToClientException){
-                netEventData.setParam(((ToClientException) e).toParams());
-                logger.info("receiveRemoteCall exception:",e);
+                ToClientException toClientException = (ToClientException)e;
+                netEventData.setParam(toClientException.toParams());
+                logger.info("receiveRemoteCall ToClientException exception,code={},msg={}:",toClientException.getErrCode(),toClientException.getMessage());
                 netEventData.setErrorCode(3);
                 return netEventData;
             }

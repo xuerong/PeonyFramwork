@@ -55,5 +55,6 @@ public class MMException extends RuntimeException {
         TxCommitFail, // 事务提交失败
         DataBaseFail, // 数据库提交失败
         SendNetEventFail, // 远程调用失败
+        RemoteFail,
     }
 }

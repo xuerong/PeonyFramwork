@@ -72,6 +72,8 @@ public final class ServiceHelper {
     private static Map<Integer, Map<Class<?>, Method>> destroyMethodMap = new TreeMap<>();
     private static Map<String, Method> gmMethod = new HashMap<>();
     private static Map<String, Method> statisticsMethods = new HashMap<>();
+    private static Map<String,Class> serviceNameClassMap = new HashMap<>();
+
 
 
     static {
@@ -86,6 +88,7 @@ public final class ServiceHelper {
 
             List<Class<?>> serviceClasses = ClassHelper.getClassListByAnnotation(Service.class);
             for (Class<?> serviceClass : serviceClasses) {
+                serviceNameClassMap.put(serviceClass.getName(),serviceClass);
                 Service service = serviceClass.getAnnotation(Service.class);
                 String init = service.init();
                 // 判断是否是初始化方法和销毁方法
@@ -413,6 +416,7 @@ public final class ServiceHelper {
                 body.append(String.format("\t\t%s remoteService = (%s)%s.getServiceBean(%s.class);\n", remoteSerName, remoteSerName, BeanHelper.class.getName(), remoteSerName));
                 if (oldMethod.getReturnType() != Void.TYPE) {
                     body.append(String.format("\t\tObject object = remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args);\n", serviceClass.getName(), ctMethod.getName()));
+                    body.append(String.format("\t\tObject object = remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
                     //body.append(String.format("\t\treturn (%s)object;", oldMethod.getReturnType().getName()));
                     body.append("\t\treturn "+parseBaseTypeStrToObjectTypeStr(oldMethod.getReturnType().getName())+";");
                 } else {
@@ -854,5 +858,9 @@ public final class ServiceHelper {
             }
         }
         return clazz;
+    }
+
+    public static Class getServiceClassByName(String name){
+        return serviceNameClassMap.get(name);
     }
 }

@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 1、事件线程有最大值，超过最大值，事件要排队
  * 2、事件队列有最大值，超过最大值，抛出服务器异常：可在某个比较大的值抛出警告
  */
-@Service(init = "init")
+@Service(init = "init",initPriority = 1)
 public class EventService {
     private static final Logger log = LoggerFactory.getLogger(EventService.class);
     private static final int poolWarningSize=20;
@@ -52,7 +52,6 @@ public class EventService {
     private TxCacheService txCacheService;
 
     public void init(){
-        netEventService = BeanHelper.getServiceBean(NetEventService.class);
         TShortObjectHashMap<Set<Class<?>>> handlerClassMap= ServiceHelper.getEventListenerHandlerClassMap();
         handlerClassMap.forEachEntry(new TShortObjectProcedure<Set<Class<?>>>() {
             @Override

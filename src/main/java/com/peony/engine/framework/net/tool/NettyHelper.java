@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by a on 2016/8/29.
@@ -121,6 +122,12 @@ public class NettyHelper {
                             @Override
                             public void initChannel(SocketChannel ch) throws Exception {
                                 ChannelPipeline pipeline = ch.pipeline();
+                                if (idleStateHandler != null) {
+                                    pipeline.addLast(new IdleStateHandler(
+                                            idleStateHandler.getReaderIdleTimeInMillis(),
+                                            idleStateHandler.getWriterIdleTimeInMillis(),
+                                            idleStateHandler.getAllIdleTimeInMillis(), TimeUnit.MILLISECONDS));
+                                }
                                 if (webSocketClass != null) {
                                     /**
                                      * HttpServerCodec：将请求和应答消息解码为HTTP消息
@@ -142,13 +149,6 @@ public class NettyHelper {
                                             (ChannelHandler) encoderClass.newInstance(), // 编码器
                                             handler
                                     );
-                                }
-
-                                if (idleStateHandler != null) {
-                                    pipeline.addLast(new IdleStateHandler(
-                                            (int) idleStateHandler.getReaderIdleTimeInMillis(),
-                                            (int) idleStateHandler.getWriterIdleTimeInMillis(),
-                                            (int) idleStateHandler.getAllIdleTimeInMillis()));
                                 }
                             }
                         })

@@ -31,7 +31,7 @@ public class NetEventNettyEntrance extends Entrance {
     public void start() throws Exception {
         serverChannel = NettyHelper.createAndStart(
                 port, DefaultNettyEncoder.class, DefaultNettyDecoder.class, new NetEventHandler(),
-                new IdleStateHandler(30, 30, 30),
+                new IdleStateHandler(300, 300, 300),
                 name);
         netEventService = BeanHelper.getServiceBean(NetEventService.class);
         if (serverChannel != null && serverChannel.isActive()) {
