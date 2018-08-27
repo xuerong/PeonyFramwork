@@ -339,7 +339,7 @@ public class DataService {
         }
         if(txCacheService.isInTx() && objectList != null){
             // 替换掉事务中新的值,增删改
-            txCacheService.replaceCacheObjectToList(listKey,objectList,keys);
+            objectList = txCacheService.replaceCacheObjectToList(listKey,objectList,keys);
         }
         if(objectList == null){
             return new ArrayList<>();

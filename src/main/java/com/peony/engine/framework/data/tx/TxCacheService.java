@@ -357,13 +357,32 @@ public class TxCacheService {
             }
             //
             if(deleteIndex!= null){
-                if(deleteIndex.size() > 10){
-                    // TODO 这个list可以考虑换成linkedlist，这样删除消耗太大
+
+                if(deleteIndex.size() > 1000){
+                    // 这个删除太多的话，用新方式
                     log.warn("if here happen,deleteIndex.size()={}",deleteIndex.size());
-                }
-                deleteIndex.sort((o1,o2)->o2-o1);
-                for(Integer index : deleteIndex){
-                    objectList.remove(index.intValue());
+                    deleteIndex.sort((o1,o2)->o1-o2);
+
+                    List<T> ret = new ArrayList(objectList.size() - deleteIndex.size());
+
+                    int begin = 0;
+                    for(Integer index : deleteIndex){
+                        if(index <=begin){
+                            continue;
+                        }
+                        for(int i=begin;i<index;i++){
+                            ret.add(objectList.get(i));
+                        }
+                        begin = index+1;
+                    }
+                    for(int i=begin,len = objectList.size();i<len;i++){
+                        ret.add(objectList.get(i));
+                    }
+                    return ret;
+                }else{
+                    for(Integer index : deleteIndex){
+                        objectList.remove(index.intValue());
+                    }
                 }
             }
         }
