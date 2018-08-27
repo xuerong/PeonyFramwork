@@ -1,7 +1,10 @@
 package com.peony.engine.framework.data.tx;
 
+import com.appPacket.TestDbEntity;
 import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.control.netEvent.NetEventService;
+import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.OperType;
 import com.peony.engine.framework.data.cache.CacheCenter;
 import com.peony.engine.framework.data.cache.CacheEntity;
@@ -229,8 +232,16 @@ public class AsyncService {
         }
         return result;
     }
-    // 返回是否移除该listkey
+    /**
+     * 返回是否移除该listkey
+     * @param asyncData
+     * @param listKey
+     * @return
+     */
     private boolean updateCacheList(AsyncData asyncData, String listKey){
+        return updateCacheList(asyncData, listKey,0);
+    }
+    private boolean updateCacheList(AsyncData asyncData, String listKey,int oper){
         if (!lockerService.lockKeys(listKey)) { // 要不要做成一起加锁， 解锁，增加效率？
             throw new MMException("加锁失败,listKey = " + listKey);
         }
@@ -247,6 +258,12 @@ public class AsyncService {
             keyList.add(asyncData.getKey());
         }else if (asyncData.getOperType() == OperType.Delete){
             keyList.remove(asyncData.getKey());
+        }else if(asyncData.getOperType() == OperType.Update){
+            if(oper == 1){
+                keyList.add(asyncData.getKey());
+            }else if(oper == 2){
+                keyList.remove(asyncData.getKey());
+            }
         }
         cacheCenter.update(listKey,cacheEntity); // 由于加了锁之后获取的，所以不用担心版本问题，第一次放入缓存的地方也加了锁
         lockerService.unlockKeys(listKey);
@@ -266,36 +283,24 @@ public class AsyncService {
         }
         Worker worker = workerMap.get(asyncData.getThreadNum());
         boolean success = worker.addAsyncData(asyncData);
-        // 插入可能存在的listKey
-        if(asyncData.getOperType() == OperType.Insert || asyncData.getOperType() == OperType.Delete) {
-            Map<String,Map<String,String>> fieldMap = listKeyIndex.get(asyncData.getObject().getClass());
-            if(fieldMap != null) {
-                Map<String,Method> getMethodMap = EntityHelper.getGetMethodMap(asyncData.getObject().getClass());
-                for (Map.Entry<String, Map<String, String>> entry : fieldMap.entrySet()) {
-                    if (entry.getKey().equals("")) { // 是全表
-                        String listKey = entry.getValue().get("");
-                        boolean remove = updateCacheList(asyncData, listKey);
-                        if (remove) {
-                            fieldMap.remove(entry.getKey());
-                        }
-                    } else {
+        // 插入可能存在的listKey，修改非主键的listkey
+        Map<String,Map<String,String>> fieldMap = listKeyIndex.get(asyncData.getObject().getClass());
+        if(fieldMap != null) {
+            Map<String,Method> getMethodMap = null;
+            for (Map.Entry<String, Map<String, String>> entry : fieldMap.entrySet()) {
+                if (entry.getKey().equals("")) { // 是全表
+                    String listKey = entry.getValue().get("");
+                    boolean remove = updateCacheList(asyncData, listKey);
+                    if (remove) {
+                        fieldMap.remove(entry.getKey());
+                    }
+                } else {
+                    if(asyncData.getOperType() == OperType.Insert || asyncData.getOperType() == OperType.Delete) {
                         String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
-                        StringBuilder valueSb = new StringBuilder();
-                        try {
-                            for (String fieldName : fieldNames) {
-                                Method method = getMethodMap.get(fieldName);
-                                if (method == null) {
-                                    log.error("listKey is Illegal : fieldName is not exist in getMethodMap , fieldName = " + fieldName);
-                                }
-                                if(valueSb.length()>0){
-                                    valueSb.append(KeyParser.SEPARATOR);
-                                }
-                                valueSb.append(KeyParser.parseParamToString(method.invoke(asyncData.getObject())));
-                            }
-                        } catch (IllegalAccessException |InvocationTargetException e) {
-                            log.error("listKey is Illegal while invoke getMethodMap,entityClass={}",asyncData.getObject().getClass(),e);
+                        if(getMethodMap == null){
+                            getMethodMap = EntityHelper.getGetMethodMap(asyncData.getObject().getClass());
                         }
-                        String valueKey = valueSb.toString();
+                        String valueKey = getValueKey(fieldNames,getMethodMap,asyncData.getObject());
                         String listKey = entry.getValue().get(valueKey);
                         if(listKey != null){
                             boolean remove = updateCacheList(asyncData, listKey);
@@ -303,41 +308,107 @@ public class AsyncService {
                                 entry.getValue().remove(valueKey);
                             }
                         }
+                    }else if(asyncData.getOperType() == OperType.Update){
+                        // 如果是主键的list，则不做处理
+                        String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
+                        Map<String,Method> pkGetMethodMap = EntityHelper.getPkGetMethodMap(asyncData.getObject().getClass());
+                        boolean notPkList = false;
+                        for(String fieldName : fieldNames){
+                            if(!pkGetMethodMap.containsKey(fieldName)){
+                                notPkList = true;
+                                break;
+                            }
+                        }
+                        if(notPkList){ // 非pk的list，如果有更新，需要检查是否有list更新
+                            // 如果old的listkey和新的不一致，则需要修改
+                            if(asyncData.getOld() != null) {
+                                if (getMethodMap == null) {
+                                    getMethodMap = EntityHelper.getGetMethodMap(asyncData.getObject().getClass());
+                                }
+                                String oldValueKey = getValueKey(fieldNames, getMethodMap, asyncData.getOld());
+                                String valueKey = getValueKey(fieldNames, getMethodMap, asyncData.getObject());
+                                if (!oldValueKey.equals(valueKey)) {
+                                    // 删除旧的
+                                    String oldListKey = entry.getValue().get(oldValueKey);
+                                    if(oldListKey != null){
+                                        boolean remove = updateCacheList(asyncData, oldListKey,2);
+                                        if (remove) {
+                                            entry.getValue().remove(valueKey);
+                                        }
+                                    }
+                                    // 添加新的
+                                    String listKey = entry.getValue().get(valueKey);
+                                    if (listKey != null) {
+                                        boolean remove = updateCacheList(asyncData, listKey,1);
+                                        if (remove) {
+                                            entry.getValue().remove(valueKey);
+                                        }
+                                    }
+                                    System.out.println("oldValueKey:"+oldValueKey+",valueKey:"+valueKey+",oldListKey:"+",listKey:"+listKey);
+                                }
+                            }else{
+                                log.error("old == null while update,asyncData = {}",asyncData);
+                            }
+                        }
                     }
                 }
             }
-//            Set<String> listKeys = listKeysMap.get(asyncData.getObject().getClass().getName());
-//            if (listKeys != null && listKeys.size() > 0) {
-//                for (Iterator<String> iter = listKeys.iterator(); iter.hasNext(); ) {
-//                    String listKey = iter.next();
-//                    if (KeyParser.isObjectBelongToList(asyncData.getObject(), listKey)) {
-//                        if (!lockerService.lockKeys(listKey)) { // 要不要做成一起加锁， 解锁，增加效率？
-//                            throw new MMException("加锁失败,listKey = " + listKey);
-//                        }
-//                        // 从缓存中取数据
-//                        CacheEntity cacheEntity = cacheCenter.get(listKey);
-//                        if (cacheEntity == null) {
-//                            // 缓存中没有，删除掉这个listKey
-//                            iter.remove();
-//                            lockerService.unlockKeys(listKey);
-//                            continue;
-//                        }
-//                        List<String> keyList = (List<String>) cacheEntity.getEntity();
-//                        if (asyncData.getOperType() == OperType.Insert){
-////                            if (!keyList.contains(asyncData.getKey())) // 这里先不判断，影响效率，或者使用Set，会影响排序
-//                            keyList.add(asyncData.getKey());
-//                        }else if (asyncData.getOperType() == OperType.Delete){
-//                            keyList.remove(asyncData.getKey());
-//                        }
-//                        cacheCenter.update(listKey,cacheEntity); // 由于加了锁之后获取的，所以不用担心版本问题，第一次放入缓存的地方也加了锁
-//                        lockerService.unlockKeys(listKey);
-//                    }
-//                }
-//            }
         }
+
+
+
+
         if(!success){
             throw new MMException("更新数据库队列满，异步服务器压力过大");
         }
+    }
+
+
+    @Tx
+    @Gm(id="testUpdateForList")
+    public void testUpdateForList(){
+        DataService dataService = BeanHelper.getServiceBean(DataService.class);
+//        Random random = new Random();
+//        for(int i = 0;i<1000;i++){
+//            TestDbEntity testDbEntity = new TestDbEntity();
+//            testDbEntity.setUid("testDbEntity"+i);
+//            testDbEntity.setAaa(random.nextInt(50)+"");
+//            testDbEntity.setBbb(random.nextInt(300)+"");
+//            dataService.insert(testDbEntity);
+//        }
+        List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
+        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
+        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+        if(testDbEntities.size()>5){
+            TestDbEntity testDbEntity = testDbEntities.get(4);
+            testDbEntity.setAaa(10+"");
+            dataService.update(testDbEntity);
+        }
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
+        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
+        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+    }
+
+    private String getValueKey(String[] fieldNames,Map<String,Method> getMethodMap,Object object){
+        StringBuilder valueSb = new StringBuilder();
+        try {
+            for (String fieldName : fieldNames) {
+                Method method = getMethodMap.get(fieldName);
+                if (method == null) {
+                    log.error("listKey is Illegal : fieldName is not exist in getMethodMap , fieldName = " + fieldName);
+                }
+                if(valueSb.length()>0){
+                    valueSb.append(KeyParser.SEPARATOR);
+                }
+                valueSb.append(KeyParser.parseParamToString(method.invoke(object)));
+            }
+        } catch (IllegalAccessException |InvocationTargetException e) {
+            log.error("listKey is Illegal while invoke getMethodMap,entityClass={}",object.getClass(),e);
+        }
+        String valueKey = valueSb.toString();
+        return valueKey;
     }
 
 
@@ -345,6 +416,7 @@ public class AsyncService {
         private String key;
         private OperType operType;
         private Object object;
+        private Object old;
 
         private int threadNum; // 更新用的线程编号，同一个服务中的更新必须是同一个threadNum
 
@@ -379,6 +451,15 @@ public class AsyncService {
         public void setThreadNum(int threadNum) {
             this.threadNum = threadNum;
         }
+
+        public Object getOld() {
+            return old;
+        }
+
+        public void setOld(Object old) {
+            this.old = old;
+        }
+
         @Override
         public String toString(){
 

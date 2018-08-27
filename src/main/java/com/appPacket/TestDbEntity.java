@@ -39,4 +39,8 @@ public class TestDbEntity implements Serializable {
         this.bbb = bbb;
     }
 
+    public String toString(){
+        return new StringBuilder("uid="+uid).append(",aaa=").append(aaa).append(",bbb=").append(bbb).toString();
+    }
+
 }

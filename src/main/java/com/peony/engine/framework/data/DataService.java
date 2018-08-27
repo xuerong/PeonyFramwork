@@ -381,15 +381,14 @@ public class DataService {
      * 分为两种情况:需要cas和不需要cas
      * 加锁更新的就用cas,否则就不用cas
      */
-    public boolean update(Object object){
+    public Object update(Object object){
         return update(object,true);
     }
-    public boolean update(Object object,boolean async){
+    public Object update(Object object,boolean async){
         String key = KeyParser.parseKey(object);
         // 在事事务中仅更新事务
         if(txCacheService.isInTx()){
-            txCacheService.update(key,object);
-            return true;
+            return txCacheService.update(key,object);
         }
         // 不再事务中,先更新缓存,再放入异步数据库
         Map<String,CacheEntity> cacheEntityMap = cacheEntitys.get();
@@ -405,12 +404,12 @@ public class DataService {
         }
         cacheEntity.setEntity(object);
         cacheEntity.setState(CacheEntity.CacheEntityState.Normal);
-        cacheService.update(key,cacheEntity); // 没有cas,也就可以没有失败
+        Object old = cacheService.update(key,cacheEntity); // 没有cas,也就可以没有失败
         // 异步
         if(async) {
             asyncService.update(key, object);
         }
-        return true;
+        return old;
     }
     /**
      * 删除一个实体

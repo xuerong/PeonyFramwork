@@ -115,7 +115,7 @@ public class CacheCenterImpl implements CacheCenter {
      * 不用cas了
      * */
     @Override
-    public boolean update(String key,CacheEntity entity) {
+    public Object update(String key,CacheEntity entity) {
         EhCacheHelper.update(key,entity);
         MemCachedHelper.update(key,entity);
 

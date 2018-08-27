@@ -36,7 +36,7 @@ public class CacheService{
         return cacheCenter.remove(key);
     }
 
-    public boolean update(String key, CacheEntity entity) {
+    public Object update(String key, CacheEntity entity) {
         return cacheCenter.update(key,entity);
     }
 

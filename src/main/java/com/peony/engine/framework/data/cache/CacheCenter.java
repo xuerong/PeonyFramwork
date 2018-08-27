@@ -38,7 +38,7 @@ public interface CacheCenter {
      *  更新,不考虑版本
      *  不用cas,因为cas失败了会导致事务无法回退,用的是先所有的加锁之后校验,
      * */
-    public boolean update(String key,CacheEntity entity);
+    public Object update(String key,CacheEntity entity);
 
     default public int size()  {
         return -1;

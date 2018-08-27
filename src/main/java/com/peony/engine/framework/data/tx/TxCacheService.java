@@ -236,12 +236,13 @@ public class TxCacheService {
         try{
             List<AsyncService.AsyncData> asyncDataList = null;
             for(PrepareCachedData data : map.values()){
+                Object old = null;
                 switch (data.getOperType()){
                     case Insert:
                         dataService.insert(data.getData(),false); // 这个地方用这种方式提交,如果有需要,可以换方式
                         break;
                     case Update:
-                        dataService.update(data.getData(),false);
+                        old = dataService.update(data.getData(),false);
                         break;
                     case Delete:
                         dataService.delete(data.getData(),false);
@@ -256,6 +257,7 @@ public class TxCacheService {
                     asyncData.setOperType(data.getOperType());
                     asyncData.setKey(data.getKey());
                     asyncData.setObject(data.getData());
+                    asyncData.setOld(((CacheEntity)old).getEntity());
                     asyncDataList.add(asyncData);
                 }
             }
@@ -293,6 +295,10 @@ public class TxCacheService {
             for (String key:map.keySet()) {
                 PrepareCachedData prepareCachedData = map.get(key);
                 if(!KeyParser.isObjectBelongToList(prepareCachedData.getData(),listKey)){
+                    if(prepareCachedData.getOperType() == OperType.Update){
+//                        LinkedHashSet linkedHashSet = new LinkedHashSet();
+//                        linkedHashSet.remove()
+                    }
                     continue;
                 }
                 // 替换，或添加，或删除
@@ -319,14 +325,14 @@ public class TxCacheService {
                         }else if(prepareCachedData.getOperType() == OperType.Delete){
                             objectList.remove(index);
                         }
-                    }
-                }else{
-                    if(prepareCachedData.getOperType() == OperType.Insert
-                            || prepareCachedData.getOperType() == OperType.Update){
-                        objectList.add((T)prepareCachedData.getData());
-                        if(prepareCachedData.getOperType() == OperType.Update){
-                            log.warn("update object in this threadLocalCache is not exist in objectList ,objectKey = "
-                                    +key+",listKey = "+listKey);
+                    }else{
+                        if(prepareCachedData.getOperType() == OperType.Insert
+                                || prepareCachedData.getOperType() == OperType.Update){
+                            objectList.add((T)prepareCachedData.getData());
+                            if(prepareCachedData.getOperType() == OperType.Update){
+//                                log.warn("update object in this threadLocalCache is not exist in objectList ,objectKey = "
+//                                        +key+",listKey = "+listKey);
+                            }
                         }
                     }
                 }
@@ -366,8 +372,9 @@ public class TxCacheService {
     }
     /**
      * 更新一个对象，
+     * TODO 一次get一次put是否可以合并
      */
-    public boolean update(String key,Object entity){
+    public Object update(String key,Object entity){
         Map<String, PrepareCachedData> map = cacheDatas.get();
         PrepareCachedData older = map.get(key);
         if(older != null && older.getOperType() == OperType.Delete){
@@ -382,7 +389,7 @@ public class TxCacheService {
             // 插入的，则更新变成插入
             prepareCachedData.setOperType(OperType.Insert);
         }
-        return true;
+        return old==null?null:old.getData();
     }
     /**
      * 删除一个实体

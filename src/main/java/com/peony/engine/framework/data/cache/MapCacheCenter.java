@@ -44,8 +44,7 @@ public class MapCacheCenter implements CacheCenter {
     }
 
     @Override
-    public boolean update(String key, CacheEntity entity) {
-        map.put(key,entity);
-        return true;
+    public Object update(String key, CacheEntity entity) {
+        return map.put(key,entity);
     }
 }

@@ -25,12 +25,15 @@ public class LRUMapCacheCenter implements CacheCenter {
     //    ConcurrentHashMap<String,CacheEntity> map = new ConcurrentHashMap<>();
     @Override
     public CacheEntity putIfAbsent(String key, CacheEntity entity) {
-        return map.putIfAbsent(key, entity);
+        return map.putIfAbsent(key, entity.clone());
     }
 
     @Override
     public void putList(Map<String, CacheEntity> entityMap) {
-        map.putAll(entityMap);
+        for(Map.Entry<String,CacheEntity> entry : entityMap.entrySet()){
+            map.put(entry.getKey(),entry.getValue().clone());
+        }
+//        map.putAll(entityMap);
     }
 
     @Override
@@ -61,9 +64,8 @@ public class LRUMapCacheCenter implements CacheCenter {
     }
 
     @Override
-    public boolean update(String key, CacheEntity entity) {
-        map.put(key, entity);
-        return true;
+    public Object update(String key, CacheEntity entity) {
+        return map.put(key, entity);
     }
 
     @Override
