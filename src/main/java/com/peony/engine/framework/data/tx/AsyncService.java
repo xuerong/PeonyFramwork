@@ -46,6 +46,7 @@ public class AsyncService {
     // key为对象的类的名字，值为其对应的listKeys
 //    private ConcurrentHashMap<String,Set<String>> listKeysMap = new ConcurrentHashMap<>();
     private ConcurrentHashMap<Class<?>,Map<String,Map<String,String>>> listKeyIndex = new ConcurrentHashMap<>();
+    private ConcurrentHashSet<String> nonPkListKey = new ConcurrentHashSet<>();
     //
     private CacheCenter cacheCenter;
     private NetEventService netEventService;
@@ -199,6 +200,18 @@ public class AsyncService {
                 Map<String, String> old = fieldMap.putIfAbsent(fieldKey, valueMap);
                 if (old != null) {
                     valueMap = old;
+                }else{
+                    if(!fieldKey.equals("")){
+                        // 如果是非主键的list，则标记起来
+                        String[] fieldNames = fieldKey.split(KeyParser.SEPARATOR);
+                        Map<String,Method> pkGetMethodMap = EntityHelper.getPkGetMethodMap(entityClass);
+                        for(String fieldName : fieldNames){
+                            if(!pkGetMethodMap.containsKey(fieldName)){
+                                nonPkListKey.add(fieldKey);
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             if (listKeyStrs.length == 2) { // 全表
@@ -310,45 +323,38 @@ public class AsyncService {
                         }
                     }else if(asyncData.getOperType() == OperType.Update){
                         // 如果是主键的list，则不做处理
-                        String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
-                        Map<String,Method> pkGetMethodMap = EntityHelper.getPkGetMethodMap(asyncData.getObject().getClass());
-                        boolean notPkList = false;
-                        for(String fieldName : fieldNames){
-                            if(!pkGetMethodMap.containsKey(fieldName)){
-                                notPkList = true;
-                                break;
-                            }
+                        if(!nonPkListKey.contains(entry.getKey())){
+                            continue;
                         }
-                        if(notPkList){ // 非pk的list，如果有更新，需要检查是否有list更新
-                            // 如果old的listkey和新的不一致，则需要修改
-                            if(asyncData.getOld() != null) {
-                                if (getMethodMap == null) {
-                                    getMethodMap = EntityHelper.getGetMethodMap(asyncData.getObject().getClass());
-                                }
-                                String oldValueKey = getValueKey(fieldNames, getMethodMap, asyncData.getOld());
-                                String valueKey = getValueKey(fieldNames, getMethodMap, asyncData.getObject());
-                                if (!oldValueKey.equals(valueKey)) {
-                                    // 删除旧的
-                                    String oldListKey = entry.getValue().get(oldValueKey);
-                                    if(oldListKey != null){
-                                        boolean remove = updateCacheList(asyncData, oldListKey,2);
-                                        if (remove) {
-                                            entry.getValue().remove(valueKey);
-                                        }
-                                    }
-                                    // 添加新的
-                                    String listKey = entry.getValue().get(valueKey);
-                                    if (listKey != null) {
-                                        boolean remove = updateCacheList(asyncData, listKey,1);
-                                        if (remove) {
-                                            entry.getValue().remove(valueKey);
-                                        }
-                                    }
-//                                    System.out.println("oldValueKey:"+oldValueKey+",valueKey:"+valueKey+",oldListKey:"+",listKey:"+listKey);
-                                }
-                            }else{
-                                log.error("old == null while update,asyncData = {}",asyncData);
+                        String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
+                        // 如果old的listkey和新的不一致，则需要修改
+                        if(asyncData.getOld() != null) {
+                            if (getMethodMap == null) {
+                                getMethodMap = EntityHelper.getGetMethodMap(asyncData.getObject().getClass());
                             }
+                            String oldValueKey = getValueKey(fieldNames, getMethodMap, asyncData.getOld());
+                            String valueKey = getValueKey(fieldNames, getMethodMap, asyncData.getObject());
+                            if (!oldValueKey.equals(valueKey)) {
+                                // 删除旧的
+                                String oldListKey = entry.getValue().get(oldValueKey);
+                                if(oldListKey != null){
+                                    boolean remove = updateCacheList(asyncData, oldListKey,2);
+                                    if (remove) {
+                                        entry.getValue().remove(valueKey);
+                                    }
+                                }
+                                // 添加新的
+                                String listKey = entry.getValue().get(valueKey);
+                                if (listKey != null) {
+                                    boolean remove = updateCacheList(asyncData, listKey,1);
+                                    if (remove) {
+                                        entry.getValue().remove(valueKey);
+                                    }
+                                }
+//                                    System.out.println("oldValueKey:"+oldValueKey+",valueKey:"+valueKey+",oldListKey:"+",listKey:"+listKey);
+                            }
+                        }else{
+                            log.error("old == null while update,asyncData = {}",asyncData);
                         }
                     }
                 }
@@ -376,27 +382,27 @@ public class AsyncService {
 //            testDbEntity.setBbb(random.nextInt(300)+"");
 //            dataService.insert(testDbEntity);
 //        }
-        List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
+        List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
         System.out.println(testDbEntities.size()+"    "+testDbEntities);
-        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
         System.out.println(testDbEntities.size()+"    "+testDbEntities);
         if(testDbEntities.size()>5){
             TestDbEntity testDbEntity = testDbEntities.get(4);
-            testDbEntity.setAaa(11+"");
+            testDbEntity.setAaa(10+"");
             dataService.update(testDbEntity);
             testDbEntity = testDbEntities.get(6);
-            testDbEntity.setAaa(11+"");
+            testDbEntity.setAaa(10+"");
             dataService.update(testDbEntity);
             testDbEntity = testDbEntities.get(8);
-            testDbEntity.setAaa(11+"");
+            testDbEntity.setAaa(10+"");
             dataService.update(testDbEntity);
             testDbEntity = testDbEntities.get(10);
-            testDbEntity.setAaa(11+"");
+            testDbEntity.setAaa(10+"");
             dataService.update(testDbEntity);
         }
-        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
-        System.out.println(testDbEntities.size()+"    "+testDbEntities);
         testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
+        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
         System.out.println(testDbEntities.size()+"    "+testDbEntities);
     }
 
