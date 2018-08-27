@@ -8,6 +8,7 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -69,9 +70,9 @@ public class CacheEntity implements Serializable{
         cacheEntity.setCasUnique(casUnique);
         if(entity == null){
             cacheEntity.setEntity(null);
-        }else if(entity instanceof List){
-            List list = (List)entity;
-            List target = new ArrayList();
+        }else if(entity instanceof LinkedHashSet){
+            LinkedHashSet list = (LinkedHashSet)entity;
+            LinkedHashSet target = new LinkedHashSet();
             for(Object object : list){
                 target.add(object);
             }

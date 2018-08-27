@@ -344,7 +344,7 @@ public class AsyncService {
                                             entry.getValue().remove(valueKey);
                                         }
                                     }
-                                    System.out.println("oldValueKey:"+oldValueKey+",valueKey:"+valueKey+",oldListKey:"+",listKey:"+listKey);
+//                                    System.out.println("oldValueKey:"+oldValueKey+",valueKey:"+valueKey+",oldListKey:"+",listKey:"+listKey);
                                 }
                             }else{
                                 log.error("old == null while update,asyncData = {}",asyncData);
@@ -376,18 +376,27 @@ public class AsyncService {
 //            testDbEntity.setBbb(random.nextInt(300)+"");
 //            dataService.insert(testDbEntity);
 //        }
-        List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
+        List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
         System.out.println(testDbEntities.size()+"    "+testDbEntities);
-        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
         System.out.println(testDbEntities.size()+"    "+testDbEntities);
         if(testDbEntities.size()>5){
             TestDbEntity testDbEntity = testDbEntities.get(4);
-            testDbEntity.setAaa(10+"");
+            testDbEntity.setAaa(11+"");
+            dataService.update(testDbEntity);
+            testDbEntity = testDbEntities.get(6);
+            testDbEntity.setAaa(11+"");
+            dataService.update(testDbEntity);
+            testDbEntity = testDbEntities.get(8);
+            testDbEntity.setAaa(11+"");
+            dataService.update(testDbEntity);
+            testDbEntity = testDbEntities.get(10);
+            testDbEntity.setAaa(11+"");
             dataService.update(testDbEntity);
         }
-        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
-        System.out.println(testDbEntities.size()+"    "+testDbEntities);
         testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
+        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
         System.out.println(testDbEntities.size()+"    "+testDbEntities);
     }
 

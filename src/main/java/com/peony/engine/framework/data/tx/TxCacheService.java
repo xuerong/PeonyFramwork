@@ -287,17 +287,31 @@ public class TxCacheService {
         return cacheDatas.get().get(key);
     }
 
-    public <T> List<T> replaceCacheObjectToList(String listKey,List<T> objectList){
+    public <T> List<T> replaceCacheObjectToList(String listKey,List<T> objectList,LinkedHashSet<String> keys){
         Map<String, PrepareCachedData> map = cacheDatas.get();
         if(map.size() > 0){
             Map<String,Integer> keyMap = null;
-
+            List<Integer> deleteIndex = null;
             for (String key:map.keySet()) {
                 PrepareCachedData prepareCachedData = map.get(key);
                 if(!KeyParser.isObjectBelongToList(prepareCachedData.getData(),listKey)){
-                    if(prepareCachedData.getOperType() == OperType.Update){
-//                        LinkedHashSet linkedHashSet = new LinkedHashSet();
-//                        linkedHashSet.remove()
+                    if(keys!= null && prepareCachedData.getOperType() == OperType.Update){
+                        if(keys.contains(key)){
+                            if(keyMap == null) {
+                                keyMap = new HashMap<>();
+                                int i = 0;
+                                for (T t:objectList) {
+                                    keyMap.put(KeyParser.parseKey(t),i++);
+                                }
+                            }
+                            Integer index  = keyMap.get(key);
+                            if(index != null) {
+                                if(deleteIndex == null){
+                                    deleteIndex = new ArrayList<>();
+                                }
+                                deleteIndex.add(index);
+                            }
+                        }
                     }
                     continue;
                 }
@@ -323,7 +337,10 @@ public class TxCacheService {
                                         +key+",listKey = "+listKey);
                             }
                         }else if(prepareCachedData.getOperType() == OperType.Delete){
-                            objectList.remove(index);
+                            if(deleteIndex == null){
+                                deleteIndex = new ArrayList<>();
+                            }
+                            deleteIndex.add(index);
                         }
                     }else{
                         if(prepareCachedData.getOperType() == OperType.Insert
@@ -337,6 +354,17 @@ public class TxCacheService {
                     }
                 }
 
+            }
+            //
+            if(deleteIndex!= null){
+                if(deleteIndex.size() > 10){
+                    // TODO 这个list可以考虑换成linkedlist，这样删除消耗太大
+                    log.warn("if here happen,deleteIndex.size()={}",deleteIndex.size());
+                }
+                deleteIndex.sort((o1,o2)->o2-o1);
+                for(Integer index : deleteIndex){
+                    objectList.remove(index.intValue());
+                }
             }
         }
         return objectList;

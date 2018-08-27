@@ -304,8 +304,9 @@ public class DataService {
         }else{
             monitorService.addMonitorNum(MonitorNumType.CacheHitNum,1);
         }
+        LinkedHashSet<String> keys = null;
         if(objectList == null && entity != null){ // 从缓存中取出了对应的keys,需要从缓存中取出指
-            LinkedHashSet<String> keys = (LinkedHashSet<String>) entity.getEntity();
+            keys = (LinkedHashSet<String>) entity.getEntity();
             if(keys.size()>0) {
                 List<CacheEntity> cacheEntitieList = cacheService.getList(keys.toArray(new String[keys.size()]));
                 // 这里是否需要筛选掉无效的?是不需要的,因为在其它线程置无效标志的时候,就将相应的列表删除完了
@@ -338,7 +339,7 @@ public class DataService {
         }
         if(txCacheService.isInTx() && objectList != null){
             // 替换掉事务中新的值,增删改
-            txCacheService.replaceCacheObjectToList(listKey,objectList);
+            txCacheService.replaceCacheObjectToList(listKey,objectList,keys);
         }
         if(objectList == null){
             return new ArrayList<>();
