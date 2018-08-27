@@ -252,7 +252,7 @@ public class AsyncService {
             lockerService.unlockKeys(listKey);
             return true;
         }
-        List<String> keyList = (List<String>) cacheEntity.getEntity();
+        LinkedHashSet<String> keyList = (LinkedHashSet<String>) cacheEntity.getEntity();
         if (asyncData.getOperType() == OperType.Insert){
 //                            if (!keyList.contains(asyncData.getKey())) // TODO 这里先不判断，影响效率，或者使用Set，会影响排序，这里要考虑一下了。。。。。。。。。，可以用LinkedHashSet 6666
             keyList.add(asyncData.getKey());

@@ -260,7 +260,7 @@ public class DataService {
                         }
                     }
                     // 缓存两步,一步缓存keys,一步缓存内容
-                    List<String> keys = new ArrayList<>();
+                    LinkedHashSet<String> keys = new LinkedHashSet<>();
                     Map<String, CacheEntity> cacheEntityMap = new HashMap<>();
                     for (T t : objectList) {
                         String key = KeyParser.parseKey(t);
@@ -305,7 +305,7 @@ public class DataService {
             monitorService.addMonitorNum(MonitorNumType.CacheHitNum,1);
         }
         if(objectList == null && entity != null){ // 从缓存中取出了对应的keys,需要从缓存中取出指
-            List<String> keys = (List<String>) entity.getEntity();
+            LinkedHashSet<String> keys = (LinkedHashSet<String>) entity.getEntity();
             if(keys.size()>0) {
                 List<CacheEntity> cacheEntitieList = cacheService.getList(keys.toArray(new String[keys.size()]));
                 // 这里是否需要筛选掉无效的?是不需要的,因为在其它线程置无效标志的时候,就将相应的列表删除完了
@@ -324,17 +324,11 @@ public class DataService {
                         int index = 0;
                         boolean isLockClass = txCacheService.isLockClass(entityClass);
                         if(isLockClass){
-                            for(CacheEntity cacheEntity : cacheEntitieList){
-                                map.put(keys.get(index),cacheEntity);
+                            for(String key: keys){
+                                map.put(key,cacheEntitieList.get(index));
                                 index++;
                             }
                         }
-//                        for(CacheEntity cacheEntity : cacheEntitieList){
-//                            if(txCacheService.isLockClass(cacheEntity.getEntity().getClass())){
-//                                map.put(keys.get(index),cacheEntity);
-//                            }
-//                            index++;
-//                        }
                     }
                 }else{
                     // TODO 取出多个值,如果有不存在的还要去数据库中取
