@@ -6,7 +6,7 @@ import com.peony.engine.framework.data.persistence.orm.annotation.StringTypeColl
 
 import java.io.Serializable;
 
-@DBEntity(tableName = "TestDbEntity",pks = {"uid"})
+@DBEntity(tableName = "TestDbEntity",pks = {"uid","aaa"})
 public class TestDbEntity implements Serializable {
     private String uid;
     private String aaa;

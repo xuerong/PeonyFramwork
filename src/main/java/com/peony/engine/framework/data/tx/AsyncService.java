@@ -46,7 +46,7 @@ public class AsyncService {
     // key为对象的类的名字，值为其对应的listKeys
 //    private ConcurrentHashMap<String,Set<String>> listKeysMap = new ConcurrentHashMap<>();
     private ConcurrentHashMap<Class<?>,Map<String,Map<String,String>>> listKeyIndex = new ConcurrentHashMap<>();
-    private ConcurrentHashSet<String> nonPkListKey = new ConcurrentHashSet<>();
+    private ConcurrentHashMap<Class<?>,ConcurrentHashSet<String>> nonPkListKey = new ConcurrentHashMap<>();
     //
     private CacheCenter cacheCenter;
     private NetEventService netEventService;
@@ -207,7 +207,14 @@ public class AsyncService {
                         Map<String,Method> pkGetMethodMap = EntityHelper.getPkGetMethodMap(entityClass);
                         for(String fieldName : fieldNames){
                             if(!pkGetMethodMap.containsKey(fieldName)){
-                                nonPkListKey.add(fieldKey);
+//                                nonPkListKey.add(fieldKey);
+                                ConcurrentHashSet<String> set = nonPkListKey.get(entityClass);
+                                if(set == null){
+                                    set = new ConcurrentHashSet<String>();
+                                    nonPkListKey.putIfAbsent(entityClass,set);
+                                    set = nonPkListKey.get(entityClass);
+                                }
+                                set.add(fieldKey);
                                 break;
                             }
                         }
@@ -293,11 +300,14 @@ public class AsyncService {
                 asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
             }
             asyncDataList.put(asyncData,asyncData);
+//            System.out.println("put in:"+asyncData);
         }
         Worker worker = workerMap.get(asyncData.getThreadNum());
         boolean success = worker.addAsyncData(asyncData);
         // 插入可能存在的listKey，修改非主键的listkey
-        Map<String,Map<String,String>> fieldMap = listKeyIndex.get(asyncData.getObject().getClass());
+        Class<?> cls = asyncData.getObject().getClass();
+        Map<String,Map<String,String>> fieldMap = listKeyIndex.get(cls);
+//        Map<String,Map<String,String>> fieldMap = listKeyIndex.get(asyncData.getObject().getClass());
         if(fieldMap != null) {
             Map<String,Method> getMethodMap = null;
             for (Map.Entry<String, Map<String, String>> entry : fieldMap.entrySet()) {
@@ -323,7 +333,11 @@ public class AsyncService {
                         }
                     }else if(asyncData.getOperType() == OperType.Update){
                         // 如果是主键的list，则不做处理
-                        if(!nonPkListKey.contains(entry.getKey())){
+                        ConcurrentHashSet<String> set =  nonPkListKey.get(cls);
+                        if(set == null){
+                            continue;
+                        }
+                        if(!set.contains(entry.getKey())){
                             continue;
                         }
                         String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
@@ -372,38 +386,50 @@ public class AsyncService {
 
     @Tx
     @Gm(id="testUpdateForList")
-    public void testUpdateForList(){
+    public void testUpdateForList(String uid){
         DataService dataService = BeanHelper.getServiceBean(DataService.class);
-//        Random random = new Random();
-//        for(int i = 0;i<1000;i++){
-//            TestDbEntity testDbEntity = new TestDbEntity();
-//            testDbEntity.setUid("testDbEntity"+i);
-//            testDbEntity.setAaa(random.nextInt(50)+"");
-//            testDbEntity.setBbb(random.nextInt(300)+"");
-//            dataService.insert(testDbEntity);
-//        }
-        List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
-        System.out.println(testDbEntities.size()+"    "+testDbEntities);
-        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
-        System.out.println(testDbEntities.size()+"    "+testDbEntities);
-        if(testDbEntities.size()>5){
-            TestDbEntity testDbEntity = testDbEntities.get(4);
-            testDbEntity.setAaa(11+"");
-            dataService.update(testDbEntity);
-            testDbEntity = testDbEntities.get(6);
-            testDbEntity.setAaa(11+"");
-            dataService.update(testDbEntity);
-            testDbEntity = testDbEntities.get(8);
-            testDbEntity.setAaa(11+"");
-            dataService.update(testDbEntity);
-            testDbEntity = testDbEntities.get(10);
-            testDbEntity.setAaa(11+"");
-            dataService.update(testDbEntity);
+        Random random = new Random();
+        for(int i = 0;i<1;i++){
+            TestDbEntity testDbEntity = new TestDbEntity();
+            testDbEntity.setUid(uid);
+            testDbEntity.setAaa(random.nextInt(50)+i+"");
+            testDbEntity.setBbb(random.nextInt(300)+"");
+            dataService.insert(testDbEntity);
         }
-        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
-        System.out.println(testDbEntities.size()+"    "+testDbEntities);
-        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
-        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+        List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"uid=?",uid);
+        System.out.println(testDbEntities.size());
+
+        for(int i = 0;i<1;i++){
+            TestDbEntity testDbEntity = new TestDbEntity();
+            testDbEntity.setUid(uid);
+            //sd
+            testDbEntity.setAaa(random.nextInt(50)+i+"k");
+            testDbEntity.setBbb(random.nextInt(300)+"");
+            dataService.insert(testDbEntity);
+        }
+        testDbEntities = dataService.selectList(TestDbEntity.class,"uid=?",uid);
+        System.out.println(testDbEntities.size());
+//        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+//        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
+//        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+//        if(testDbEntities.size()>5){
+//            TestDbEntity testDbEntity = testDbEntities.get(4);
+//            testDbEntity.setAaa(11+"");
+//            dataService.update(testDbEntity);
+//            testDbEntity = testDbEntities.get(6);
+//            testDbEntity.setAaa(11+"");
+//            dataService.update(testDbEntity);
+//            testDbEntity = testDbEntities.get(8);
+//            testDbEntity.setAaa(11+"");
+//            dataService.update(testDbEntity);
+//            testDbEntity = testDbEntities.get(10);
+//            testDbEntity.setAaa(11+"");
+//            dataService.update(testDbEntity);
+//        }
+//        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
+//        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+//        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
+//        System.out.println(testDbEntities.size()+"    "+testDbEntities);
     }
 
     private String getValueKey(String[] fieldNames,Map<String,Method> getMethodMap,Object object){
@@ -579,6 +605,7 @@ public class AsyncService {
                                 Map<AsyncData,AsyncData> asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
                                 if(asyncDataList != null) {
                                     asyncDataList.remove(asyncData);
+                                    System.out.println("remove:"+asyncData);
                                 }
                             }
                         }catch (Throwable e){

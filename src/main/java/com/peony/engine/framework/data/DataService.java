@@ -215,7 +215,9 @@ public class DataService {
             try {
                 // TODO 这里从异步数据获取满足条件(listKey)的数据，并在查询数据库之后放进对应的list中
                 List<AsyncService.AsyncData> asyncDataList = asyncService.getAsyncDataBelongListKey(entityClass,listKey);
+//                System.err.println("asyncDataList.size()"+(asyncDataList==null?0:asyncDataList.size()));
                 objectList = DataSet.selectListWithCondition(entityClass, condition, params);
+//                System.err.println("objectList.size():"+objectList.size());
                 monitorService.addMonitorNum(MonitorNumType.SelectSqlNum,1);
                 if (objectList != null || (asyncDataList != null && asyncDataList.size() > 0)) { // 0个也缓存
                     if (objectList == null) {
@@ -270,6 +272,7 @@ public class DataService {
                     }
                     // 缓存keys
                     entity = new CacheEntity(keys);
+                    System.err.println("keys:"+keys);
                     cacheService.putIfAbsent(listKey, entity);
                     // 缓存内容
                     if (cacheEntityMap.size() > 0) {
@@ -307,6 +310,7 @@ public class DataService {
         LinkedHashSet<String> keys = null;
         if(objectList == null && entity != null){ // 从缓存中取出了对应的keys,需要从缓存中取出指
             keys = (LinkedHashSet<String>) entity.getEntity();
+            System.err.println("keys:"+keys);
             if(keys.size()>0) {
                 List<CacheEntity> cacheEntitieList = cacheService.getList(keys.toArray(new String[keys.size()]));
                 // 这里是否需要筛选掉无效的?是不需要的,因为在其它线程置无效标志的时候,就将相应的列表删除完了
@@ -335,6 +339,8 @@ public class DataService {
                     // TODO 取出多个值,如果有不存在的还要去数据库中取
                     logger.error("if log here ,call zhengyuzhen ,listkey={},keys={}",listKey,keys);
                 }
+            }else{
+                objectList = new ArrayList<>();
             }
         }
         if(txCacheService.isInTx() && objectList != null){

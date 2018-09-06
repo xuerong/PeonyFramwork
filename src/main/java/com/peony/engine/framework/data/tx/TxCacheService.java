@@ -257,7 +257,9 @@ public class TxCacheService {
                     asyncData.setOperType(data.getOperType());
                     asyncData.setKey(data.getKey());
                     asyncData.setObject(data.getData());
-                    asyncData.setOld(((CacheEntity)old).getEntity());
+                    if(old != null) {
+                        asyncData.setOld(((CacheEntity) old).getEntity());
+                    }
                     asyncDataList.add(asyncData);
                 }
             }
