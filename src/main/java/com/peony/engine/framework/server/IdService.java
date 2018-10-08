@@ -26,21 +26,21 @@ import java.util.concurrent.atomic.AtomicLong;
  * 
  * ,runOnEveryServer = false
  */
-@Service(init = "init", destroy = "destroy",runOnEveryServer = false)
+@Service(init = "init",initPriority = 3,destroy = "destroy",runOnEveryServer = false)
 public class IdService {
     private static final Logger log = LoggerFactory.getLogger(IdService.class);
 
-    private RemoteCallService remoteCallService;
     private DataService dataService;
-    private LockerService lockerService;
-
-//    private ConcurrentHashMap<Class,IdSegment> intIdSegmentMap;
     private ConcurrentHashMap<Class,IdSegmentLong> longIdSegmentMap;
+    private static int pow = 13;
+    private long preByServerId = 0; // 最大支持 long.max/(10^pow)
+
 
     public void init() {
-        remoteCallService = BeanHelper.getServiceBean(RemoteCallService.class);
 //        intIdSegmentMap = new ConcurrentHashMap<>();
         longIdSegmentMap = new ConcurrentHashMap<>();
+        // serverId转9进制
+        preByServerId = Long.parseLong(Integer.toString(Server.getServerId(),9))*(long)Math.pow(10,pow);
         //TODO 从数据库中载入当前各个id状态
         List<IdGenerator> idGenerators = dataService.selectList(IdGenerator.class,null);
         if(idGenerators != null){
@@ -50,60 +50,47 @@ public class IdService {
                     IdSegmentLong idSegment = new IdSegmentLong(cls,idGenerator.getId());
                     longIdSegmentMap.put(cls, idSegment);
                 }catch (Throwable e){
-                    e.printStackTrace();
+                    log.error("",e);
                 }
             }
         }
+
     }
 
+    public long getPreByServerId() {
+        return preByServerId;
+    }
+
+    /**
+     * 最多10^pow
+     *
+     * @param cls
+     * @return
+     */
     public long acquireLong(Class<?> cls){
-        if(lockerService.lockKeys(cls.getName())) {
-            try {
-                IdSegmentLong idSegmentLong = longIdSegmentMap.get(cls);
-                if (idSegmentLong == null) {
-                    idSegmentLong = new IdSegmentLong(cls);
-                    IdSegmentLong old = longIdSegmentMap.putIfAbsent(cls, idSegmentLong);
-                    if (old != null) {
-                        idSegmentLong = old;
-                    } else {
-                        IdGenerator idGenerator = new IdGenerator();
-                        idGenerator.setClassName(cls.getName());
-                        idGenerator.setId(idSegmentLong.getIdMark().get());
-                        dataService.insert(idGenerator);
-                    }
+        try {
+            IdSegmentLong idSegmentLong = longIdSegmentMap.get(cls);
+            if (idSegmentLong == null) {
+                idSegmentLong = new IdSegmentLong(cls);
+                IdSegmentLong old = longIdSegmentMap.putIfAbsent(cls, idSegmentLong);
+                if (old != null) {
+                    idSegmentLong = old;
+                } else {
+                    IdGenerator idGenerator = new IdGenerator();
+                    idGenerator.setClassName(cls.getName());
+                    idGenerator.setId(idSegmentLong.getIdMark().get());
+                    dataService.insert(idGenerator);
                 }
-                long result = idSegmentLong.acquire();
-                IdGenerator idGenerator = new IdGenerator();
-                idGenerator.setClassName(cls.getName());
-                idGenerator.setId(idSegmentLong.getIdMark().get());
-                dataService.update(idGenerator);
-                return result;
-            }catch (Throwable e){
-                throw new MMException("acquireLong error",e);
-            }finally {
-                lockerService.unlockKeys(cls.getName());
             }
-        }else{
-            throw new MMException("acquireLong error,lock fail");
+            long result = idSegmentLong.acquire();
+            IdGenerator idGenerator = new IdGenerator();
+            idGenerator.setClassName(cls.getName());
+            idGenerator.setId(idSegmentLong.getIdMark().get());
+            dataService.update(idGenerator);
+            return result+preByServerId;
+        }catch (Throwable e){
+            throw new MMException("acquireLong error",e);
         }
-    }
-    public int acquireInt(Class<?> cls){
-//        IdSegment IdSegment = intIdSegmentMap.get(cls);
-//        if(IdSegment == null){
-//            IdSegment = new IdSegment(cls);
-//            intIdSegmentMap.putIfAbsent(cls, IdSegment);
-//            IdSegment = intIdSegmentMap.get(cls);
-//        }
-//        return IdSegment.acquire();
-        return (int)acquireLong(cls);
-    }
-
-    public void releaseInt(Class<?> cls, int id){
-//        IdSegment IdSegment = intIdSegmentMap.get(cls);
-//        if(IdSegment == null){
-//            throw new MMException("IdSegment is not exist,cls = "+cls.getName());
-//        }
-//        IdSegment.release(id);
     }
 
     public void destroy(){
@@ -145,55 +132,6 @@ public class IdService {
 
         public void setIdMark(AtomicLong idMark) {
             this.idMark = idMark;
-        }
-    }
-
-    class IdSegment{
-        private Class cls;
-        private Set<Integer> usingIds;
-        private Queue<Integer> canUseIds;
-        private AtomicInteger idMark;
-
-        public IdSegment(Class cls){
-            this.cls = cls;
-            this.usingIds = new ConcurrentHashSet<>();
-            this.canUseIds = new ConcurrentLinkedDeque<>();
-            this.idMark = new AtomicInteger();
-        }
-
-        public int acquire(){
-            Integer id = canUseIds.poll();
-            if(id == null){
-                id = idMark.getAndIncrement();
-                usingIds.add(id);
-            }
-            return id;
-        }
-
-        public void release(Integer id){
-            usingIds.remove(id);
-            canUseIds.offer(id);
-        }
-
-
-        public Class getCls() {
-            return cls;
-        }
-
-        public void setCls(Class cls) {
-            this.cls = cls;
-        }
-
-        public Set<Integer> getUsingIds() {
-            return usingIds;
-        }
-
-        public Queue<Integer> getCanUseIds() {
-            return canUseIds;
-        }
-
-        public Number getIdMark() {
-            return idMark;
         }
     }
 }

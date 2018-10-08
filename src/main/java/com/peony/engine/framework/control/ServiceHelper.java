@@ -455,7 +455,7 @@ public final class ServiceHelper {
                 body.append(String.format("\n\t}\n"));
                 body.append("}");
             }
-            log.info("+++++++++++++++Remote Method++++++++++++++++++\n"+ctMethod.getLongName()+"\n"+body.toString()+"\n+++++++++++++++++++++++++++++++++++++++");
+//            log.info("+++++++++++++++Remote Method++++++++++++++++++\n"+ctMethod.getLongName()+"\n"+body.toString()+"\n+++++++++++++++++++++++++++++++++++++++");
             proxyMethod.setBody(body.toString());
             proxyClazz.addMethod(proxyMethod);
         }
@@ -660,6 +660,7 @@ public final class ServiceHelper {
                         throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
                     }
                     jsonOpMethods.put(op.opcode(), method.getName());
+//                    opMethods.put(op.opcode(), method.getName());
                 } else {
                     throw new IllegalStateException("Method " + method.getName() + " ReturnType Error");
                 }
@@ -682,22 +683,24 @@ public final class ServiceHelper {
             CtClass ct = pool.makeClass(oldClass.getName() + "$Proxy", oldClass); //这里需要生成一个新类，并且继承自原来的类
             CtClass superCt = pool.get(RequestHandler.class.getName());  //需要实现RequestHandler接口
             ct.addInterface(superCt);
-            if (opMethods.size() > 0) {  // todo 为啥这个地方如果不进去，不创建handle方法，却不报错？？因为可以构建成功，且在调用的时候才检查，事实上可以让他有个空方法更保险
+            if (opMethods.size() >= 0) {  // todo 为啥这个地方如果不进去，不创建handle方法，却不报错？？因为可以构建成功，且在调用的时候才检查，事实上可以让他有个空方法更保险
                 //添加handler方法，在其中添上switch...case段
-                StringBuilder sb = new StringBuilder("public com.peony.engine.framework.net.code.RetPacket handle(" +
+                StringBuilder sb = new StringBuilder("public Object handle(" +
                         "int opcode,Object clientData,com.peony.engine.framework.data.entity.session.Session session) throws Exception{");
-                sb.append("com.peony.engine.framework.net.code.RetPacket rePacket=null;");
-                sb.append("short opCode = opcode;");//$1.getOpcode();");
-                sb.append("switch (opCode) {");
-                Iterator<Map.Entry<Short, String>> ite = opMethods.entrySet().iterator();
-                while (ite.hasNext()) {
-                    Map.Entry<Short, String> entry = ite.next();
-                    sb.append("case ").append(entry.getKey()).append(":");
-                    sb.append("rePacket=").append(entry.getValue()).append("($2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
-                    sb.append("break;");
-                    //opcodes.add(entry.getKey());
+                sb.append("Object rePacket=null;");
+                if(opMethods.size()>0) {
+                    sb.append("short opCode = opcode;");//$1.getOpcode();");
+                    sb.append("switch (opCode) {");
+                    Iterator<Map.Entry<Short, String>> ite = opMethods.entrySet().iterator();
+                    while (ite.hasNext()) {
+                        Map.Entry<Short, String> entry = ite.next();
+                        sb.append("case ").append(entry.getKey()).append(":");
+                        sb.append("rePacket=").append(entry.getValue()).append("($2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
+                        sb.append("break;");
+                        //opcodes.add(entry.getKey());
+                    }
+                    sb.append("}");
                 }
-                sb.append("}");
                 sb.append("return rePacket;");
                 sb.append("}");
                 CtMethod method = CtMethod.make(sb.toString(), ct);
@@ -705,16 +708,16 @@ public final class ServiceHelper {
             }
             if (jsonOpMethods.size() > 0) {
                 // 添加handlerJson方法
-                StringBuilder sb = new StringBuilder("public com.alibaba.fastjson.JSONObject handleJson(" +
-                        "int opcode,com.alibaba.fastjson.JSONObject clientData,com.peony.engine.framework.data.entity.session.Session session) throws Exception{");
-                sb.append("com.alibaba.fastjson.JSONObject rePacket=null;");
+                StringBuilder sb = new StringBuilder("public Object handleJson(" +
+                        "int opcode,Object clientData,com.peony.engine.framework.data.entity.session.Session session) throws Exception{");
+                sb.append("Object rePacket=null;");
                 sb.append("short opCode = opcode;");//$1.getOpcode();");
                 sb.append("switch (opCode) {");
                 Iterator<Map.Entry<Short, String>> ite = jsonOpMethods.entrySet().iterator();
                 while (ite.hasNext()) {
                     Map.Entry<Short, String> entry = ite.next();
                     sb.append("case ").append(entry.getKey()).append(":");
-                    sb.append("rePacket=").append(entry.getValue()).append("($2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
+                    sb.append("rePacket=").append(entry.getValue()).append("((com.alibaba.fastjson.JSONObject)$2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
                     sb.append("break;");
                     //opcodes.add(entry.getKey());
                 }
@@ -724,6 +727,7 @@ public final class ServiceHelper {
                 CtMethod method = CtMethod.make(sb.toString(), ct);
                 ct.addMethod(method);
             }
+//            System.err.println(clazz);
 
             return ct.toClass();
         } else {

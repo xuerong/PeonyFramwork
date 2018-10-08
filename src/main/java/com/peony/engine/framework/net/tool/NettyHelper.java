@@ -1,5 +1,6 @@
 package com.peony.engine.framework.net.tool;
 
+import com.peony.engine.framework.tool.util.ClassUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
@@ -8,6 +9,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
@@ -15,6 +17,12 @@ import io.netty.util.concurrent.EventExecutorGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.security.KeyStore;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -138,6 +146,7 @@ public class NettyHelper {
                                      HttpObjectAggregator：将HTTP消息的多个部分合成一条完整的HTTP消息
                                      ChunkedWriteHandler：向客户端发送HTML5文件
                                      */
+//                                    pipeline.addLast(createSslHandler());
                                     pipeline.addLast("http-codec", new HttpServerCodec());
                                     pipeline.addLast("aggregator", new HttpObjectAggregator(65536));
                                     pipeline.addLast("http-chunked", new ChunkedWriteHandler());
@@ -158,6 +167,7 @@ public class NettyHelper {
                         })
                         .option(ChannelOption.SO_BACKLOG, 1024)          // (5)backlog 指定了内核为此套接口排队的最大连接个数
                         .option(ChannelOption.TCP_NODELAY, true)
+                        .option(ChannelOption.SO_REUSEADDR, true)
                         .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                         .childOption(ChannelOption.SO_KEEPALIVE, true) // (6)
                         .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
@@ -177,5 +187,32 @@ public class NettyHelper {
                 bossGroup.shutdownGracefully();
             }
         }
+
+        public static SSLContext createSSLContext(String type , String path , String password) throws Exception {
+            KeyStore ks = KeyStore.getInstance(type); /// "JKS"
+            InputStream ksInputStream = new FileInputStream(path); /// 证书存放地址
+            ks.load(ksInputStream, password.toCharArray());
+            //KeyManagerFactory充当基于密钥内容源的密钥管理器的工厂。
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());//getDefaultAlgorithm:获取默认的 KeyManagerFactory 算法名称。
+            kmf.init(ks, password.toCharArray());
+            //SSLContext的实例表示安全套接字协议的实现，它充当用于安全套接字工厂或 SSLEngine 的工厂。
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(kmf.getKeyManagers(), null, null);
+            return sslContext;
+        }
+
+        private static SslHandler createSslHandler(){
+            try {
+                SSLContext sslContext = createSSLContext("JKS", ClassUtil.getClassLoader().getResource("wss.jks").getPath(), "netty123");
+                //SSLEngine 此类允许使用ssl安全套接层协议进行安全通信            
+                SSLEngine engine = sslContext.createSSLEngine();
+                engine.setUseClientMode(false);
+                return new SslHandler(engine);
+            }catch (Exception e){
+                e.printStackTrace();
+                return null;
+            }
+        }
+
     }
 }

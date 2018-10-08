@@ -55,7 +55,7 @@ public final class SysConstantDefine {
     // ----------------------------------------------------------------------------------------monitorService conditions
     public static final String NetEventServiceStart = "NetEventServiceStart";
     // ------------------------------------------------------------------------------------------request
-    public static final int Exception = 101;
+    public static final int Exception = -1;
     public static final int LoginOpcode = 102;
     public static final int LogoutOpcode = 103;
     public static final int LoginNodeOpcode = 104;

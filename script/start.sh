@@ -11,6 +11,6 @@ if [ -f "server.log" ]; then
     mv server.log logs/server_$date.log
 fi
 
-nohup ./zstart.sh  > server.log 2>&1 &
+nohup sh zstart.sh  > server.log 2>&1 &
 
 # sh tail.sh &

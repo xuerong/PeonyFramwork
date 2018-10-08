@@ -72,7 +72,9 @@ public class WebSocketEntrance extends Entrance {
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
+//            System.out.println("sss"+msg);
             if (msg instanceof FullHttpRequest) {
+
                 FullHttpRequest req = (FullHttpRequest)msg;
                 // 如果HTTP解码失败，返回HHTP异常
                 if (!req.decoderResult().isSuccess() || (!"websocket".equals(req.headers().get("Upgrade")))) {

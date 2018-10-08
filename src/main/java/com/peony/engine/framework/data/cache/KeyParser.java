@@ -209,6 +209,10 @@ public class KeyParser {
         if(param instanceof Timestamp){
             return ((Timestamp)param).getTime()+"";
         }
+        if(param == null){
+            log.error("select params contain null");
+            throw new MMException("select params contain null");
+        }
         return param.toString();
     }
 }

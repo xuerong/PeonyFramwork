@@ -1,5 +1,6 @@
 package com.peony.engine.framework.control.request;
 
+import com.alibaba.fastjson.JSONObject;
 import com.peony.engine.framework.data.entity.session.Session;
 
 /**
@@ -9,4 +10,5 @@ import com.peony.engine.framework.data.entity.session.Session;
  */
 public interface RequestHandler {
     public <T> T handle(int opcode,Object clientData, Session session) throws Exception;
+    public <T> T handleJson(int opcode, Object clientData, Session session) throws Exception;
 }

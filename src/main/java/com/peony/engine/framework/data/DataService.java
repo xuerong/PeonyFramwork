@@ -272,7 +272,7 @@ public class DataService {
                     }
                     // 缓存keys
                     entity = new CacheEntity(keys);
-                    System.err.println("keys:"+keys);
+//                    System.err.println("keys:"+keys);
                     cacheService.putIfAbsent(listKey, entity);
                     // 缓存内容
                     if (cacheEntityMap.size() > 0) {
@@ -310,7 +310,7 @@ public class DataService {
         LinkedHashSet<String> keys = null;
         if(objectList == null && entity != null){ // 从缓存中取出了对应的keys,需要从缓存中取出指
             keys = (LinkedHashSet<String>) entity.getEntity();
-            System.err.println("keys:"+keys);
+//            System.err.println("keys:"+keys);
             if(keys.size()>0) {
                 List<CacheEntity> cacheEntitieList = cacheService.getList(keys.toArray(new String[keys.size()]));
                 // 这里是否需要筛选掉无效的?是不需要的,因为在其它线程置无效标志的时候,就将相应的列表删除完了

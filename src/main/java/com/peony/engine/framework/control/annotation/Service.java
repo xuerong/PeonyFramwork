@@ -23,7 +23,7 @@ public @interface Service {
      * @return
      */
     String init() default "";
-    int initPriority() default 3; // 初始化的优先级,越小越先初始化,
+    int initPriority() default 10; // 初始化的优先级,越小越先初始化,
 
     /**
      * 销毁方法

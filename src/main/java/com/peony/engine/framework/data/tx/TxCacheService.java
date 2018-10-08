@@ -382,6 +382,7 @@ public class TxCacheService {
                     }
                     return ret;
                 }else{
+                    deleteIndex.sort((o1,o2)->o1-o2);
                     for(Integer index : deleteIndex){
                         objectList.remove(index.intValue());
                     }

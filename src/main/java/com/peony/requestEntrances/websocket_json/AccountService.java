@@ -12,8 +12,11 @@ import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.entity.account.*;
 import com.peony.engine.framework.data.entity.session.ConnectionClose;
 import com.peony.engine.framework.data.entity.session.Session;
+import com.peony.engine.framework.net.HttpService;
 import com.peony.engine.framework.security.LocalizationMessage;
+import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.IdService;
+import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.server.SystemLog;
 import com.peony.engine.framework.tool.util.Util;
@@ -22,6 +25,7 @@ import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,6 +44,7 @@ public class AccountService {
     public AccountSysService accountSysService;
     private DataService dataService;
     private IdService idService;
+    private HttpService httpService;
 
     private EventService eventService;
 
@@ -49,7 +54,7 @@ public class AccountService {
 
     public JSONObject login(int opcode, JSONObject data, ChannelHandlerContext ctx, AttributeKey<String> sessionKey) throws Throwable{
         JSONObject req = (JSONObject)data;
-        String accountId = req.getString("accountId");
+        String accountId = getAccountId(req);
 
         /**
          * req中需要以下其它信息
@@ -117,7 +122,48 @@ public class AccountService {
         JSONObject ret = new JSONObject();
 //        ret.put("sessionId",loginSegment.getSession().getSessionId());
         ret.put("serverTime",System.currentTimeMillis());
+        ret.put("accountId",accountId);
+        ret.put("newUser",session.isNewUser()?1:0);
         return ret;
+    }
+
+    private String getAccountId(JSONObject req){
+        String code = req.getString("code");
+        if(code == null){
+            String accountId = req.getString("accountId");
+            return accountId;
+        }
+        //
+        String retStr = httpService.doGet(
+                "https://api.weixin.qq.com/sns/jscode2session?appid=wxe8eab333c3a39289&secret=696e63f98c2cf4f6a7b552a23a3a023d&js_code="+
+                        code+"&grant_type=authorization_code");
+        /**
+         * openid	string	用户唯一标识
+         session_key	string	会话密钥
+         unionid	string	用户在开放平台的唯一标识符，在满足 UnionID 下发条件的情况下会返回，详见 UnionID 机制说明。
+         errcode	number	错误码
+         errMsg	string	错误信息
+         */
+        JSONObject ret = JSONObject.parseObject(retStr);
+        log.info(retStr);
+        if(ret.containsKey("openid")){
+            String openId = ret.getString("openid");
+            DeviceAccount deviceAccount = dataService.selectObject(DeviceAccount.class,"deviceId=?",openId);
+            if(deviceAccount == null){ // 创建新的账号
+                deviceAccount = new DeviceAccount();
+                deviceAccount.setServerId(Server.getServerId());
+                deviceAccount.setDeviceId(openId);
+                deviceAccount.setAccountId(String.valueOf(idService.acquireLong(DeviceAccount.class)));
+                deviceAccount.setCreateTime(new Timestamp(System.currentTimeMillis()));
+//                log.info("new user register,device id = {},ip = {}",loginInfo.getDeviceId(),session.getIp());
+                dataService.insert(deviceAccount);
+            }
+            req.put("accountId",deviceAccount.getAccountId());
+            return deviceAccount.getAccountId();
+        }else{
+            log.error("code 2 session error! ret="+retStr);
+            throw new MMException("code 2 session error! ret="+retStr);
+        }
     }
 
 

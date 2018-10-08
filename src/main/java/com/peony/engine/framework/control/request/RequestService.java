@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -70,7 +71,7 @@ public class RequestService {
 //            }
 //        }
         // 命令
-        List<Class<?>> cmdClasses = ClassHelper.getClassListEndWith("com.farm.cmd","Cmd");
+        List<Class<?>> cmdClasses = ClassHelper.getClassListEndWith("com.myFruit.cmd","Cmd");
         for (Class<?> cls:cmdClasses) {
 
             Field[] fields = cls.getFields();
@@ -105,6 +106,7 @@ public class RequestService {
     }
 
     public <T> T handleRequest(int opcode, Object clientData, Session session) throws Exception{
+//        log.info("request:"+opcode+","+clientData);
         RequestHandler handler = handlerMap.get(opcode);
         if(handler == null){
             throw new MMException("can't find handler of "+opcode);
@@ -117,7 +119,12 @@ public class RequestService {
         long t1 = System.currentTimeMillis();
         while (true) {
             try {
-                ret = handler.handle(opcode, clientData, session);
+                if(clientData instanceof JSONObject){
+                    ret = handler.handleJson(opcode, (JSONObject)clientData, session);
+                }else{
+                    ret = handler.handle(opcode, clientData, session);
+                }
+
             } catch (MMException e) {
                 if (e.getExceptionType() == MMException.ExceptionType.TxCommitFail) {
                     if(count++<2) {
@@ -138,6 +145,7 @@ public class RequestService {
             }
             break;
         }
+//        log.info("response:"+opcode+","+ret);
         return ret;
     }
 
