@@ -29,13 +29,17 @@ public class FruitConfig {
             put(2,new FruitConfig(2,10,     14,     240,      -1, 1,3));
             put(3,new FruitConfig(3,12,     17,     480,      3,  2,4));
             put(4,new FruitConfig(4,15,     21,     720,      5,  4,6));
-            put(5,new FruitConfig(5,18,     35,     1080,      1,  8,8));
-            put(6,new FruitConfig(6,20,     48,     1800,      -1, 16,10));
-            put(7,new FruitConfig(7,24,    63,    3600,      -1, 32,12));
-            put(8,new FruitConfig(8,25,    85,    5400,      -1, 64,16));
-            put(9,new FruitConfig(9,30,    120,    7200,      2,  128,20));
+            put(5,new FruitConfig(5,18,     35,     1080,      1,  6,8));
+            put(6,new FruitConfig(6,20,     48,     1800,      -1, 9,10));
+            put(7,new FruitConfig(7,24,    63,    3600,      -1, 12,12));
+            put(8,new FruitConfig(8,25,    85,    5400,      -1, 15,16));
+            put(9,new FruitConfig(9,30,    120,    7200,      2,  18,20));
         }
     };
+
+    public static int randomFruit(){
+        return (int)(Math.random()*datas.size());
+    }
 
     public static List<FruitConfig> getUnlockedFruit(int level){
         List<FruitConfig> ret = unlockedByLevel.get(level);

@@ -40,7 +40,7 @@ public class TechnologyService {
                 if(zeng == 0){
                     return origal;
                 }
-                return origal/(zeng/100+1);
+                return (int)(origal/(zeng/(float)100+1));
             case YouYi:
                 zeng = TecConfig.getTecConfig(tecType,technology.getYouyi()).getValue();
                 if(zeng == 0){
@@ -52,7 +52,7 @@ public class TechnologyService {
                 if(zeng == 0){
                     return origal;
                 }
-                return origal*(zeng/100+1);
+                return (int)(origal*(zeng/(float)100+1));
         }
         throw new MMException("tecType error! tecType = {}",tecType);
 

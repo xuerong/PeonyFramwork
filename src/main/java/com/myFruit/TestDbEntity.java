@@ -1,4 +1,4 @@
-package com.appPacket;
+package com.myFruit;
 
 import com.peony.engine.framework.data.persistence.orm.annotation.Column;
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;

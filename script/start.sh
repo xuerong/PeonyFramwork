@@ -13,4 +13,5 @@ fi
 
 nohup sh zstart.sh  > server.log 2>&1 &
 
+tail -f server.log
 # sh tail.sh &

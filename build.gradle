@@ -81,6 +81,7 @@ dependencies {
     compile 'org.apache.httpcomponents:httpclient-cache:4.5.5'
     compile 'commons-codec:commons-codec:1.11'
     compile 'commons-logging:commons-logging:1.2'
+    compile 'com.jcraft:jsch:0.1.54'
 }
 
 buildscript {

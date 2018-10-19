@@ -165,7 +165,7 @@ public class WebSocketEntrance extends Entrance {
                         ToClientException toClientException = (ToClientException)e;
                         errCode = toClientException.getErrCode();
                         errMsg = toClientException.getMessage();
-                        log.error("catch to client exception errCode:{}[{}], errMsg:{}", requestService.getExceptionName(errCode),errCode, errMsg);
+                        log.error(" catch to client exception errCode:{}[{}], errMsg:{}",requestService.getExceptionName(errCode),errCode, errMsg);
                     }else{
                         log.error("handler msg exception:", e);
                     }

@@ -18,12 +18,14 @@ import com.myFruit.game.userBase.UserBaseService;
 import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.annotation.Updatable;
 import com.peony.engine.framework.control.event.EventData;
 import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.entity.account.Account;
 import com.peony.engine.framework.data.entity.account.sendMessage.SendMessageService;
 import com.peony.engine.framework.data.entity.session.Session;
+import com.peony.engine.framework.data.tx.Tx;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.IdService;
 import com.peony.engine.framework.server.SysConstantDefine;
@@ -51,6 +53,12 @@ public class FriendService {
     private SendMessageService sendMessageService;
     //
     List<String> sysUser = null;
+    volatile List<String> randomFriendUid = new ArrayList<>();
+
+
+    public List<String> getSysUser(){
+        return sysUser;
+    }
 
     public void init(){
         // 检测并创建两个系统玩家
@@ -86,11 +94,37 @@ public class FriendService {
         //
     }
 
+    @Gm(id="测试mb4")
+    public void gmTestMb4(String uid1,String uid2,String name){
+        UserFriend userFriend = new UserFriend();
+        userFriend.setUid(uid1);
+        userFriend.setFriendUid(uid2);
+        userFriend.setEnergy(MaxEnery);
+        userFriend.setLevel(1);
+        userFriend.setName(name);
+        userFriend.setWuxing(2);
+        dataService.insert(userFriend);
+    }
+    @Gm(id="测试mb-2")
+    public void gmTestMb4(String uid1,int index){
+        UserFriend userFriend = new UserFriend();
+        userFriend.setUid(uid1);
+        userFriend.setFriendUid(sysUser.get(index));
+        userFriend.setEnergy(MaxEnery);
+        userFriend.setLevel(1);
+        userFriend.setName(userBaseService.getUserBase(sysUser.get(2)).getName());
+        userFriend.setWuxing(2);
+        dataService.insert(userFriend);
+    }
+
     public void changeFriendInfo(UserBase userBase){
         try {
 
             List<UserFriend> userFriendList = dataService.selectList(UserFriend.class, "uid=?", userBase.getUid());
             for (UserFriend userFriend : userFriendList) {
+                if(sysUser.contains(userFriend.getFriendUid())){
+                    continue;
+                }
                 UserFriend _userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",userFriend.getFriendUid(),userFriend.getUid());
                 if(_userFriend != null){
                     _userFriend.setIcon(userBase.getIcon());
@@ -138,11 +172,60 @@ public class FriendService {
         }
         JSONObject ret = new JSONObject();
         ret.put("friends",array);
+        ret.put("randomFriendCount",getUserFriendInfo(session.getAccountId()).getRandomCount());
         return ret;
+    }
+
+    @Updatable(cycle = 10*60*1000,doOnStart = true)
+    public void updateForRandomFriendUid(int cycle){
+        List<Object[]> objectLists  = dataService.selectObjectListBySql("select uid from userbase where level>1");
+        List<String> randomFriendUid = new ArrayList<>();
+        for(Object[] objects : objectLists){
+            String uid = (String)objects[0];
+            if(sysUser.contains(uid)){
+                continue;
+            }
+            randomFriendUid.add(uid);
+        }
+        this.randomFriendUid = randomFriendUid;
+        logger.info("updateForRandomFriendUid end,count = {}",randomFriendUid.size());
     }
 
     @Request(opcode = Cmd.AddFriend)
     public JSONObject AddFriend(JSONObject req, Session session){
+        if(req.containsKey("random")){
+            if(randomFriendUid.size() == 0){
+                throw new ToClientException(SysConstantDefine.InvalidOperation,"random uid error");
+            }
+            UserFriendInfo userFriendInfo = getUserFriendInfo(session.getAccountId());
+            if(userFriendInfo.getRandomCount()>3){
+                throw new ToClientException(SysConstantDefine.InvalidOperation,"random uid count limit");
+            }
+
+            for(int i =0;i<5;i++){
+                String friendUid = randomFriendUid.get((int)(Math.random()*randomFriendUid.size()));
+                if(session.getAccountId().equals(friendUid)){
+                    continue;
+                }
+                UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getAccountId(),friendUid);
+                if(userFriend != null){
+                    logger.warn("has been friend1");
+                    continue;
+                }
+                UserFriend retUserFriend = createUserFriend(session.getAccountId(),friendUid);
+                userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",friendUid,session.getAccountId());
+                if(userFriend != null){
+                    logger.error("has been friend2");
+                    return retUserFriend.toJson();
+                }
+                UserFriend friendFriend =  createUserFriend(friendUid,session.getAccountId());
+                sendMessageService.sendMessage(friendUid,Cmd.Push_NewFriendByShare,friendFriend.toJson());
+                userFriendInfo.setRandomCount(userFriendInfo.getRandomCount()+1);
+                dataService.update(userFriendInfo);
+                return retUserFriend.toJson();
+            }
+            throw new ToClientException(SysConstantDefine.InvalidOperation,"random uid error");
+        }
         String friendUid = req.getString("friendUid");
         if(session.getAccountId().equals(friendUid)){
             return new JSONObject();
@@ -156,7 +239,7 @@ public class FriendService {
         userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",friendUid,session.getAccountId());
         if(userFriend != null){
             logger.error("has been friend2");
-            return new JSONObject();
+            return retUserFriend.toJson();
         }
         UserFriend friendFriend =  createUserFriend(friendUid,session.getAccountId());
         sendMessageService.sendMessage(friendUid,Cmd.Push_NewFriendByShare,friendFriend.toJson());
@@ -254,6 +337,25 @@ public class FriendService {
         userFriend.setWuxing(userBase.getShuXiang());
         dataService.insert(userFriend);
         return userFriend;
+    }
+
+
+    public UserFriendInfo getUserFriendInfo(String uid){
+        UserFriendInfo userFriendInfo = dataService.selectObject(UserFriendInfo.class,"uid=?",uid);
+        if(userFriendInfo == null){
+            userFriendInfo = createUserFriendInfo(uid);
+        }
+        return userFriendInfo;
+    }
+    @Tx
+    public UserFriendInfo createUserFriendInfo(String uid){
+        UserFriendInfo userFriendInfo = dataService.selectObject(UserFriendInfo.class,"uid=?",uid);
+        if(userFriendInfo == null){
+            userFriendInfo = new UserFriendInfo();
+            userFriendInfo.setUid(uid);
+            dataService.insert(userFriendInfo);
+        }
+        return userFriendInfo;
     }
 
 }

@@ -167,7 +167,7 @@ public final class Util {
             }
         }
         if(ip.equals("")){
-            throw new MMException("get ip file");
+            throw new MMException("get ip fail");
         }
         return ip;
     }

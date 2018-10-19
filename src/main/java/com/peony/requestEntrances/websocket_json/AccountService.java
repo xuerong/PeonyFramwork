@@ -131,6 +131,9 @@ public class AccountService {
         String code = req.getString("code");
         if(code == null){
             String accountId = req.getString("accountId");
+            if(accountId.equals("10000000100001") || accountId.equals("10000000100003")){
+                return String.valueOf(idService.acquireLong(DeviceAccount.class));
+            }
             return accountId;
         }
         //

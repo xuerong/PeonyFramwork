@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.myFruit.cmd.Cmd;
 import com.myFruit.game.fruit.FruitState;
 import com.myFruit.game.fruit.UserFruit;
+import com.myFruit.game.task.TaskService;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.data.DataService;
@@ -19,6 +20,7 @@ import java.util.List;
 public class SkillService {
 
     private DataService dataService;
+    private TaskService taskService;
 
 
     @Request(opcode = Cmd.SkillInfo)
@@ -45,6 +47,8 @@ public class SkillService {
         userSkill.setSpeedBeginTime(now);
         userSkill.setSpeedEndTime(now+10*60*1000);
         dataService.update(userSkill);
+        // 任务
+        taskService.triggerAllFruit(5,session.getAccountId(),1,0);
         return userSkill.toJson();
     }
 
@@ -57,8 +61,9 @@ public class SkillService {
             throw new ToClientException(SysConstantDefine.InvalidOperation,"fertilizer > 0");
         }
         //
-        userSkill.setFertilizer(userSkill.getFertilizer()+1);
+        userSkill.setFertilizer(userSkill.getFertilizer()+3);
         dataService.update(userSkill);
+
         return userSkill.toJson();
     }
     @Tx
@@ -70,8 +75,9 @@ public class SkillService {
             throw new ToClientException(SysConstantDefine.InvalidOperation,"speedPower > 0");
         }
         //
-        userSkill.setSpeedPower(userSkill.getSpeedPower()+1);
+        userSkill.setSpeedPower(userSkill.getSpeedPower()+3);
         dataService.update(userSkill);
+
         return userSkill.toJson();
     }
 

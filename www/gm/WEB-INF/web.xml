@@ -7,7 +7,7 @@
 
     <servlet>
         <servlet-name>gmServlet</servlet-name>
-        <servlet-class>com.peony.engine.framework.control.gm.GmSevlet</servlet-class>
+        <servlet-class>com.peony.engine.framework.control.gm.GmServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
     <!-- ... -->

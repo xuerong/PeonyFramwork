@@ -478,6 +478,11 @@ public class DataService {
         DatabaseHelper.updateForCloseConn(sql, params);
     }
 
+    public List<Object[]> selectObjectListBySql(String sql, Object... params) {
+        monitorService.addMonitorNum(MonitorNumType.ExecuteSelectSqlNum, 1);
+        return DatabaseHelper.queryArrayList(sql, params);
+    }
+
 
     /**
      * 删除一个实体,condition必须是主键

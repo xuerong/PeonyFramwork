@@ -42,4 +42,12 @@ public class Cmd {
     // 推送 20071
     public static final int Push_UnlockByShare = 20071; // 邀请到新玩家解锁果实的推送
     public static final int Push_NewFriendByShare = 20072; // 邀请到新玩家的推送
+
+    // rank
+    public static final int GetGlobalRank = 20081; // 全服排行
+
+    // task
+    public static final int GetTaskInfo = 20091; // 任务信息
+    public static final int AwarkTask = 20092; // 领取任务
+    public static final int PushTask = 20093; // 推送任务
 }

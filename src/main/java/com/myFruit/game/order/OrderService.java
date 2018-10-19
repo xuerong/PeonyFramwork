@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.myFruit.cmd.Cmd;
 import com.myFruit.cmd.config.FruitConfig;
 import com.myFruit.game.bag.BagService;
+import com.myFruit.game.task.TaskService;
 import com.myFruit.game.tec.TecType;
 import com.myFruit.game.tec.TechnologyService;
 import com.myFruit.game.userBase.UserBaseService;
@@ -26,6 +27,7 @@ public class OrderService {
     private UserBaseService userBaseService;
     private BagService bagService;
     private TechnologyService technologyService;
+    private TaskService taskService;
 
     @EventListener(event = SysConstantDefine.Event_AccountLogin)
     public void loginEvent(EventData eventData){
@@ -40,7 +42,7 @@ public class OrderService {
                 order.setOrderId(i);
                 order.setItems("");
                 dataService.insert(order);
-                refreshOrder(order);
+                refreshOrder(order,i==0?true:false);
             }
         }
     }
@@ -80,6 +82,8 @@ public class OrderService {
         int exp =userBaseService.addExp(session.getAccountId(),5);
         //
         refreshOrder(order);
+        // 任务
+        taskService.triggerAllFruit(4,session.getAccountId(),1,0);
         //
         JSONObject ret = new JSONObject();
         ret.put("gold",gold);
@@ -89,8 +93,10 @@ public class OrderService {
         ret.put("exp",exp);
         return ret;
     }
-
     private void refreshOrder(Order order){
+        refreshOrder(order,false);
+    }
+    private void refreshOrder(Order order,boolean init){
         // 从已经开启的水果中随机
         // 水果种类百分比：20% 30% 30% 20%
         // 个数:3-10,2-9,1-8,1-7  个数溢价对应个数的%
@@ -114,12 +120,15 @@ public class OrderService {
                 typeCount = 1;
             }
         }
+        if(init){
+            typeCount = 1;
+        }
         // 个数，价格
         Map<Integer,Integer> countMap = new HashMap<>();
         int oriGold = 0;
         int allCount = 0;
         for(int i=0;i<typeCount;i++){
-            FruitConfig fruitConfig = unlocked.remove(random.nextInt(unlocked.size()));
+            FruitConfig fruitConfig = unlocked.remove(init?0:random.nextInt(unlocked.size()));
             int itemId = fruitConfig.getId();
             int count = 1;
             switch (typeCount){
@@ -127,6 +136,9 @@ public class OrderService {
                 case 2:count = random.nextInt(8)+2;break;
                 case 3:count = random.nextInt(8)+1;break;
                 case 4:count = random.nextInt(7)+1;break;
+            }
+            if(init){
+                count = 2;
             }
             countMap.put(itemId,count);
             oriGold+=fruitConfig.getSellGold()*count;

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="3.0"
+         >
+
+    <servlet>
+        <servlet-name>deployServlet</servlet-name>
+        <servlet-class>com.peony.platform.deploy.DeployServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+    <!-- ... -->
+    <servlet-mapping>
+        <servlet-name>deployServlet</servlet-name>
+        <url-pattern>/deployServlet</url-pattern>
+    </servlet-mapping>
+
+    <filter>
+        <filter-name>deployFilter</filter-name>
+        <filter-class>com.peony.platform.deploy.DeployFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>deployFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <welcome-file-list>
+        <welcome-file>login.html</welcome-file>
+        <welcome-file>login.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>

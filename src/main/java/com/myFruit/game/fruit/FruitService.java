@@ -6,6 +6,7 @@ import com.myFruit.cmd.config.FruitConfig;
 import com.myFruit.cmd.config.PosConfig;
 import com.myFruit.game.bag.BagService;
 import com.myFruit.game.skill.SkillService;
+import com.myFruit.game.task.TaskService;
 import com.myFruit.game.tec.TecType;
 import com.myFruit.game.tec.TechnologyService;
 import com.myFruit.game.userBase.ShuXiang;
@@ -36,6 +37,7 @@ public class FruitService {
     private TechnologyService technologyService;
     private SkillService skillService;
     private SendMessageService sendMessageService;
+    private TaskService taskService;
 
     @EventListener(event = SysConstantDefine.Event_AccountRegister)
     public void Event_AccountRegister(EventData eventData) {
@@ -227,7 +229,9 @@ public class FruitService {
                 useTime*=2;
             }
         }
+        System.out.println("useTime1:"+useTime);
         useTime = technologyService.calValue(session.getAccountId(),TecType.JiaSu,useTime);
+        System.out.println("useTime2:"+useTime);
         long now = System.currentTimeMillis();
         userFruit.setBeginTime(now);
         userFruit.setFinishTime(now+useTime);
@@ -265,6 +269,8 @@ public class FruitService {
         // 经验
         // 经验
         int exp =userBaseService.addExp(session.getAccountId(),FruitConfig.datas.get(userFruit.getItemId()).getExp());
+        // 任务
+        taskService.triggerAllFruit(2,session.getAccountId(),addNum,itemId);
         // 设置果实
         userFruit.setState(FruitState.Idle.getId());
         userFruit.setFertilizer(0);
@@ -307,6 +313,8 @@ public class FruitService {
         userFruit.setFruitNum(userFruit.getFruitNum()*2);
         userFruit.setFertilizer(1);
         dataService.update(userFruit);
+        // 任务
+        taskService.triggerAllFruit(6,session.getAccountId(),1,0);
         //
         JSONObject ret = new JSONObject();
         ret.put("fertilizer",fertilizer);

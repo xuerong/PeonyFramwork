@@ -1,6 +1,6 @@
 package com.peony.engine.framework.data.tx;
 
-import com.appPacket.TestDbEntity;
+import com.myFruit.TestDbEntity;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.control.netEvent.NetEventService;
@@ -387,49 +387,52 @@ public class AsyncService {
     @Tx
     @Gm(id="testUpdateForList")
     public void testUpdateForList(String uid){
+        int testKey1 = 10,testKey2=11;
         DataService dataService = BeanHelper.getServiceBean(DataService.class);
-        Random random = new Random();
-        for(int i = 0;i<1;i++){
-            TestDbEntity testDbEntity = new TestDbEntity();
-            testDbEntity.setUid(uid);
-            testDbEntity.setAaa(random.nextInt(50)+i+"");
-            testDbEntity.setBbb(random.nextInt(300)+"");
-            dataService.insert(testDbEntity);
-        }
-        List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"uid=?",uid);
-        System.out.println(testDbEntities.size());
-
-        for(int i = 0;i<1;i++){
-            TestDbEntity testDbEntity = new TestDbEntity();
-            testDbEntity.setUid(uid);
-            //sd
-            testDbEntity.setAaa(random.nextInt(50)+i+"k");
-            testDbEntity.setBbb(random.nextInt(300)+"");
-            dataService.insert(testDbEntity);
-        }
-        testDbEntities = dataService.selectList(TestDbEntity.class,"uid=?",uid);
-        System.out.println(testDbEntities.size());
-//        System.out.println(testDbEntities.size()+"    "+testDbEntities);
-//        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
-//        System.out.println(testDbEntities.size()+"    "+testDbEntities);
-//        if(testDbEntities.size()>5){
-//            TestDbEntity testDbEntity = testDbEntities.get(4);
-//            testDbEntity.setAaa(11+"");
-//            dataService.update(testDbEntity);
-//            testDbEntity = testDbEntities.get(6);
-//            testDbEntity.setAaa(11+"");
-//            dataService.update(testDbEntity);
+//        Random random = new Random();
+//        for(int i = 0;i<1000;i++){
+//            TestDbEntity testDbEntity = new TestDbEntity();
+//            testDbEntity.setUid("testDbEntity"+i);
+//            testDbEntity.setAaa(random.nextInt(50)+"");
+//            testDbEntity.setBbb(random.nextInt(300)+"");
+//            dataService.insert(testDbEntity);
+//        }
+        List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",testKey2+"");
+        System.out.println(testKey2+":"+testDbEntities.size()+"    "+testDbEntities);
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",testKey1+"");
+        System.out.println(testKey1+":"+testDbEntities.size()+"    "+testDbEntities);
+        if(testDbEntities.size()>5){
+            TestDbEntity testDbEntity = testDbEntities.get(4);
+            testDbEntity.setAaa(testKey2+"");
+            System.out.println("change testDbEntity:"+testDbEntity);
+            dataService.update(testDbEntity);
+            testDbEntity = testDbEntities.get(6);
+            testDbEntity.setAaa(testKey2+"");
+            System.out.println("change testDbEntity:"+testDbEntity);
+            dataService.update(testDbEntity);
 //            testDbEntity = testDbEntities.get(8);
-//            testDbEntity.setAaa(11+"");
+//            testDbEntity.setAaa(testKey2+"");
 //            dataService.update(testDbEntity);
 //            testDbEntity = testDbEntities.get(10);
-//            testDbEntity.setAaa(11+"");
+//            testDbEntity.setAaa(testKey2+"");
 //            dataService.update(testDbEntity);
-//        }
-//        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
-//        System.out.println(testDbEntities.size()+"    "+testDbEntities);
-//        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",10+"");
-//        System.out.println(testDbEntities.size()+"    "+testDbEntities);
+        }
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",11+"");
+        System.out.println(testKey2+":"+testDbEntities.size()+"    "+testDbEntities);
+        testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",testKey1+"");
+        System.out.println(testKey1+":"+testDbEntities.size()+"    "+testDbEntities);
+    }
+    @Gm(id="insertUpdateForList")
+    public void insertUpdateForList(String uid) {
+        DataService dataService = BeanHelper.getServiceBean(DataService.class);
+        Random random = new Random();
+        for(int i = 0;i<1000;i++){
+            TestDbEntity testDbEntity = new TestDbEntity();
+            testDbEntity.setUid(uid+"--"+i);
+            testDbEntity.setAaa(random.nextInt(20)+"");
+            testDbEntity.setBbb(random.nextInt(300)+"");
+            dataService.insert(testDbEntity);
+        }
     }
 
     private String getValueKey(String[] fieldNames,Map<String,Method> getMethodMap,Object object){

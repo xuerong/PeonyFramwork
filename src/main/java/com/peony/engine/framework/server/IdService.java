@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -34,6 +35,7 @@ public class IdService {
     private ConcurrentHashMap<Class,IdSegmentLong> longIdSegmentMap;
     private static int pow = 13;
     private long preByServerId = 0; // 最大支持 long.max/(10^pow)
+    private Random random = new Random();
 
 
     public void init() {
@@ -69,19 +71,7 @@ public class IdService {
      */
     public long acquireLong(Class<?> cls){
         try {
-            IdSegmentLong idSegmentLong = longIdSegmentMap.get(cls);
-            if (idSegmentLong == null) {
-                idSegmentLong = new IdSegmentLong(cls);
-                IdSegmentLong old = longIdSegmentMap.putIfAbsent(cls, idSegmentLong);
-                if (old != null) {
-                    idSegmentLong = old;
-                } else {
-                    IdGenerator idGenerator = new IdGenerator();
-                    idGenerator.setClassName(cls.getName());
-                    idGenerator.setId(idSegmentLong.getIdMark().get());
-                    dataService.insert(idGenerator);
-                }
-            }
+            IdSegmentLong idSegmentLong = getIdSegmentLong(cls);
             long result = idSegmentLong.acquire();
             IdGenerator idGenerator = new IdGenerator();
             idGenerator.setClassName(cls.getName());
@@ -91,6 +81,38 @@ public class IdService {
         }catch (Throwable e){
             throw new MMException("acquireLong error",e);
         }
+    }
+
+    public long getCurrentValue(Class<?> cls){
+        try {
+            IdSegmentLong idSegmentLong = getIdSegmentLong(cls);
+            return idSegmentLong.get();
+        }catch (Throwable e){
+            throw new MMException("acquireLong error",e);
+        }
+    }
+
+    public long randomHaveValue(Class<?> cls){
+        long max = getCurrentValue(cls);
+        long min = preByServerId+0;
+        return (long)(Math.random()*(max-min))+min;
+    }
+
+    private IdSegmentLong getIdSegmentLong(Class<?> cls){
+        IdSegmentLong idSegmentLong = longIdSegmentMap.get(cls);
+        if (idSegmentLong == null) {
+            idSegmentLong = new IdSegmentLong(cls);
+            IdSegmentLong old = longIdSegmentMap.putIfAbsent(cls, idSegmentLong);
+            if (old != null) {
+                idSegmentLong = old;
+            } else {
+                IdGenerator idGenerator = new IdGenerator();
+                idGenerator.setClassName(cls.getName());
+                idGenerator.setId(idSegmentLong.getIdMark().get());
+                dataService.insert(idGenerator);
+            }
+        }
+        return idSegmentLong;
     }
 
     public void destroy(){
@@ -116,6 +138,10 @@ public class IdService {
         public long acquire(){
             long id = idMark.getAndIncrement();
             return id;
+        }
+
+        public long get(){
+            return idMark.get();
         }
 
         public Class getCls() {

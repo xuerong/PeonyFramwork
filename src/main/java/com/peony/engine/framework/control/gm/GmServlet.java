@@ -17,8 +17,8 @@ import java.util.*;
 /**
  * Created by a on 2016/9/29.
  */
-public class GmSevlet extends HttpServlet {
-    private static final Logger log = LoggerFactory.getLogger(GmSevlet.class);
+public class GmServlet extends HttpServlet {
+    private static final Logger log = LoggerFactory.getLogger(GmServlet.class);
     private GmService gmService;
     private String gmJsonStr;
 

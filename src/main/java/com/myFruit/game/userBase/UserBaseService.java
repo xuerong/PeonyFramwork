@@ -6,6 +6,7 @@ import com.myFruit.cmd.config.ExpConfig;
 import com.myFruit.cmd.event.EventType;
 import com.myFruit.cmd.event.eventData.LevelUpEventData;
 import com.myFruit.game.friend.FriendService;
+import com.myFruit.game.rank.RankService;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.event.EventService;
@@ -29,6 +30,7 @@ public class UserBaseService {
     private DataService dataService;
     private EventService eventService;
     private FriendService friendService;
+    private RankService rankService;
 
     public void init(){
 //        UserBase userBase = new UserBase();
@@ -51,6 +53,7 @@ public class UserBaseService {
                     userBase.getName()!=null && !userBase.getName().equals(oldName)){
                 // 通知好友icon的修改
                 friendService.changeFriendInfo(userBase);
+                rankService.addNewUserbase(userBase);
             }
             // TODO 现在每次登录都会更新，后续可以优化
             dataService.update(userBase);
@@ -145,10 +148,12 @@ public class UserBaseService {
             userBase.setUid(uid);
             userBase.setLevel(1);
             userBase.setExp(0);
-            userBase.setGold(200);
+            userBase.setGold(100);
             userBase.setShuXiang((int)(Math.random()*5)+1);
             userBase.setName("default");
+            userBase.setIcon("default");
             dataService.insert(userBase);
+            rankService.addNewUserbase(userBase);
         }
         return userBase;
     }
