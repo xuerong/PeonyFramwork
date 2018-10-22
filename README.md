@@ -16,7 +16,7 @@
 
 # 基本使用
 以下以框架提供的消息入口WebSocketEntrance和json协议为例，实现一个简单的背包功能
-####一. 定义一个背包存储类DBEntity
+#### 一. 定义一个背包存储类DBEntity
 ```$xslt
 @DBEntity(tableName = "bag",pks = {"uid","itemId"})
 public class BagItem implements Serializable {
@@ -31,7 +31,7 @@ public class BagItem implements Serializable {
 pks对应表的主键，可以为多个。
 * @DBEntity声明的类必须继承Serializable接口，并对参数实现get set方法
 * 表不用手动创建，系统启动时会自动在数据库中创建，大多数的修改也会进行同步，所以不要声明不需要存储数据库的字段
-####二. 定义一个背包处理服务类Service
+#### 二. 定义一个背包处理服务类Service
 ```$xslt
 @Service
 public class BagService {
@@ -100,5 +100,5 @@ Session中有玩家基本信息，包括玩家账号`session.getAccountId()`
 可以获取玩家的背包列表，而`BagItem bagItem =  dataService.selectObject(BagItem.class,"uid=? and itemId=?",uid,itemId);`
 则可以获取背包中具体某个物品的信息
 * 注解@Tx可以确保整个方法的执行在服务层事务中，确保业务失败的数据回滚和并发情况下的数据一致问题
-####三. 前端调用
+#### 三. 前端调用
 
