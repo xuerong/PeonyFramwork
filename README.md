@@ -102,8 +102,9 @@ Session中有玩家基本信息，包括玩家账号`session.getAccountId()`
 则可以获取背包中具体某个物品的信息
 * 注解@Tx可以确保整个方法的执行在服务层事务中，确保业务失败的数据回滚和并发情况下的数据一致问题
 #### 三. 前端调用
+* 本地启动服务器
 * 打开websocket在线工具：http://www.blue-zero.com/WebSocket/
-* 在地址输入框中输入：ws://localhost:8002/websocket
+* 在地址输入框中输入：ws://localhost:8002/websocket，点击连接。如果出现"连接已建立，正在等待数据..."，说明websocket连接成功
 * 在发送消息框中输入登录消息如下：
 ```$xslt
 {
