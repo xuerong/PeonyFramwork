@@ -15,7 +15,8 @@
 -------------------------------------------------------------<br>
 
 # 基本使用
-以下以框架提供的消息入口WebSocketEntrance和json协议为例，实现一个简单的背包功能
+以下以框架提供的消息入口WebSocketEntrance和json协议为例，实现一个简单的背包功能<br>
+**下面代码均在工程中，如果想按步骤重复，请先删除工程中已经存在的，否则会产生冲突**
 #### 一. 定义一个背包存储类DBEntity
 ```$xslt
 @DBEntity(tableName = "bag",pks = {"uid","itemId"})
@@ -40,7 +41,7 @@ public class BagService {
     /**
      * 协议，获取背包列表
      */
-    @Request(opcode = 100001)
+    @Request(opcode = Cmd.BagInfo)
     public JSONObject BagInfo(JSONObject req, Session session) {
         List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",session.getAccountId());
         JSONObject ret = new JSONObject();
@@ -93,7 +94,7 @@ public class BagService {
 * 注解@Service声明一个类为一个服务类
 * 声明了数据服务类DataService，该类中提供了对数据操作的所有接口。
 引用其他服务类时，声明即可使用，系统启动时会进行依赖注入
-* @Request声明一个方法为处理客户端协议的方法，其中opcode为协议号，因为使用的是json协议，
+* @Request声明一个方法为处理客户端协议的方法，其中opcode为协议号(整型)，因为使用的是json协议，
 参数类型必须为JSONObject和Session，返回值类型为JSONObject。其中参数JSONObject为客户端发送过来的消息
 Session中有玩家基本信息，包括玩家账号`session.getAccountId()`
 * 代码`List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",session.getAccountId());`
@@ -101,4 +102,46 @@ Session中有玩家基本信息，包括玩家账号`session.getAccountId()`
 则可以获取背包中具体某个物品的信息
 * 注解@Tx可以确保整个方法的执行在服务层事务中，确保业务失败的数据回滚和并发情况下的数据一致问题
 #### 三. 前端调用
-
+* 打开websocket在线工具：http://www.blue-zero.com/WebSocket/
+* 在地址输入框中输入：ws://localhost:8002/websocket
+* 在发送消息框中输入登录消息如下：
+```$xslt
+{
+    "id": "102", 
+    "data": {
+        "accountId": "test1"
+    }
+}
+```
+其中，id为登录消息协议号，accountId为登录的账号<br>
+点击发送，可得到登录成功的返回：
+```$xslt
+{
+    "data": {
+        "accountId": "test2", 
+        "newUser": 1, 
+        "serverTime": 1540206073929
+    }, 
+    "id": 102
+}
+```
+其中newUser标识为新用户，serverTime为服务器时间，id和accountId同上
+* 登录完成后，就可以进行背包信息的获取了，发送消息
+```$xslt
+{
+    "id": "20011", 
+    "data": {
+        
+    }
+}
+```
+可收到消息：
+```$xslt
+{
+    "data": {
+        "bagItems": [ ]
+    }, 
+    "id": 20011
+}
+```
+由于背包中为空，所以bagItems返回一个空数据，玩家可自行实现一个添加物品到背包的协议进行测试
