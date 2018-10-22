@@ -1,6 +1,8 @@
 #!/bin/bash
 sh shutdown.sh
 
+pidKeeper=pidKeeper
+
 date=`date '+%Y-%m-%d_%H_%M_%S'`
 
 if [ ! -d "logs" ]; then
@@ -12,6 +14,11 @@ if [ -f "server.log" ]; then
 fi
 
 nohup sh zstart.sh  > server.log 2>&1 &
+
+
+echo $! > "$pidKeeper"
+
+sleep 0.5
 
 tail -f server.log
 # sh tail.sh &

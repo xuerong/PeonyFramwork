@@ -354,7 +354,7 @@ public class AsyncService {
                                 if(oldListKey != null){
                                     boolean remove = updateCacheList(asyncData, oldListKey,2);
                                     if (remove) {
-                                        entry.getValue().remove(valueKey);
+                                        entry.getValue().remove(oldValueKey);
                                     }
                                 }
                                 // 添加新的

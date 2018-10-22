@@ -2,10 +2,8 @@ package com.peony.engine.framework.server.configure;
 
 import com.peony.engine.framework.control.netEvent.ServerInfo;
 import com.peony.engine.framework.data.cache.CacheCenter;
-import com.peony.engine.framework.data.entity.account.sendMessage.SendMessageGroupStorage;
 import com.peony.engine.framework.data.persistence.dao.DataAccessor;
 import com.peony.engine.framework.data.persistence.ds.DataSourceFactory;
-import com.peony.engine.framework.data.sysPara.SysParaStorage;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.ServerType;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
@@ -45,8 +43,6 @@ public final class EngineConfigure {
         configureBeans.put(DataSourceFactory.class,getBeanFromConfigure("frameBean.dataSourceFactory"));
         configureBeans.put(DataAccessor.class,getBeanFromConfigure("frameBean.dataAccessor"));
         configureBeans.put(CacheCenter.class,getBeanFromConfigure("frameBean.cacheCenter"));
-        configureBeans.put(SysParaStorage.class,getBeanFromConfigure("frameBean.sysParaStorage"));
-        configureBeans.put(SendMessageGroupStorage.class,getBeanFromConfigure("frameBean.sendMessageGroupStorage"));
 
         defaultRequestController="DefaultRequestController";
         // 初始化入口

@@ -7,8 +7,10 @@ import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.security.MonitorService;
 import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.SysConstantDefine;
+import com.peony.engine.framework.tool.helper.ConfigHelper;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 向NetEvent同步注册mainserver
@@ -23,6 +25,10 @@ public class NodeServerService {
     private DataService dataService;
 
     public void init(){
+        Map<String, String> mainServerMap = ConfigHelper.getMap("mainServer");
+        if(!mainServerMap.get("mainServer.use").trim().equals("true")){
+            return;
+        }
         ServerInfo mainServerInfo = Server.getEngineConfigure().getMainServerInfo();
         netEventService.registerServerSyn(mainServerInfo.getId(),mainServerInfo.getHost(),mainServerInfo.getNetEventPort());
         List<ServerInfo> serverInfoList = getServerInfoList(mainServerInfo.getId());

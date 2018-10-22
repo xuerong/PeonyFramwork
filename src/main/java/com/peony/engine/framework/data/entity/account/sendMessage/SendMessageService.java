@@ -45,20 +45,14 @@ public class SendMessageService {
      * 需要根据使用的协议、传输方式,在创建session的时候设置
      */
     private ConcurrentHashMap<String,MessageSender> messageSenderMap = new ConcurrentHashMap<>();
-    /**
-     * 组,一个组中可以存在多个accountId,accountId可以不在线
-     */
-    public ConcurrentHashMap<String,Set<String>> groupMap = new ConcurrentHashMap<>();
 
     private AccountSysService accountSysService;
     private RemoteCallService remoteCallService;
-    private SendMessageGroupStorage sendMessageGroupStorage;
     private LockerService lockerService;
     private RequestService requestService;
 
     public void init(){
-        Map<String,Set<String>> map = sendMessageGroupStorage.getAllSendMessageGroup();
-        groupMap.putAll(map);
+
     }
     @EventListener(event = SysConstantDefine.Event_AccountLogin)
     public void login(EventData data){
@@ -136,44 +130,6 @@ public class SendMessageService {
             log.error("broadcast message fail ,opcode = " + opcode+",e = "+e.getMessage()+",accountId+"+accountId);
         }
     }
-    public void sendGroupMessage(String groupId,int opcode,byte[] data){
-        Set<String> group = groupMap.get(groupId);
-        if(group == null){
-            log.warn("group is not exist ,groupId = "+groupId);
-            return;
-        }
-        for(String accountId: group){
-            MessageSender messageSender = messageSenderMap.get(accountId);
-            if(messageSender != null){
-                doSendMessage(accountId,messageSender,opcode,data);
-            }
-        }
-    }
-    // 对group的操作
-    @Tx(lock = true,lockClass = {SendMessageGroup.class})
-    public void putIntoGroup(String groupId,String accountId){
-        Set<String> group = groupMap.get(groupId);
-        if(group == null){
-            groupMap.putIfAbsent(groupId, new HashSet<String>());
-            group = groupMap.get(groupId);
-            sendMessageGroupStorage.addGroup(groupId);
-        }
-        group.add(accountId);
-        sendMessageGroupStorage.addAccount(groupId,accountId);
-    }
-    @Tx(lock = true,lockClass = {SendMessageGroup.class})
-    public void removeOutGroup(String groupId,String accountId){
-        Set<String> group = groupMap.get(groupId);
-        if(group != null){
-            group.remove(accountId);
-            sendMessageGroupStorage.removeAccount(groupId,accountId);
-        }else{
-            log.warn("group is not exist while remove account ,groupId = {},accountId = {}",groupId,accountId);
-        }
-    }
-    @Tx(lock = true,lockClass = {SendMessageGroup.class})
-    public void removeGroup(String groupId){
-        groupMap.remove(groupId);
-        sendMessageGroupStorage.removeGroup(groupId);
-    }
+
+
 }

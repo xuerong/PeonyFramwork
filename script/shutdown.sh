@@ -1,9 +1,21 @@
 #!/bin/bash
 
 main=com.peony.engine.framework.server.Server
+pidKeeper=pidKeeper
 
 #kill
-pid=`ps -ef |grep $main | grep -v grep | awk '{print $2}'`
+#pid=`ps -ef |grep $main | grep -v grep | awk '{print $2}'`
+
+
+if [  -f "$pidKeeper" ]
+then
+ pid=$(cat "$pidKeeper")
+ rm "$pidKeeper"
+ echo $pid$pidKeeper
+fi
+
+
+
 if [[ -z $pid ]] ; then
     echo "server is not running before"
 else
@@ -13,7 +25,7 @@ else
     for i in {1..1800}
     do
        sleep 1
-       pid=`ps -ef |grep $main|grep -v grep | awk '{print $2}'`
+       pid=`ps -ef |grep $main|grep $pid |grep -v grep | awk '{print $2}'`
        if [[ -z $pid ]] ; then
             echo "server shut down !!!"
             break
@@ -23,7 +35,7 @@ else
     done
 fi
 
-pid=`ps -ef |grep $main|grep -v grep|awk '{print $2}'`
+pid=`ps -ef |grep $main|grep $pid |grep -v grep|awk '{print $2}'`
 if [[ -z $pid ]] ; then
     echo "--"
 else
