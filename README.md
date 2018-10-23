@@ -33,6 +33,13 @@ public class BagItem implements Serializable {
     private int itemId; // 物品id
     private int num; // 物品数量
 
+    public JSONObject toJson(){
+        JSONObject ret = new JSONObject();
+        ret.put("itemId",itemId);
+        ret.put("num",num);
+        return ret;
+    }
+
     // get set 方法
 }
 ```
