@@ -1,6 +1,6 @@
 # PeonyFramwork
 一个优秀的java后端框架，上手简单，使用灵活方便。可以应用于网络游戏，网络应用的服务端开发。目前已经应用于10余款网络游戏的服务端开发，并正在被更过的游戏使用<br>
-__该框架实现的目标包括：__
+#### 该框架实现的目标包括：
 1. 最大限度的减少和业务逻辑无关的工作，确保开发者把更多的精力放在业务逻辑上
 2. 组件式开发，更多的通用型功能性组件，以service的方式复用
 3. 容易上手，简单的了解之后即可应用于生产，对技术积累较少的企业，创业团队，学生党，独立开发者更加友好
@@ -21,8 +21,11 @@ __该框架实现的目标包括：__
 
 # 基本使用
 以下以框架提供的消息入口WebSocketEntrance和json协议为例，实现一个简单的背包功能<br>
-**下面代码均在工程中，如果想按步骤重复，请先删除工程中已经存在的，否则会产生冲突**
-#### 一. 定义一个背包存储类DBEntity
+#### 一、创建应用包
+1. 在com包(位于src/main/java下面)下面创建应用包myApp
+2. 打开resources（位于src/main下面）的应用配置文件mmserver.properties，修改appPackage属性的值为com.myApp
+3. 在com.myApp下面创建背包功能的包bag
+#### 二. 在bag包下面定义一个背包存储类"DBEntity"，如下：
 ```$xslt
 @DBEntity(tableName = "bag",pks = {"uid","itemId"})
 public class BagItem implements Serializable {
@@ -33,11 +36,10 @@ public class BagItem implements Serializable {
     // get set 方法
 }
 ```
-* 注解@DBEntity声明一个类为背包类，对应数据库中一张表，其参数tableName对应表名，
-pks对应表的主键，可以为多个。
+* 注解@DBEntity声明一个类为背包类，对应数据库中一张表，其参数tableName对应表名，pks对应表的主键，可以为多个。
 * @DBEntity声明的类必须继承Serializable接口，并对参数实现get set方法
 * 表不用手动创建，系统启动时会自动在数据库中创建，大多数的修改也会进行同步，所以不要声明不需要存储数据库的字段
-#### 二. 定义一个背包处理服务类Service
+#### 三. 在bag包下面定义一个背包处理服务类"Service"，如下：
 ```$xslt
 @Service
 public class BagService {
@@ -46,7 +48,7 @@ public class BagService {
     /**
      * 协议，获取背包列表
      */
-    @Request(opcode = Cmd.BagInfo)
+    @Request(opcode = 20011)
     public JSONObject BagInfo(JSONObject req, Session session) {
         List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",session.getAccountId());
         JSONObject ret = new JSONObject();
@@ -102,11 +104,8 @@ public class BagService {
 * @Request声明一个方法为处理客户端协议的方法，其中opcode为协议号(整型)，因为使用的是json协议，
 参数类型必须为JSONObject和Session，返回值类型为JSONObject。其中参数JSONObject为客户端发送过来的消息
 Session中有玩家基本信息，包括玩家账号`session.getAccountId()`
-* 代码`List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",session.getAccountId());`
-可以获取玩家的背包列表，而`BagItem bagItem =  dataService.selectObject(BagItem.class,"uid=? and itemId=?",uid,itemId);`
-则可以获取背包中具体某个物品的信息
 * 注解@Tx可以确保整个方法的执行在服务层事务中，确保业务失败的数据回滚和并发情况下的数据一致问题
-#### 三. 前端调用
+#### 四. 前端调用
 * 本地启动服务器
 * 打开websocket在线工具：http://www.blue-zero.com/WebSocket/
 * 在地址输入框中输入：ws://localhost:8002/websocket，点击连接。如果出现"连接已建立，正在等待数据..."，说明websocket连接成功
@@ -153,6 +152,7 @@ Session中有玩家基本信息，包括玩家账号`session.getAccountId()`
 由于背包中为空，所以bagItems返回一个空数据，您可自行实现一个添加物品到背包的协议进行测试
 
 # 框架详述
+* [配置文件mmserver.properties]
 * [系统组件]
 * [基本使用]
 * [高级特性]
