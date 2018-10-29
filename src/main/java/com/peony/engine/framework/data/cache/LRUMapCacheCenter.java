@@ -16,7 +16,7 @@ public class LRUMapCacheCenter implements CacheCenter {
     AtomicInteger evictedNum = new AtomicInteger(0);
     //    Concurrentlinkedh
     ConcurrentLinkedHashMap<String, CacheEntity> map = new ConcurrentLinkedHashMap.Builder<String, CacheEntity>()
-            .maximumWeightedCapacity(Integer.parseInt(Server.getEngineConfigure().getString("maximumWeightedCapacity")))
+            .maximumWeightedCapacity(Integer.parseInt(Server.getEngineConfigure().getString("cacheCapacity")))
             .weigher(Weighers.singleton()).listener((key, value) -> {
                 evictedNum.getAndIncrement();
             })
