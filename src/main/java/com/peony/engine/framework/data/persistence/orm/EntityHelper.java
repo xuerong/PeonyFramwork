@@ -252,10 +252,10 @@ public class EntityHelper {
             log.warn("\ntable {} is not exist",dbEntity.tableName());
         }
 
-        boolean createIfNotExist = ConfigHelper.getBoolean("create_if_not_exist");
-        boolean addIfAbsent = ConfigHelper.getBoolean("add_if_absent");
-        boolean modifyIfTypeDifferent = ConfigHelper.getBoolean("modify_if_type_different");
-        boolean deleteIfMore = ConfigHelper.getBoolean("delete_if_more");
+        boolean createIfNotExist = ConfigHelper.getBoolean("databasetable.createIfNotExist");
+        boolean addIfAbsent = ConfigHelper.getBoolean("databasetable.addIfAbsent");
+        boolean modifyIfTypeDifferent = ConfigHelper.getBoolean("databasetable.modifyIfTypeDifferent");
+        boolean deleteIfMore = ConfigHelper.getBoolean("databasetable.deleteIfMore");
 
         boolean create = columnDescList==null && createIfNotExist;
 

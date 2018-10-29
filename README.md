@@ -159,12 +159,4 @@ Session中有玩家基本信息，包括玩家账号`session.getAccountId()`
 由于背包中为空，所以bagItems返回一个空数据，您可自行实现一个添加物品到背包的协议进行测试
 
 # 框架详述
-* [配置文件mmserver.properties]
-* [系统组件]
-* [基本使用]
-* [高级特性]
-* [周边工具]
-* [部署]
-* [集群]
-* [注意事项]
-* [原理]
+**[框架详述](https://github.com/xuerong/PeonyFramwork/wiki)**
