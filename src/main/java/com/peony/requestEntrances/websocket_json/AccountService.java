@@ -83,13 +83,12 @@ public class AccountService {
         }
 
         LoginInfo loginInfo = new LoginInfo();
-        loginInfo.setCtx(ctx);
         loginInfo.setIp(ip);
         loginInfo.setId(accountId);
         loginInfo.setLoginParams(req);
         loginInfo.setName(req.containsKey("name")?req.getString("name"):accountId);
         loginInfo.setUrl(req.containsKey("url")?req.getString("url"):null);
-        loginInfo.setMessageSender(new WebsocketMessageSender(loginInfo.getCtx().channel(), loginInfo.getId()));
+        loginInfo.setMessageSender(new WebsocketMessageSender(ctx.channel(), loginInfo.getId()));
 
         LoginSegment loginSegment = accountSysService.login(loginInfo);
         Account account = loginSegment.getAccount();

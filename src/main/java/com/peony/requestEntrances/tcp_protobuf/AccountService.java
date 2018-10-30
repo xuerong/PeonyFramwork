@@ -56,13 +56,12 @@ public class AccountService {
         }
 
         LoginInfo loginInfo = new LoginInfo();
-        loginInfo.setCtx(ctx);
         loginInfo.setIp(ip);
         loginInfo.setId(accountId);
         loginInfo.setLoginParams(csLoginMain);
         loginInfo.setName(accountId);
         loginInfo.setUrl(csLoginMain.getUrl());
-        loginInfo.setMessageSender(new NettyPBMessageSender(loginInfo.getCtx().channel(), loginInfo.getId()));
+        loginInfo.setMessageSender(new NettyPBMessageSender(ctx.channel(), loginInfo.getId()));
 
         LoginSegment loginSegment = accountSysService.login(loginInfo);
         Account account = loginSegment.getAccount();

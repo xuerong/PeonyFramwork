@@ -24,6 +24,4 @@ public @interface DBEntity {
      * @return
      */
     int tableNum() default 1; // 表的数量，分表:
-
-    String createSql() default "";
 }

@@ -30,7 +30,7 @@ public @interface Service {
      * @return
      */
     String destroy() default "";
-    int destroyPriority() default 3; // 销毁的优先级,越小越先销毁,
+    int destroyPriority() default 10; // 销毁的优先级,越小越先销毁,
     /**
      *
      */

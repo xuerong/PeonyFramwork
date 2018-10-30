@@ -7,7 +7,6 @@ import io.netty.channel.ChannelHandlerContext;
  */
 
 public class LoginInfo {
-    private ChannelHandlerContext ctx;
     private String id;
     private String name;
     private String url;
@@ -15,13 +14,6 @@ public class LoginInfo {
     private Object loginParams;
     private MessageSender messageSender;
 
-    public ChannelHandlerContext getCtx() {
-        return ctx;
-    }
-
-    public void setCtx(ChannelHandlerContext ctx) {
-        this.ctx = ctx;
-    }
 
     public String getId() {
         return id;

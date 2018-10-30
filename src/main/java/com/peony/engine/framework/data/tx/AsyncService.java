@@ -30,7 +30,7 @@ import java.util.concurrent.*;
  * 更新数据库检测用一个线程，然后分配给其它线程去处理
  * 注意：原来同一个服务线程传过来的更新需求，要在同一个更新线程中按顺序处理
  */
-@Service(init = "init",initPriority = 3,destroy = "destroy",destroyPriority = 5)
+@Service(init = "init",initPriority = 3,destroy = "destroy",destroyPriority = 15)
 public class AsyncService {
     private static final Logger log = LoggerFactory.getLogger(AsyncService.class);
     // 异步更新队列
