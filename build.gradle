@@ -145,3 +145,13 @@ task build_online(dependsOn: ['build_server']) {
     }
 }
 
+
+
+task build_param(dependsOn: ['build_server']) {
+    doLast {
+        copy {
+            from projectDir.absolutePath + '/env/'+env
+            into outDir
+        }
+    }
+}

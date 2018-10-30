@@ -1,6 +1,6 @@
 package com.peony.engine.framework.server.configure;
 
-import com.peony.engine.framework.control.netEvent.ServerInfo;
+import com.peony.engine.framework.cluster.ServerInfo;
 import com.peony.engine.framework.data.cache.CacheCenter;
 import com.peony.engine.framework.data.persistence.dao.DataAccessor;
 import com.peony.engine.framework.data.persistence.ds.DataSourceFactory;

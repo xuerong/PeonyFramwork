@@ -27,11 +27,21 @@ public class JschUtil {
 
 
     //初始化配置参数
-    private String jschHost = "47.93.249.150";
+
+    //初始化配置参数
+    private String jschHost = "localhost";
     private int jschPort = 22;
-    private String jschUserName = "root";
-    private String jschPassWord = "Zyz861180416";
+    private String jschUserName = "郑玉振elex";
+    private String jschPassWord = "zhengyuzhen";
     private int jschTimeOut = 5000;
+
+
+//    private String jschHost = "47.93.249.150";
+////    private String jschHost = "localhost";
+//    private int jschPort = 22;
+//    private String jschUserName = "root";
+//    private String jschPassWord = "Zyz861180416";
+//    private int jschTimeOut = 5000;
 
 
 
@@ -321,9 +331,49 @@ public class JschUtil {
         this.charset = charset;
     }
 
+    public void test2(){
+        try{
+            ChannelShell channel = (ChannelShell) session.openChannel("shell");
+            channel.connect();
+            InputStream inputStream = channel.getInputStream();
+            OutputStream outputStream = channel.getOutputStream();
+            String cmd2 = "cd /Users/zhengyuzhenelex/Documents/GitHub/PeonyFramwork \n";
+            outputStream.write(cmd2.getBytes());
+            String cmd3 = "pwd \n";
+            outputStream.write(cmd3.getBytes());
+
+//            String cmd4 = "gradle  build_param -P env=test \n";
+//            outputStream.write(cmd4.getBytes());
+
+
+//            String cmd4 = "sh start.sh \n\r";
+//            outputStream.write(cmd4.getBytes());
+            String cmd5 = "pwd \n\r";
+            outputStream.write(cmd5.getBytes());
+
+            String cmd6 = "exit \n\r";
+            outputStream.write(cmd6.getBytes());
+
+            outputStream.flush();
+            BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
+
+            String msg = null;
+            while((msg = in.readLine())!=null){
+                System.out.println(msg);
+            }
+            System.out.println("end---");
+            in.close();
+        }catch (Throwable e){
+            e.printStackTrace();
+        }
+    }
 
     public void test(){
         try{
+
+
+
+
             ChannelShell channel = (ChannelShell) session.openChannel("shell");
             channel.connect();
             InputStream inputStream = channel.getInputStream();
@@ -335,10 +385,16 @@ public class JschUtil {
             String cmd3 = "pwd \n\r";
             outputStream.write(cmd3.getBytes());
 
-            String cmd4 = "sh start.sh \n\r";
+            String cmd4 = "sleep 5 \n\r";
             outputStream.write(cmd4.getBytes());
+
+//            String cmd4 = "sh start.sh \n\r";
+//            outputStream.write(cmd4.getBytes());
             String cmd5 = "pwd \n\r";
             outputStream.write(cmd5.getBytes());
+
+            String cmd6 = "exit \n\r";
+            outputStream.write(cmd6.getBytes());
 
             outputStream.flush();
             BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
@@ -347,6 +403,7 @@ public class JschUtil {
             while((msg = in.readLine())!=null){
                 System.out.println(msg);
             }
+            System.out.println("end---");
             in.close();
         }catch (Throwable e){
             e.printStackTrace();

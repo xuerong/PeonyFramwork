@@ -1,6 +1,5 @@
-package com.peony.engine.framework.data.entity.account;
+package com.peony.engine.framework.cluster;
 
-import com.peony.engine.framework.control.netEvent.ServerInfo;
 import com.peony.engine.framework.security.exception.MMException;
 
 import java.util.HashSet;

@@ -1,5 +1,6 @@
-package com.peony.engine.framework.control.netEvent;
+package com.peony.engine.framework.cluster;
 
+import com.alibaba.fastjson.JSONObject;
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
 
 import java.io.Serializable;
@@ -24,8 +25,26 @@ public class ServerInfo implements Serializable {
     private int hot; // 火爆程度，根据最近的登陆情况计算
     private int state; // 状态
 
+
+
     public ServerInfo(){
 
+    }
+
+    public JSONObject toJson(){
+        JSONObject ret = new JSONObject();
+        ret.put("id",id);
+        ret.put("name",name);
+        ret.put("innerHost",innerHost);
+        ret.put("publicHost",publicHost);
+        ret.put("netEventPort",netEventPort);
+        ret.put("requestPort",requestPort);
+        ret.put("type",type);
+        ret.put("verifyServer",verifyServer);
+        ret.put("accountCount",accountCount);
+        ret.put("hot",hot);
+        ret.put("state",state);
+        return ret;
     }
 
     public String getName() {
