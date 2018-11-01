@@ -3,8 +3,10 @@ package com.peony.engine.framework.cluster;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.data.DataService;
+import com.peony.engine.framework.tool.helper.ConfigHelper;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 主服务器服务：serverlist服务器服务
@@ -22,6 +24,10 @@ public class MainServerService {
     private List<ServerInfo> serverInfoList;
 
     public void init(){
+        Map<String, String> mainServerMap = ConfigHelper.getMap("mainServer");
+        if(!mainServerMap.get("mainServer.use").trim().equals("true")){
+            return;
+        }
         List<ServerInfo> serverInfoList = dataService.selectList(ServerInfo.class,"");
         this.serverInfoList = serverInfoList;
         for(ServerInfo serverInfo : serverInfoList){

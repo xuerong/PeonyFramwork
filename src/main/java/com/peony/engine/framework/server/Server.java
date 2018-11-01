@@ -23,6 +23,10 @@ import java.util.*;
  */
 public final class Server {
     private static final Logger log = LoggerFactory.getLogger(Server.class);
+
+    public static final String Congratulations = "Congratulations";
+    public static final String startupSuccess = "startup success";
+
     private static EngineConfigure configure;
     private static Integer serverId;
 
@@ -131,8 +135,7 @@ public final class Server {
 
     public static void printStartMsg(){
         int length = 60;
-        String Congratulations = "Congratulations";
-        String str = String.format("server(ID:%3d) startup success!", getServerId());
+        String str = String.format("server(ID:%3d) "+startupSuccess+"!", getServerId());
         StringBuilder sb1 = new StringBuilder();
         StringBuilder sb2 = new StringBuilder();
         StringBuilder sb3 = new StringBuilder();

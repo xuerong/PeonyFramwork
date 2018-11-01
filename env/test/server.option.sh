@@ -1,7 +1,7 @@
 # 内存
--Xmx8g
--Xms8g
--Xmn1536m
+-Xmx32m
+-Xms32m
+-Xmn16m
 -Dfile.encoding=UTF-8
 # 排序
 -Djava.util.Arrays.useLegacyMergeSort=ture

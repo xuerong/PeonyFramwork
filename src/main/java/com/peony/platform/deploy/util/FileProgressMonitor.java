@@ -5,6 +5,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import com.jcraft.jsch.SftpProgressMonitor;
+import com.peony.platform.deploy.DeployService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,8 +33,11 @@ public class FileProgressMonitor extends TimerTask implements SftpProgressMonito
 
     private boolean isScheduled = false; // 记录是否已启动timer记时器
 
-    public FileProgressMonitor(long fileSize) {
+    private DeployService.DeployProgressSetter deployProgressSetter;
+
+    public FileProgressMonitor(long fileSize,DeployService.DeployProgressSetter deployProgressSetter) {
         this.fileSize = fileSize;
+        this.deployProgressSetter = deployProgressSetter;
     }
 
     @Override
@@ -89,6 +93,7 @@ public class FileProgressMonitor extends TimerTask implements SftpProgressMonito
             double d = ((double)transfered * 100)/(double)fileSize;
             DecimalFormat df = new DecimalFormat( "#.##");
             logger.info("Sending progress message: " + df.format(d) + "%");
+            deployProgressSetter.set("正在上传："+ df.format(d) + "%");
         } else {
             logger.info("Sending progress message: " + transfered);
         }

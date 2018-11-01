@@ -26,6 +26,13 @@ public class ServerInfo implements Serializable {
     private int state; // 状态
 
 
+    // ssh连接的时候的参数
+    private String sshIp;
+    private String sshUser;
+    private String sshPassword;
+
+
+
 
     public ServerInfo(){
 
@@ -153,4 +160,27 @@ public class ServerInfo implements Serializable {
         this.state = state;
     }
 
+    public String getSshIp() {
+        return sshIp;
+    }
+
+    public void setSshIp(String sshIp) {
+        this.sshIp = sshIp;
+    }
+
+    public String getSshUser() {
+        return sshUser;
+    }
+
+    public void setSshUser(String sshUser) {
+        this.sshUser = sshUser;
+    }
+
+    public String getSshPassword() {
+        return sshPassword;
+    }
+
+    public void setSshPassword(String sshPassword) {
+        this.sshPassword = sshPassword;
+    }
 }

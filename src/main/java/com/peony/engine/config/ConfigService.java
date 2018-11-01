@@ -348,7 +348,7 @@ public class ConfigService {
 
         String containerName = Util.camelName(fileName) + "Container";
         try {
-            containerClass = (Class<? extends ConfigContainer>) Class.forName("com.elex.cok.config." + containerName);
+            containerClass = (Class<? extends ConfigContainer>) Class.forName(ConfigHelper.getString("appPackage")+".config." + containerName);
             return containerClass;
         } catch (ClassNotFoundException e) {
             logger.error("ClassNotFoundException " + containerName);

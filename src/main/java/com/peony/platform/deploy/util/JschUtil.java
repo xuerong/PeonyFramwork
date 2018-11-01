@@ -194,58 +194,58 @@ public class JschUtil {
 
     }
 
-    /**
-     * 上传文件
-     *
-     * @param directory 上传的目录,有两种写法
-     *                  １、如/opt，拿到则是默认文件名
-     *                  ２、/opt/文件名，则是另起一个名字
-     * @param uploadFile 要上传的文件 如/opt/xxx.txt
-     */
-    public void upload(String directory, String uploadFile) {
-
-        try {
-
-            logger.debug("Opening Channel.");
-            channel = session.openChannel("sftp"); // 打开SFTP通道
-            channel.connect(); // 建立SFTP通道的连接
-            chSftp = (ChannelSftp) channel;
-            File file = new File(uploadFile);
-            long fileSize = file.length();
-
-            /*方法一*/
-            OutputStream out = chSftp.put(directory, new FileProgressMonitor(fileSize), ChannelSftp.OVERWRITE); // 使用OVERWRITE模式
-            byte[] buff = new byte[1024 * 256]; // 设定每次传输的数据块大小为256KB
-            int read;
-            if (out != null) {
-                logger.debug("Start to read input stream");
-                InputStream is = new FileInputStream(uploadFile);
-                do {
-                    read = is.read(buff, 0, buff.length);
-                    if (read > 0) {
-                        out.write(buff, 0, read);
-                    }
-                    out.flush();
-                } while (read >= 0);
-                logger.debug("input stream read done.");
-            }
-
-            // chSftp.put(uploadFile, directory, new FileProgressMonitor(fileSize), ChannelSftp.OVERWRITE); //方法二
-            // chSftp.put(new FileInputStream(src), dst, new FileProgressMonitor(fileSize), ChannelSftp.OVERWRITE); //方法三
-            logger.debug("成功上传文件至"+directory);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }finally {
-            chSftp.quit();
-
-            if (channel != null) {
-                channel.disconnect();
-                logger.debug("channel disconnect");
-            }
-
-        }
-    }
+//    /**
+//     * 上传文件
+//     *
+//     * @param directory 上传的目录,有两种写法
+//     *                  １、如/opt，拿到则是默认文件名
+//     *                  ２、/opt/文件名，则是另起一个名字
+//     * @param uploadFile 要上传的文件 如/opt/xxx.txt
+//     */
+//    public void upload(String directory, String uploadFile) {
+//
+//        try {
+//
+//            logger.debug("Opening Channel.");
+//            channel = session.openChannel("sftp"); // 打开SFTP通道
+//            channel.connect(); // 建立SFTP通道的连接
+//            chSftp = (ChannelSftp) channel;
+//            File file = new File(uploadFile);
+//            long fileSize = file.length();
+//
+//            /*方法一*/
+//            OutputStream out = chSftp.put(directory, new FileProgressMonitor(fileSize), ChannelSftp.OVERWRITE); // 使用OVERWRITE模式
+//            byte[] buff = new byte[1024 * 256]; // 设定每次传输的数据块大小为256KB
+//            int read;
+//            if (out != null) {
+//                logger.debug("Start to read input stream");
+//                InputStream is = new FileInputStream(uploadFile);
+//                do {
+//                    read = is.read(buff, 0, buff.length);
+//                    if (read > 0) {
+//                        out.write(buff, 0, read);
+//                    }
+//                    out.flush();
+//                } while (read >= 0);
+//                logger.debug("input stream read done.");
+//            }
+//
+//            // chSftp.put(uploadFile, directory, new FileProgressMonitor(fileSize), ChannelSftp.OVERWRITE); //方法二
+//            // chSftp.put(new FileInputStream(src), dst, new FileProgressMonitor(fileSize), ChannelSftp.OVERWRITE); //方法三
+//            logger.debug("成功上传文件至"+directory);
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }finally {
+//            chSftp.quit();
+//
+//            if (channel != null) {
+//                channel.disconnect();
+//                logger.debug("channel disconnect");
+//            }
+//
+//        }
+//    }
 
 
     /**
