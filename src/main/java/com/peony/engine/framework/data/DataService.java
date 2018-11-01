@@ -81,40 +81,6 @@ public class DataService {
                 throw new MMException("DBEntity 类型必须实现 Serializable 接口! " + enty.getSimpleName());
             }
         }
-
-        // List<Class<?>> entities = ClassHelper.getClassListByAnnotation(DBEntity.class);
-//        if("true".equals(Server.getEngineConfigure().getString("auto_create_table", "false"))){
-//            DataAccessor dataAccessor = BeanHelper.getFrameBean(DataAccessor.class);
-//            // 检查和更新数据库
-//            for (Class<?> enty : entities) {
-//                DBEntity dbEntity = enty.getAnnotation(DBEntity.class);
-//                String tableName = dbEntity.tableName();
-//                if (dbEntity.tableNum() > 1) {
-//                    tableName += "_1";
-//                }
-//                try {
-//                    dataAccessor.queryMap(String.format("select * from %s limit 1", tableName));
-//                } catch (Exception e) {
-//                    if (ExceptionUtils.getRootCauseMessage(e).indexOf("doesn't exist") > -1) {
-//                        try {
-//                            String createSql = FileUtils.readFileToString(new File("./others/database", dbEntity.tableName() + ".sql"), "UTF-8");
-//                            if (createSql.length() > 10) {
-//                                for(String sql:createSql.split(";")) {
-//                                    // 只执行 CREATE TABLE 语句
-//                                    if(sql.length() < 10 || sql.toLowerCase().indexOf("create table") == -1 || sql.indexOf("--") > -1 || sql.indexOf("/*") > -1 || sql.toLowerCase().indexOf("drop table") > -1) {
-//                                        continue;
-//                                    }
-//                                    dataAccessor.updateForCloseConn(sql);
-//                                    System.err.println(sql);
-//                                }
-//                            }
-//                        } catch (IOException e1) {
-//                            throw new MMException(e);
-//                        }
-//                    }
-//                }
-//            }
-//        }
     }
 
     public CacheEntity getCacheEntity(String key){
@@ -356,15 +322,14 @@ public class DataService {
     /**
      * 插入一个对象，
      */
-    public boolean insert(Object object){
-        return insert(object,true);
+    public void insert(Object object){
+        insert(object,true);
     }
-    public boolean insert(Object object,boolean async){
+    public void insert(Object object,boolean async){
         String key = KeyParser.parseKey(object);
         // 在事事务中仅插入事务
         if(txCacheService.isInTx()){
             txCacheService.insert(key,object);
-            return true;
         }
         // 不在事务中,先插入缓存,再插入异步服务器
         // 这里要用update,因为delete用的是异步,缓存中存在其key,insert不考虑其版本
@@ -375,7 +340,6 @@ public class DataService {
         if(async) {
             asyncService.insert(key, object);
         }
-        return true;
     }
     /**
      * 更新一个对象，
@@ -416,15 +380,15 @@ public class DataService {
      * 删除一个实体
      * 由于要异步删除，缓存中设置删除标志位,所以，在缓存中是update
      */
-    public boolean delete(Object object){
-        return delete(object,true);
+    public void delete(Object object){
+         delete(object,true);
     }
-    public boolean delete(Object object,boolean async){
+    public void delete(Object object,boolean async){
         String key = KeyParser.parseKey(object);
         // 在事事务中仅在事务中删除事务
         if(txCacheService.isInTx()){
             txCacheService.delete(key,object);
-            return true;
+//            return true;
         }
         // 不再事务中,先更新缓存,再放入异步数据库
         CacheEntity cacheEntity = new CacheEntity(object);
@@ -435,15 +399,15 @@ public class DataService {
         if(async) {
             asyncService.delete(key, object);
         }
-        return true;
+//        return true;
     }
     // TODO 按照条件删除对象，可以优化
-    public <T> boolean delete(Class<T> entityClass, String condition, Object... params){
+    public <T> void delete(Class<T> entityClass, String condition, Object... params){
         T t = selectObject(entityClass,condition,params);
         if(t != null){
-            return delete(t);
+            delete(t);
         }
-        return true;
+//        return true;
     }
 
 
