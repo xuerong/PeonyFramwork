@@ -10,27 +10,22 @@ import com.peony.engine.framework.control.statistics.StatisticsData;
 import com.peony.engine.framework.control.statistics.StatisticsStore;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.entity.account.*;
-import com.peony.engine.framework.data.entity.session.ConnectionClose;
 import com.peony.engine.framework.data.entity.session.Session;
 import com.peony.engine.framework.net.HttpService;
-import com.peony.engine.framework.security.LocalizationMessage;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.IdService;
-import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.server.SystemLog;
 import com.peony.engine.framework.tool.util.Util;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.AttributeKey;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by a on 2016/9/20.
@@ -54,9 +49,12 @@ public class AccountService {
 
     public JSONObject login(int opcode, JSONObject data, ChannelHandlerContext ctx, AttributeKey<String> sessionKey) throws Throwable{
         JSONObject req = (JSONObject)data;
-        String accountId = getAccountId(req);
+        String accountId = req.getString("accountId");
 
         /**
+         *
+         * TODO 把更多的东西合并到accountsysservice中
+         *
          * req中需要以下其它信息
          * deviceid 当前设备id，微信里面对应微信openid?
          * appversion 当前版本号
@@ -84,56 +82,38 @@ public class AccountService {
 
         LoginInfo loginInfo = new LoginInfo();
         loginInfo.setIp(ip);
-        loginInfo.setId(accountId);
+        loginInfo.setUid(accountId);
+        if(StringUtils.isEmpty(accountId)){
+            loginInfo.setDeviceId(getDeviceId(req));
+        }
         loginInfo.setLoginParams(req);
-        loginInfo.setName(req.containsKey("name")?req.getString("name"):accountId);
+        loginInfo.setName(req.containsKey("name")?req.getString("name"):"default");
         loginInfo.setUrl(req.containsKey("url")?req.getString("url"):null);
-        loginInfo.setMessageSender(new WebsocketMessageSender(ctx.channel(), loginInfo.getId()));
+        loginInfo.setMessageSender(new WebsocketMessageSender(ctx.channel(), loginInfo.getUid()));
+        loginInfo.setAppversion(req.containsKey("appversion")?req.getString("appversion"):"default");
+        loginInfo.setCountry(req.containsKey("country")?req.getString("country"):"default");
+        loginInfo.setLocalization(req.containsKey("localization")?req.getString("localization"):null);
+        loginInfo.setCtx(ctx);
 
         LoginSegment loginSegment = accountSysService.login(loginInfo);
         Account account = loginSegment.getAccount();
 
-        account.setDevice(req.containsKey("deviceid")?req.getString("deviceid"):"default");
-        account.setClientVersion(req.containsKey("appversion")?req.getString("appversion"):"default");
-//            account.setChannelId(req.containsKey("appversion")?req.getString("appversion"):"default");
-        account.setCountry(req.containsKey("country")?req.getString("country"):"default");
-        // 一些对account的设置，并保存
-        dataService.update(account);
-
-
         Session session = loginSegment.getSession();
-        session.setLocalization(req.containsKey("localization")?req.getString("localization"):null);
-        LocalizationMessage.setThreadLocalization(session.getLocalization());
-        MessageSender messageSender =session.getMessageSender();
 
-        final ChannelHandlerContext _ctx = ctx;
-        session.setConnectionClose(new ConnectionClose() {
-            @Override
-            public void close(LogoutReason logoutReason) {
-                if(logoutReason == LogoutReason.replaceLogout) {
-                    messageSender.sendMessageSync(SysConstantDefine.BeTakePlace, new JSONObject());
-                }
-                _ctx.close();
-            }
-        });
         ctx.channel().attr(sessionKey).set(loginSegment.getSession().getSessionId());
 
         JSONObject ret = new JSONObject();
 //        ret.put("sessionId",loginSegment.getSession().getSessionId());
         ret.put("serverTime",System.currentTimeMillis());
-        ret.put("accountId",accountId);
+        ret.put("accountId",account.getUid());
         ret.put("newUser",session.isNewUser()?1:0);
         return ret;
     }
 
-    private String getAccountId(JSONObject req){
+    private String getDeviceId(JSONObject req){
         String code = req.getString("code");
         if(code == null){
-            String accountId = req.getString("accountId");
-            if(accountId.equals("10000000100001") || accountId.equals("10000000100003")){
-                return String.valueOf(idService.acquireLong(DeviceAccount.class));
-            }
-            return accountId;
+            throw new MMException("code is null");
         }
         //
         String retStr = httpService.doGet(
@@ -150,18 +130,8 @@ public class AccountService {
         log.info(retStr);
         if(ret.containsKey("openid")){
             String openId = ret.getString("openid");
-            DeviceAccount deviceAccount = dataService.selectObject(DeviceAccount.class,"deviceId=?",openId);
-            if(deviceAccount == null){ // 创建新的账号
-                deviceAccount = new DeviceAccount();
-                deviceAccount.setServerId(Server.getServerId());
-                deviceAccount.setDeviceId(openId);
-                deviceAccount.setAccountId(String.valueOf(idService.acquireLong(DeviceAccount.class)));
-                deviceAccount.setCreateTime(new Timestamp(System.currentTimeMillis()));
-//                log.info("new user register,device id = {},ip = {}",loginInfo.getDeviceId(),session.getIp());
-                dataService.insert(deviceAccount);
-            }
-            req.put("accountId",deviceAccount.getAccountId());
-            return deviceAccount.getAccountId();
+
+            return openId;
         }else{
             log.error("code 2 session error! ret="+retStr);
             throw new MMException("code 2 session error! ret="+retStr);

@@ -41,7 +41,7 @@ public class WebsocketMessageSender implements MessageSender{
     }
 
     @Override
-    public void sendMessage(final int opcode, final JSONObject data){
+    public void sendMessage(final int opcode, final Object data){
         asyncExecutor.execute(new Runnable() {
             @Override
             public void run() {
@@ -55,24 +55,16 @@ public class WebsocketMessageSender implements MessageSender{
     }
 
     @Override
-    public void sendMessageSync(int opcode, JSONObject data) {
+    public void sendMessageSync(int opcode, Object data) {
         synchronized (this) {
             JSONObject ret = new JSONObject();
             ret.put("id",opcode);
-            ret.put("data",data);
+            ret.put("data",data==null?new JSONObject():data);
             channel.writeAndFlush(new TextWebSocketFrame(ret.toString()));
             //log.info("user:{} push msg:{}", accountId, data.toString());
             //log.info("send info,cmd = {}|accountId={}",requestService.getOpcodeNames().get(opcode),accountId);
         }
     }
 
-    @Override
-    public void sendMessage(int opcode, byte[] data) {
-        throw new UnsupportedOperationException("websocket send is not support byte[]");
-    }
 
-    @Override
-    public void sendMessageSync(int opcode,byte[] data){
-        throw new UnsupportedOperationException("websocket send is not support byte[]");
-    }
 }

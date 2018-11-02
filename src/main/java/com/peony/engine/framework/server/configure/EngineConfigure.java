@@ -79,6 +79,9 @@ public final class EngineConfigure {
             if(nameSet.contains(name)){
                 continue;
             }
+            if(name.equals("mainClient") && !ConfigHelper.getBoolean("mainServer.use")){ // main server 是否使用
+                continue;
+            }
             nameSet.add(name);
             String portStr = ConfigHelper.getString("entrance."+name+".port");
             String clsStr = ConfigHelper.getString("entrance."+name+".class");

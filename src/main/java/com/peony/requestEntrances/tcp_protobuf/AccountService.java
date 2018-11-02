@@ -57,11 +57,11 @@ public class AccountService {
 
         LoginInfo loginInfo = new LoginInfo();
         loginInfo.setIp(ip);
-        loginInfo.setId(accountId);
+        loginInfo.setUid(accountId);
         loginInfo.setLoginParams(csLoginMain);
         loginInfo.setName(accountId);
         loginInfo.setUrl(csLoginMain.getUrl());
-        loginInfo.setMessageSender(new NettyPBMessageSender(ctx.channel(), loginInfo.getId()));
+        loginInfo.setMessageSender(new NettyPBMessageSender(ctx.channel(), loginInfo.getUid()));
 
         LoginSegment loginSegment = accountSysService.login(loginInfo);
         Account account = loginSegment.getAccount();
@@ -182,7 +182,7 @@ public class AccountService {
         AccountPB.SCUserInfo.Builder builder = AccountPB.SCUserInfo.newBuilder();
         builder.setIcon(account.getIcon());
         builder.setName(account.getName());
-        builder.setId(account.getId());
+        builder.setId(account.getUid());
         RetPacket retPacket = new RetPacketImpl(SysConstantDefine.UserInfo,false,builder.build().toByteArray());
         return retPacket;
     }

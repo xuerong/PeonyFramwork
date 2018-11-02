@@ -3,7 +3,9 @@ package com.peony.engine.framework.cluster;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.data.DataService;
+import com.peony.engine.framework.data.tx.Tx;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,48 @@ public class MainServerService {
         for(ServerInfo serverInfo : serverInfoList){
             netEventService.registerServerAsync(serverInfo.getId(),serverInfo.getHost(),serverInfo.getNetEventPort());
         }
+    }
+
+    /**
+     * 根据设备id获取服务器id
+     * @param deviceId
+     * @return
+     */
+    public ServerInfo getServerInfoByDeviceId(String deviceId){
+        if(StringUtils.isEmpty(deviceId)){
+            return null;
+        }
+        DeviceServer deviceServer = dataService.selectObject(DeviceServer.class,"deviceId = ?",deviceId);
+        if(deviceServer == null){
+            deviceServer = createDeviceServer(deviceId);
+        }
+        ServerInfo serverInfo = dataService.selectObject(ServerInfo.class,"id=?",deviceServer.getServerId());
+        return serverInfo;
+    }
+    @Tx
+    public DeviceServer createDeviceServer(String deviceId){
+        DeviceServer deviceServer = dataService.selectObject(DeviceServer.class,"deviceId = ?",deviceId);
+        if(deviceServer == null){
+            deviceServer = new DeviceServer();
+            deviceServer.setDeviceId(deviceId);
+            deviceServer.setRegTime(System.currentTimeMillis());
+            deviceServer.setServerId(distributeServer());
+            dataService.insert(deviceServer);
+        }
+        return deviceServer;
+    }
+
+
+    /**
+     *
+     * TODO  为新用户分配服务器，可用的服务器
+     * 0\服务器状态
+     * 1、根据热度
+     * 2、根据导量配比
+     * @return
+     */
+    public int  distributeServer(){
+        return 1;
     }
 
     /**

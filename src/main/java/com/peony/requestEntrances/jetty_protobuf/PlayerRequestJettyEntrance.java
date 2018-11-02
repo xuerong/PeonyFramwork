@@ -79,7 +79,7 @@ public class PlayerRequestJettyEntrance extends Entrance {
                 LoginInfo loginInfo = new LoginInfo();
 //                loginInfo.setCtx(null);
                 loginInfo.setIp(Util.getIp(request));
-                loginInfo.setId(accountId);
+                loginInfo.setUid(accountId);
                 loginInfo.setLoginParams(request);
                 loginInfo.setName(request.getHeader("name")!=null?request.getHeader("name"):accountId);
                 loginInfo.setUrl(request.getHeader("url")!=null?request.getHeader("url"):null);

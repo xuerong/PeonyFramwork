@@ -10,6 +10,7 @@ import com.peony.engine.framework.data.persistence.orm.DataSet;
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
 import com.peony.engine.framework.data.tx.AsyncService;
 import com.peony.engine.framework.data.tx.LockerService;
+import com.peony.engine.framework.data.tx.Tx;
 import com.peony.engine.framework.data.tx.TxCacheService;
 import com.peony.engine.framework.security.MonitorNumType;
 import com.peony.engine.framework.security.MonitorService;
@@ -96,6 +97,14 @@ public class DataService {
     }
 
     public <T> T selectCreateIfAbsent(Class<T> entityClass,EntityCreator entityCreator, String condition, Object... params){
+        T result = selectObject(entityClass,condition,params);
+        if(result == null){
+            result = createEntity(entityClass,entityCreator,condition,params);
+        }
+        return result;
+    }
+    @Tx
+    public <T> T createEntity(Class<T> entityClass,EntityCreator entityCreator, String condition, Object... params){
         T result = selectObject(entityClass,condition,params);
         if(result == null){
             try {

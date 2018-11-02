@@ -12,11 +12,11 @@ import java.util.Date;
  * Created by a on 2016/9/18.
  * // TODO 这个的名字和记录的信息需要重新组织一下
  */
-@DBEntity(tableName = "account",pks = {"id"})
+@DBEntity(tableName = "account",pks = {"uid"})
 public class Account implements SessionClient {
 
     // accountId,有一定要求,比如要求(字母,数字,下划线,不准有空格,逗号之类的)
-    protected String id;
+    protected String uid;
     @Column(stringColumnType = StringTypeCollation.Varchar128_Mb4)
     protected String name;
     protected String icon;
@@ -28,7 +28,7 @@ public class Account implements SessionClient {
 
     // 玩家注册相关信息
     protected int channelId; // 渠道
-    protected String uid; // 渠道对应的id，如微信，或手机mid，或手机号
+    protected String deviceId; // 渠道对应的id，如微信，或手机mid，或手机号
 
 
     // 玩家登陆统计信息
@@ -40,12 +40,12 @@ public class Account implements SessionClient {
     protected String prisonBreak; // 是否越狱(0:否 1:是)
     protected String operator; // 运营商名称
 
-    public String getId() {
-        return id;
+    public String getUid() {
+        return uid;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setUid(String uid) {
+        this.uid = uid;
     }
 
     public String getName() {
@@ -104,12 +104,12 @@ public class Account implements SessionClient {
         this.channelId = channelId;
     }
 
-    public String getUid() {
-        return uid;
+    public String getDeviceId() {
+        return deviceId;
     }
 
-    public void setUid(String uid) {
-        this.uid = uid;
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
     public String getArea() {

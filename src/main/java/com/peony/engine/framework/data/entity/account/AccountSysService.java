@@ -4,13 +4,18 @@ import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.event.EventService;
 import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
 import com.peony.engine.framework.data.DataService;
+import com.peony.engine.framework.data.entity.session.ConnectionClose;
 import com.peony.engine.framework.data.entity.session.Session;
 import com.peony.engine.framework.data.entity.session.SessionService;
 import com.peony.engine.framework.data.tx.Tx;
+import com.peony.engine.framework.security.LocalizationMessage;
 import com.peony.engine.framework.security.MonitorService;
 import com.peony.engine.framework.security.exception.MMException;
+import com.peony.engine.framework.server.IdService;
+import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +55,7 @@ public class AccountSysService {
     private RemoteCallService remoteCallService;
     private MonitorService monitorService;
     private EventService eventService;
+    private IdService idService;
 
     public void init(){
         dataService = BeanHelper.getServiceBean(DataService.class);
@@ -68,21 +74,31 @@ public class AccountSysService {
     @Tx(tx = true,lock = true,lockClass = {Account.class})
     public LoginSegment login(LoginInfo loginInfo){//ChannelHandlerContext ctx,String id, String url, String ip, Object loginParams){
         // check id
-        if(StringUtils.isEmpty(loginInfo.getId())){
-            throw new MMException("id error, id="+loginInfo.getId());
+        if(StringUtils.isEmpty(loginInfo.getUid())){
+            if(StringUtils.isEmpty(loginInfo.getDeviceId())) {
+                throw new MMException("id error, id=" + loginInfo.getUid());
+            }
+            String uid = getUidByDeviceId(loginInfo.getDeviceId());
+            if(StringUtils.isEmpty(uid)){
+                throw new MMException("id error, id= {},deviceId={}",uid,loginInfo.getDeviceId());
+            }
+            loginInfo.setUid(uid);
         }
         // get account
-        Account account = dataService.selectObject(Account.class,"id=?",loginInfo.getId());
+        Account account = dataService.selectObject(Account.class,"id=?",loginInfo.getUid());
         boolean newUser = false;
         if(account == null){
             // 没有则创建
-            account = createAccount(loginInfo.getId(),loginInfo.getIp());
+            account = createAccount(loginInfo.getUid(),loginInfo.getIp());
+            account.setDeviceId(loginInfo.getDeviceId());
+            account.setClientVersion(loginInfo.getAppversion());
+            account.setCountry(loginInfo.getCountry());
             dataService.insert(account);
             List<Object> regEventData = Arrays.asList(account,loginInfo.getLoginParams());
             eventService.fireEventSyn(regEventData,SysConstantDefine.Event_AccountRegister);
 //            throw new MMException("account is not exist, id="+id);
             newUser = true;
-            log.info("new user register,uid={}",account.getId());
+            log.info("new user register,uid={}",account.getUid());
         }
         account.setLastLoginTime(new Timestamp(System.currentTimeMillis()));
 
@@ -92,15 +108,44 @@ public class AccountSysService {
             throw new MMException("login false,see log on ");
         }
         session.setNewUser(newUser);
+        session.setLocalization(loginInfo.getLocalization());
+        LocalizationMessage.setThreadLocalization(session.getLocalization());
         //
         LoginSegment loginSegment = new LoginSegment();
         loginSegment.setSession(session);
         loginSegment.setAccount(account);
 
 
-        log.info("accountId = {} login success,ip = {},sessionId = {}",loginInfo.getId(),session.getIp(),session.getSessionId());
+        log.info("accountId = {} login success,ip = {},sessionId = {}",loginInfo.getUid(),session.getIp(),session.getSessionId());
+
+
+        //
+        final ChannelHandlerContext _ctx = loginInfo.getCtx();
+        session.setConnectionClose(new ConnectionClose() {
+            @Override
+            public void close(LogoutReason logoutReason) {
+                if(logoutReason == LogoutReason.replaceLogout) {
+                    session.getMessageSender().sendMessageSync(SysConstantDefine.BeTakePlace, null);
+                }
+                if(_ctx!=null){
+                    _ctx.close();
+                }
+            }
+        });
 
         return loginSegment;
+    }
+    private String getUidByDeviceId(String deviceId){
+        DeviceAccount deviceAccount = dataService.selectObject(DeviceAccount.class,"deviceId=?",deviceId);
+        if(deviceAccount == null){ // 创建新的账号
+            deviceAccount = new DeviceAccount();
+            deviceAccount.setServerId(Server.getServerId());
+            deviceAccount.setDeviceId(deviceId);
+            deviceAccount.setAccountId(String.valueOf(idService.acquireLong(DeviceAccount.class)));
+            deviceAccount.setCreateTime(new Timestamp(System.currentTimeMillis()));
+            dataService.insert(deviceAccount);
+        }
+        return deviceAccount.getAccountId();
     }
     /**
     * nodeServer接收，来自mainServer的一个account的login请求
@@ -111,21 +156,17 @@ public class AccountSysService {
      **/
     public Session applyForLogin(LoginInfo loginInfo){//ChannelHandlerContext ctx,String id,String url,String ip,Object loginParams){
         Session session = sessionService.create(loginInfo.getUrl(),loginInfo.getIp());
-        String olderSessionId = nodeServerLoginMark.putIfAbsent(loginInfo.getId(),session.getSessionId());
+        String olderSessionId = nodeServerLoginMark.putIfAbsent(loginInfo.getUid(),session.getSessionId());
         if (olderSessionId != null){
             // 通知下线
-            doLogout(loginInfo.getId(),olderSessionId,LogoutReason.replaceLogout);
-            nodeServerLoginMark.put(loginInfo.getId(),session.getSessionId());
+            doLogout(loginInfo.getUid(),olderSessionId,LogoutReason.replaceLogout);
+            nodeServerLoginMark.put(loginInfo.getUid(),session.getSessionId());
         }
-        session.setAccountId(loginInfo.getId());
+        session.setAccountId(loginInfo.getUid());
         List<Object> loginEventData = Arrays.asList(session,loginInfo.getLoginParams());
 
         session.setMessageSender(loginInfo.getMessageSender());
 
-//        if(loginInfo.getCtx() != null) {
-//            MessageSender messageSender = new WebsocketMessageSender(loginInfo.getCtx().channel(), loginInfo.getId()); // TODO 这个地方与具体的协议关联了，显然要优化
-//            session.setMessageSender(messageSender);
-//        }
         eventService.fireEventSyn(loginEventData,SysConstantDefine.Event_AccountLogin);
         eventService.fireEvent(loginEventData,SysConstantDefine.Event_AccountLoginAsync);
         return session;
@@ -190,7 +231,7 @@ public class AccountSysService {
             if(account!=null){
                 account.setLastLogoutTime(new Timestamp(System.currentTimeMillis()));
                 dataService.update(account);
-                nodeServerLoginMark.remove(account.getId());
+                nodeServerLoginMark.remove(account.getUid());
             }
         }
         LogoutEventData logoutEventData = new LogoutEventData();
@@ -216,7 +257,7 @@ public class AccountSysService {
      */
     private Account createAccount(String id,String ip){
         Account account = new Account();
-        account.setId(id);
+        account.setUid(id);
         account.setName(id); // todo 暂时用这个
         account.setIcon("default");
         Timestamp curTime = new Timestamp(System.currentTimeMillis());

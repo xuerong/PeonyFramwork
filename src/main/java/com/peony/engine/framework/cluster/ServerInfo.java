@@ -23,7 +23,7 @@ public class ServerInfo implements Serializable {
 
     private int accountCount;
     private int hot; // 火爆程度，根据最近的登陆情况计算
-    private int state; // 状态
+    private int state; // 状态 0不能用，1能用
 
 
     // ssh连接的时候的参数
@@ -51,6 +51,14 @@ public class ServerInfo implements Serializable {
         ret.put("accountCount",accountCount);
         ret.put("hot",hot);
         ret.put("state",state);
+        return ret;
+    }
+    public JSONObject toClientJson(){
+        JSONObject ret = new JSONObject();
+        ret.put("id",id);
+        ret.put("publicHost",publicHost);
+        ret.put("requestPort",requestPort);
+        ret.put("verifyServer",verifyServer);
         return ret;
     }
 

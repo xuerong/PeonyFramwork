@@ -41,7 +41,7 @@ public class NettyPBMessageSender implements MessageSender{
     }
 
     @Override
-    public void sendMessage(final int opcode, final byte[] data){
+    public void sendMessage(final int opcode, final Object data){
         asyncExecutor.execute(new Runnable() {
             @Override
             public void run() {
@@ -54,24 +54,14 @@ public class NettyPBMessageSender implements MessageSender{
         });
     }
     @Override
-    public void sendMessageSync(int opcode,byte[] data){
+    public void sendMessageSync(int opcode,Object data){
         synchronized (this) {
             NettyPBPacket nettyPBPacket = new NettyPBPacket();
             nettyPBPacket.setId(-1); // 没有的时候为-1
-            nettyPBPacket.setData(data);
+            nettyPBPacket.setData((byte[])data);
             nettyPBPacket.setOpcode(opcode);
             channel.writeAndFlush(nettyPBPacket);
             log.info("send info,cmd = {}|accountId={}",requestService.getOpcodeNames().get(opcode),accountId);
         }
-    }
-
-    @Override
-    public void sendMessage(int opcode, JSONObject data) {
-        throw new UnsupportedOperationException("pb send is not support JSONObject");
-    }
-
-    @Override
-    public void sendMessageSync(int opcode, JSONObject data) {
-        throw new UnsupportedOperationException("pb send is not support JSONObject");
     }
 }

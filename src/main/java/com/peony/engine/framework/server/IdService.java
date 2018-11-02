@@ -33,8 +33,11 @@ public class IdService {
 
     private DataService dataService;
     private ConcurrentHashMap<Class,IdSegmentLong> longIdSegmentMap;
-    private static int pow = 13;
+    private static int pow = 13; // long.max=9223372036854775807,前6位用于serverId，后13位用于index
     private long preByServerId = 0; // 最大支持 long.max/(10^pow)
+
+    private boolean use9hex = false;
+
     private Random random = new Random();
 
 
@@ -42,7 +45,13 @@ public class IdService {
 //        intIdSegmentMap = new ConcurrentHashMap<>();
         longIdSegmentMap = new ConcurrentHashMap<>();
         // serverId转9进制
-        preByServerId = Long.parseLong(Integer.toString(Server.getServerId(),9))*(long)Math.pow(10,pow);
+        if(use9hex){
+            preByServerId = Long.parseLong(Integer.toString(Server.getServerId(),9))*(long)Math.pow(10,pow);
+        }else{
+            //
+            preByServerId = Server.getServerId()*(long)Math.pow(10,pow);
+        }
+
         //TODO 从数据库中载入当前各个id状态
         List<IdGenerator> idGenerators = dataService.selectList(IdGenerator.class,null);
         if(idGenerators != null){
@@ -61,6 +70,19 @@ public class IdService {
 
     public long getPreByServerId() {
         return preByServerId;
+    }
+
+    /**
+     * 根据id获取对应的服id，
+     * @param id
+     * @return
+     */
+    public int getServerIdById(long id){
+        int ret = (int)(id/(long)Math.pow(10,pow));
+        if(use9hex){
+            ret = Integer.parseInt(String.valueOf(ret),9);
+        }
+        return ret;
     }
 
     /**
