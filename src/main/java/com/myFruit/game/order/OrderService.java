@@ -33,11 +33,11 @@ public class OrderService {
     public void loginEvent(EventData eventData){
         Session session = (Session) ((List)eventData.getData()).get(0);
         // 创建order
-        List<Order> orderList = dataService.selectList(Order.class,"uid=?",session.getAccountId());
+        List<Order> orderList = dataService.selectList(Order.class,"uid=?",session.getUid());
         if(orderList.size() == 0){
             for(int i =0;i<9;i++){
                 Order order = new Order();
-                order.setUid(session.getAccountId());
+                order.setUid(session.getUid());
                 order.setGold(0);
                 order.setOrderId(i);
                 order.setItems("");
@@ -50,7 +50,7 @@ public class OrderService {
 
     @Request(opcode = Cmd.OrderInfo)
     public JSONObject TechnologyInfo(JSONObject req, Session session) {
-        List<Order> orderList = dataService.selectList(Order.class,"uid=?",session.getAccountId());
+        List<Order> orderList = dataService.selectList(Order.class,"uid=?",session.getUid());
         orderList.sort(new Comparator<Order>() {
             @Override
             public int compare(Order o1, Order o2) {
@@ -69,27 +69,27 @@ public class OrderService {
     @Request(opcode = Cmd.FinishOrder)
     public JSONObject FinishOrder(JSONObject req, Session session) {
         int orderId = req.getInteger("orderId");
-        Order order = dataService.selectObject(Order.class,"uid=? and orderId=?",session.getAccountId(),orderId);
+        Order order = dataService.selectObject(Order.class,"uid=? and orderId=?",session.getUid(),orderId);
 
         Map<Integer,Integer> items = Util.split2Map(order.getItems(),Integer.class,Integer.class);
         //
-        JSONArray array = bagService.decItem(session.getAccountId(),items);
+        JSONArray array = bagService.decItem(session.getUid(),items);
         //科技：谈判
-        int addGold =  technologyService.calValue(session.getAccountId(), TecType.TanPan,order.getGold());
+        int addGold =  technologyService.calValue(session.getUid(), TecType.TanPan,order.getGold());
         //
-        int gold = userBaseService.addGold(session.getAccountId(),addGold,"FinishOrder");
+        int gold = userBaseService.addGold(session.getUid(),addGold,"FinishOrder");
         // 经验
-        int exp =userBaseService.addExp(session.getAccountId(),5);
+        int exp =userBaseService.addExp(session.getUid(),5);
         //
         refreshOrder(order);
         // 任务
-        taskService.triggerAllFruit(4,session.getAccountId(),1,0);
+        taskService.triggerAllFruit(4,session.getUid(),1,0);
         //
         JSONObject ret = new JSONObject();
         ret.put("gold",gold);
         ret.put("items",array);
         ret.put("order",order.toJson());
-        ret.put("level",userBaseService.getLevel(session.getAccountId()));
+        ret.put("level",userBaseService.getLevel(session.getUid()));
         ret.put("exp",exp);
         return ret;
     }

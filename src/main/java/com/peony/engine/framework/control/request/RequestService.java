@@ -58,18 +58,6 @@ public class RequestService {
                 return true;
             }
         });
-//        List<Class<?>> classes = ClassHelper.getClassListEndWith("com.peony.requestEntrances.tcp_protobuf.protocol","Opcode");
-//        for (Class<?> cls:classes) {
-//
-//            Field[] fields = cls.getFields();
-//            for(Field field : fields){
-//                try {
-//                    opcodeNames.put(field.getInt(null),field.getName());
-//                } catch (IllegalAccessException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }
         // 命令
         List<Class<?>> cmdClasses = ClassHelper.getClassListEndWith("com.myFruit.cmd","Cmd");
         for (Class<?> cls:cmdClasses) {
@@ -83,19 +71,7 @@ public class RequestService {
                 }
             }
         }
-        // 异常
-        List<Class<?>> exceptionClasses = ClassHelper.getClassListEndWith("com.farm.cmd","ExceptionCode");
-        for (Class<?> cls:exceptionClasses) {
 
-            Field[] fields = cls.getFields();
-            for(Field field : fields){
-                try {
-                    exceptionNames.put(field.getInt(null),field.getName());
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
     public String getOpName(int id){
@@ -105,6 +81,15 @@ public class RequestService {
         return exceptionNames.get(id);
     }
 
+    /**
+     * 接受网络传过来的客户端数据，转发给对应的处理器处理，并返回处理结果
+     * @param opcode 命令号
+     * @param clientData 客户端数据
+     * @param session 会话
+     * @param <T> 返回值，可以是任意类型
+     * @return
+     * @throws Exception
+     */
     public <T> T handleRequest(int opcode, Object clientData, Session session) throws Exception{
 //        log.info("request:"+opcode+","+clientData);
         RequestHandler handler = handlerMap.get(opcode);
@@ -119,11 +104,7 @@ public class RequestService {
         long t1 = System.currentTimeMillis();
         while (true) {
             try {
-                if(clientData instanceof JSONObject){
-                    ret = handler.handleJson(opcode, (JSONObject)clientData, session);
-                }else{
-                    ret = handler.handle(opcode, clientData, session);
-                }
+                ret = handler.handle(opcode, clientData, session);
 
             } catch (MMException e) {
                 if (e.getExceptionType() == MMException.ExceptionType.TxCommitFail) {

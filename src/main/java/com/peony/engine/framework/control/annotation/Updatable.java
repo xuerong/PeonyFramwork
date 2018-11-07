@@ -25,6 +25,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Updatable {
+
     /**
      * 同步还是异步
      * 同步：将按照系统设置的更新周期更新，并且同步更新的最好不要有较多花费时间的操作

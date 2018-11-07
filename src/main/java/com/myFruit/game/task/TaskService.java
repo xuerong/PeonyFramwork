@@ -37,7 +37,7 @@ public class TaskService {
 
     @Request(opcode = Cmd.GetTaskInfo)
     public JSONObject GetTaskInfo(JSONObject req, Session session){
-        UserTask userTask = getUserTask(session.getAccountId());
+        UserTask userTask = getUserTask(session.getUid());
         return userTask.toJson();
     }
 
@@ -84,7 +84,7 @@ public class TaskService {
     @Tx
     @Request(opcode = Cmd.AwarkTask)
     public JSONObject AwarkTask(JSONObject req, Session session) {
-        UserTask userTask = getUserTask(session.getAccountId());
+        UserTask userTask = getUserTask(session.getUid());
         /**
          * private int awardDaily; // 上次领取每日奖励时间
          private int allFruit; // 所有水果数量
@@ -94,9 +94,9 @@ public class TaskService {
          private int fertilizer;
          */
         int type = req.getInteger("type");
-        String uid = session.getAccountId();
+        String uid = session.getUid();
         JSONObject ret = new JSONObject();
-        int level = userBaseService.getLevel(session.getAccountId());
+        int level = userBaseService.getLevel(session.getUid());
         switch (type){
             case 1:
                 if(userTask.getAwardDaily()>0){
@@ -127,7 +127,7 @@ public class TaskService {
                     throw new ToClientException(SysConstantDefine.InvalidOperation,"fruit not enough!");
                 }
                 ret.put("baseinfo",addExpAndGold(uid,userTask.getFruit(),userTask.getFruit()));
-                List<FruitConfig> unlocked = FruitConfig.getUnlockedFruit(userBaseService.getLevel(session.getAccountId()));
+                List<FruitConfig> unlocked = FruitConfig.getUnlockedFruit(userBaseService.getLevel(session.getUid()));
                 userTask.setFruitType(unlocked.get((int)(Math.random()*unlocked.size())).getId());
                 userTask.setFruitCur(0);
                 userTask.setFruit(userTask.getFruit()+fruitStep);

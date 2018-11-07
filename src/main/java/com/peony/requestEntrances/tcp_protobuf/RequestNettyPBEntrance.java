@@ -62,7 +62,7 @@ public class RequestNettyPBEntrance extends Entrance {
             String sessionId = ctx.channel().attr(sessionKey).get();
             if(sessionId != null) {
                 Session session = accountSysService.netDisconnect(sessionId);
-                log.info("disConnect,ip = {},sessionId = {},userId = {}",ctx.channel().remoteAddress().toString(),sessionId,session==null?null:session.getAccountId());
+                log.info("disConnect,ip = {},sessionId = {},userId = {}",ctx.channel().remoteAddress().toString(),sessionId,session==null?null:session.getUid());
             }else{
                 log.error("disConnect , but session = {},ip = {}",sessionId,ctx.channel().remoteAddress().toString());
             }

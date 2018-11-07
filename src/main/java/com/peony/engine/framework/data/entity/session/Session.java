@@ -24,7 +24,7 @@ public class Session extends CacheEntity{
     private final String sessionId;
     // session所对应的客户端,这个当客户端登陆的时候赋值,以便在后续的使用中从session中找到它
 //    private SessionClient sessionClient;
-    private String accountId;
+    private String uid;
     private final String ip;
     private final long createTime;
     private Date lastUpdateTime;
@@ -69,12 +69,12 @@ public class Session extends CacheEntity{
         return sessionId;
     }
 
-    public String getAccountId() {
-        return accountId;
+    public String getUid() {
+        return uid;
     }
 
-    public void setAccountId(String accountId) {
-        this.accountId = accountId;
+    public void setUid(String uid) {
+        this.uid = uid;
     }
 
     public String getIp() {

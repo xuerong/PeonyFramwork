@@ -86,10 +86,9 @@ public class IdService {
     }
 
     /**
-     * 最多10^pow
-     *
-     * @param cls
-     * @return
+     * 获取一个ID
+     * @param cls 该ID所属类型
+     * @return id
      */
     public long acquireLong(Class<?> cls){
         try {

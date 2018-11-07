@@ -31,6 +31,7 @@ import java.util.concurrent.*;
  * 自己不连自己，而是直接调用
  * TODO 被忘了设定超时机制
  * TODO 调用的方法命名有点混乱
+ * TODO remove方法
  */
 @Service(init = "init",initPriority = 1)
 public class NetEventService {
@@ -83,8 +84,10 @@ public class NetEventService {
     /**
      * 同步注册服务器，连接上该服务器之后，才返回
      * 如果是自己，直接返回
-     *
-     * @return 服务器
+     * @param id 服务器id
+     * @param host 服务器主机
+     * @param port 服务器端口
+     * @return 服务器对象，用于通信，状态判断等
      */
     public ServerClient registerServerSyn(int id,String host,int port) {
         return registerServerSyn(id, host, port,Integer.MAX_VALUE,true);

@@ -75,8 +75,8 @@ public class MonitorService {
     @EventListener(event = SysConstantDefine.Event_AccountLoginAsync)
     public void login(EventData data){
         Session session = (Session) ((List)data.getData()).get(0);
-        if(session.getAccountId() != null) {
-            onlineUser.putIfAbsent(session.getAccountId(),session.getAccountId());
+        if(session.getUid() != null) {
+            onlineUser.putIfAbsent(session.getUid(),session.getUid());
         }else{
             log.error("event Event_AccountLoginAsync,session has no accountId");
         }
@@ -85,8 +85,8 @@ public class MonitorService {
     @EventListener(event = SysConstantDefine.Event_AccountLogoutAsync)
     public void logout(EventData data){
         LogoutEventData logoutEventData = (LogoutEventData)data.getData();
-        if(logoutEventData.getSession().getAccountId() != null) {
-            onlineUser.remove(logoutEventData.getSession().getAccountId());
+        if(logoutEventData.getSession().getUid() != null) {
+            onlineUser.remove(logoutEventData.getSession().getUid());
         }
     }
 

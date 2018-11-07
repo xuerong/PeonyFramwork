@@ -42,7 +42,7 @@ public class UserBaseService {
 
     @Request(opcode = Cmd.UserInit)
     public JSONObject userInit(JSONObject req, Session session){
-        UserBase userBase = getUserBase(session.getAccountId());
+        UserBase userBase = getUserBase(session.getUid());
         String oldIcon = userBase.getIcon();
         String oldName = userBase.getName();
         if(req.containsKey("name")){
@@ -62,7 +62,7 @@ public class UserBaseService {
     }
     @Request(opcode = Cmd.GetUserBase)
     public JSONObject GetUserBase(JSONObject req, Session session){
-        UserBase userBase = getUserBase(session.getAccountId());
+        UserBase userBase = getUserBase(session.getUid());
         return userBase.toJson();
     }
 

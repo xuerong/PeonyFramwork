@@ -2,9 +2,13 @@ package com.myFruit.game.bag;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.appPacket.config.TestConfig;
+import com.appPacket.config.TestContainer;
 import com.myFruit.cmd.Cmd;
+import com.peony.engine.config.ConfigService;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.entity.session.Session;
 import com.peony.engine.framework.data.tx.Tx;
@@ -21,7 +25,7 @@ public class BagService {
 
     @Request(opcode = Cmd.BagInfo)
     public JSONObject BagInfo(JSONObject req, Session session) {
-        List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",session.getAccountId());
+        List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",session.getUid());
         JSONObject ret = new JSONObject();
         JSONArray array = new JSONArray();
         for(BagItem bagItem : bagItemList){
@@ -74,6 +78,12 @@ public class BagService {
             dataService.update(bagItem);
         }
         return bagItem.getNum();
+    }
+
+    @Gm(id = "添加背包道具",describe = "给一个玩家添加一种道具",paramsName = {"玩家id","道具id","道具数量"})
+    public String addItemGm(String uid,int itemId,int num){
+        this.addItem(uid,itemId,num);
+        return "success";
     }
 
 }

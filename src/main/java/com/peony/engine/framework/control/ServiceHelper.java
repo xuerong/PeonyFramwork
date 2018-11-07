@@ -12,6 +12,7 @@ import com.peony.engine.framework.control.netEvent.NetEventData;
 import com.peony.engine.framework.control.netEvent.NetEventListenerHandler;
 import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
 import com.peony.engine.framework.control.request.RequestHandler;
+import com.peony.engine.framework.control.request.RequestService;
 import com.peony.engine.framework.control.rpc.IRoute;
 import com.peony.engine.framework.control.rpc.Remotable;
 import com.peony.engine.framework.control.rpc.RemoteExceptionHandler;
@@ -180,7 +181,7 @@ public final class ServiceHelper {
              */
             for (Class<?> serviceClass : serviceClasses) {
                 // 对于request，用opcode导航
-                List<Short> opcodeList = null;
+                List<Integer> opcodeList = null;
                 List<Short> eventList = null;
                 List<Short> eventSynList = null;
                 List<Integer> netEventList = null;
@@ -291,7 +292,7 @@ public final class ServiceHelper {
                 serviceOriginClass.put(newServiceClass, serviceClass);
                 // request
                 if (opcodeList != null) {
-                    for (short opcode : opcodeList) {
+                    for (int opcode : opcodeList) {
                         requestHandlerClassMap.put(opcode, serviceClass);
                     }
                 }
@@ -635,10 +636,12 @@ public final class ServiceHelper {
         }
     }
 
+
+
     // 生成request的处理类
     private static Class generateRequestHandlerClass(Class clazz, Class<?> oriClass) throws Exception {
-        Map<Short, String> opMethods = new TreeMap<Short, String>();
-        Map<Short, String> jsonOpMethods = new TreeMap<Short, String>();
+        Map<Integer, String> opMethods = new TreeMap<Integer, String>();
+        Map<Integer, String> paramsType = new TreeMap<Integer, String>(); // 第一个参数类型的字符串
         Method[] methods = oriClass.getDeclaredMethods();
         for (Method method : methods) { //遍历所有方法，将其中标注了是包处理方法的方法名加入到opMethods中
             if (method.isAnnotationPresent(Request.class)) {
@@ -650,32 +653,15 @@ public final class ServiceHelper {
                     throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
                 }
                 // -----------------add
-                if (method.getReturnType() == RetPacket.class) {
-                    if (parameterTypes[0] != Object.class || parameterTypes[1] != Session.class) {
-                        throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
-                    }
-                    opMethods.put(op.opcode(), method.getName());
-                } else if (method.getReturnType() == JSONObject.class) {
-                    if (parameterTypes[0] != JSONObject.class || parameterTypes[1] != Session.class) {
-                        throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
-                    }
-                    jsonOpMethods.put(op.opcode(), method.getName());
-//                    opMethods.put(op.opcode(), method.getName());
-                } else {
-                    throw new IllegalStateException("Method " + method.getName() + " ReturnType Error");
+                paramsType.put(op.opcode(),parameterTypes[0].toString().replace("class ",""));
+//                System.out.println(parameterTypes[0].toString());
+                if(parameterTypes[1] != Session.class){
+                    throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
                 }
-                // -----------------add end
-//                if(parameterTypes[0] != Object.class || parameterTypes[1] != Session.class){
-//                    throw new IllegalStateException("Method "+method.getName()+" Parameter Error");
-//                }
-//                // 检查返回值
-//                if(method.getReturnType()!=RetPacket.class){
-//                    throw new IllegalStateException("Method "+method.getName()+" ReturnType Error");
-//                }
-//                opMethods.put(op.opcode(), method.getName());
+                opMethods.put(op.opcode(), method.getName());
             }
         }
-        if (opMethods.size() > 0 || jsonOpMethods.size() > 0) {
+        if (opMethods.size() > 0 ) {
             ClassPool pool = ClassPool.getDefault();
 
             CtClass oldClass = pool.get(clazz.getName());
@@ -691,37 +677,16 @@ public final class ServiceHelper {
                 if(opMethods.size()>0) {
                     sb.append("short opCode = opcode;");//$1.getOpcode();");
                     sb.append("switch (opCode) {");
-                    Iterator<Map.Entry<Short, String>> ite = opMethods.entrySet().iterator();
+                    Iterator<Map.Entry<Integer, String>> ite = opMethods.entrySet().iterator();
                     while (ite.hasNext()) {
-                        Map.Entry<Short, String> entry = ite.next();
+                        Map.Entry<Integer, String> entry = ite.next();
                         sb.append("case ").append(entry.getKey()).append(":");
-                        sb.append("rePacket=").append(entry.getValue()).append("($2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
+                        sb.append("rePacket=").append(entry.getValue()).append("(("+paramsType.get(entry.getKey())+")$2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
                         sb.append("break;");
                         //opcodes.add(entry.getKey());
                     }
                     sb.append("}");
                 }
-                sb.append("return rePacket;");
-                sb.append("}");
-                CtMethod method = CtMethod.make(sb.toString(), ct);
-                ct.addMethod(method);
-            }
-            if (jsonOpMethods.size() > 0) {
-                // 添加handlerJson方法
-                StringBuilder sb = new StringBuilder("public Object handleJson(" +
-                        "int opcode,Object clientData,com.peony.engine.framework.data.entity.session.Session session) throws Exception{");
-                sb.append("Object rePacket=null;");
-                sb.append("short opCode = opcode;");//$1.getOpcode();");
-                sb.append("switch (opCode) {");
-                Iterator<Map.Entry<Short, String>> ite = jsonOpMethods.entrySet().iterator();
-                while (ite.hasNext()) {
-                    Map.Entry<Short, String> entry = ite.next();
-                    sb.append("case ").append(entry.getKey()).append(":");
-                    sb.append("rePacket=").append(entry.getValue()).append("((com.alibaba.fastjson.JSONObject)$2,$3);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
-                    sb.append("break;");
-                    //opcodes.add(entry.getKey());
-                }
-                sb.append("}");
                 sb.append("return rePacket;");
                 sb.append("}");
                 CtMethod method = CtMethod.make(sb.toString(), ct);

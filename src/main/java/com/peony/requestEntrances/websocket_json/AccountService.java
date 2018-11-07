@@ -34,7 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AccountService {
     private static final Logger log = LoggerFactory.getLogger(AccountService.class);
     // account-session
-    private ConcurrentHashMap<String,Session> sessionMap;
 
     public AccountSysService accountSysService;
     private DataService dataService;
@@ -44,7 +43,7 @@ public class AccountService {
     private EventService eventService;
 
     public void init(){
-        sessionMap = new ConcurrentHashMap<>();
+
     }
 
     public JSONObject login(int opcode, JSONObject data, ChannelHandlerContext ctx, AttributeKey<String> sessionKey) throws Throwable{
@@ -100,7 +99,7 @@ public class AccountService {
 
         Session session = loginSegment.getSession();
 
-        ctx.channel().attr(sessionKey).set(loginSegment.getSession().getSessionId());
+        ctx.channel().attr(sessionKey).set(session.getSessionId());
 
         JSONObject ret = new JSONObject();
 //        ret.put("sessionId",loginSegment.getSession().getSessionId());
@@ -147,88 +146,4 @@ public class AccountService {
     }
 
 
-    /**
-     * 统计
-     * 1玩家注册（新注册）
-     * 2玩家登陆（日活跃，留存(1,3,7,14,30)）
-     * @return
-     */
-    List<String> heads = Arrays.asList("日期","玩家数","日活跃","新注册","1日留存","3日留存","7日留存","14日留存","30日留存");
-    List<String> headKeys = Arrays.asList("date","userCount","dayLogin","new","liu1","liu3","liu7","liu14","liu30");
-    @Statistics(id = "accountStatistics",name = "玩家统计")
-    public StatisticsData accountStatistics(){
-        StatisticsData ret = new StatisticsData();
-        ret.setHeads(heads);
-
-        List<List<String>> datas = new ArrayList<>();
-        List<StatisticsStore> statisticsStores = dataService.selectList(StatisticsStore.class,"type=?","accountStatistics");
-        if(statisticsStores != null) {
-            for(StatisticsStore statisticsStore : statisticsStores){
-                JSONObject jsonObject = JSONObject.parseObject(statisticsStore.getContent());
-                List<String> list = new ArrayList<>();
-                for(String head : headKeys) {
-                    list.add(jsonObject.get(head).toString());
-                }
-                datas.add(list);
-            }
-        }
-        ret.setDatas(datas);
-        return ret;
-    }
-    /**
-     * 每天统计一下数据，保存在数据库中
-     * @param interval
-     */
-    @Updatable(cronExpression = "0 0 0 * * ?")
-    public void accountStatistics(int interval){
-        StatisticsStore statisticsStore = new StatisticsStore();
-        statisticsStore.setId(idService.acquireLong(StatisticsStore.class));
-        statisticsStore.setType("accountStatistics");
-
-        JSONObject jsonObject = new JSONObject();
-        // 这里的单位用s
-        long oneDay = 24l*60*60;
-        long staTime = Util.getBeginTimeToday()/1000 - oneDay;
-
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");//
-
-        jsonObject.put("date",df.format(new Date(staTime*1000)));
-
-        jsonObject.put("userCount",dataService.selectCount(Account.class,""));
-        jsonObject.put("dayLogin", dataService.selectCountBySql("select count(*) from account where unix_timestamp(lastLoginTime) > ?",staTime));
-        jsonObject.put("new",dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ?",staTime));
-
-        long from = staTime - oneDay,to = staTime;
-        long all = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<?",from,to);
-        long liu = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<? and unix_timestamp(lastLoginTime) >?",from,to,staTime);
-        jsonObject.put("liu1",liu==0?0:liu*100/all + "%");
-
-        from = staTime - oneDay*3;
-        to = staTime - oneDay*2;
-        all = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<?",from,to);
-        liu = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<? and unix_timestamp(lastLoginTime) >?",from,to,staTime);
-        jsonObject.put("liu3",liu==0?0:liu*100/all + "%");
-
-        from = staTime - oneDay*7;
-        to = staTime - oneDay*6;
-        all = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<?",from,to);
-        liu = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<? and unix_timestamp(lastLoginTime) >?",from,to,staTime);
-        jsonObject.put("liu7",liu==0?0:liu*100/all + "%");
-
-        from = staTime - oneDay*14;
-        to = staTime - oneDay*13;
-        all = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<?",from,to);
-        liu = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<? and unix_timestamp(lastLoginTime) >?",from,to,staTime);
-        jsonObject.put("liu14",liu==0?0:liu*100/all + "%");
-
-        from = staTime - oneDay*30;
-        to = staTime - oneDay*29;
-        all = dataService.selectCountBySql("select count(*) from account where createTime > ? and createTime<?",from,to);
-        liu = dataService.selectCountBySql("select count(*) from account where createTime > ? and createTime<? and lastLoginTime >?",from,to,staTime);
-        jsonObject.put("liu30",liu==0?0:liu*100/all + "%");
-
-
-        statisticsStore.setContent(jsonObject.toString());
-        dataService.insert(statisticsStore);
-    }
 }

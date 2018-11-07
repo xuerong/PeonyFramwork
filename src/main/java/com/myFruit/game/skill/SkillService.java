@@ -25,13 +25,13 @@ public class SkillService {
 
     @Request(opcode = Cmd.SkillInfo)
     public JSONObject SkillInfo(JSONObject req, Session session) {
-        return refresh(session.getAccountId()).toJson();
+        return refresh(session.getUid()).toJson();
     }
 
     @Tx
     @Request(opcode = Cmd.SpeedUp)
     public JSONObject SpeedUp(JSONObject req, Session session) {
-        UserSkill userSkill = getUserSkill(session.getAccountId());
+        UserSkill userSkill = getUserSkill(session.getUid());
         refresh(userSkill);
         if(userSkill.getSpeedPower() <=0 ){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"speed power is not enough");
@@ -48,14 +48,14 @@ public class SkillService {
         userSkill.setSpeedEndTime(now+10*60*1000);
         dataService.update(userSkill);
         // 任务
-        taskService.triggerAllFruit(5,session.getAccountId(),1,0);
+        taskService.triggerAllFruit(5,session.getUid(),1,0);
         return userSkill.toJson();
     }
 
     @Tx
     @Request(opcode = Cmd.AddFertilizer)
     public JSONObject AddFertilizer(JSONObject req, Session session) {
-        UserSkill userSkill = getUserSkill(session.getAccountId());
+        UserSkill userSkill = getUserSkill(session.getUid());
         refresh(userSkill);
         if(userSkill.getFertilizer() > 0){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"fertilizer > 0");
@@ -69,7 +69,7 @@ public class SkillService {
     @Tx
     @Request(opcode = Cmd.AddSpeedPower)
     public JSONObject AddSpeedPower(JSONObject req, Session session) {
-        UserSkill userSkill = getUserSkill(session.getAccountId());
+        UserSkill userSkill = getUserSkill(session.getUid());
         refresh(userSkill);
         if(userSkill.getSpeedPower() > 0){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"speedPower > 0");

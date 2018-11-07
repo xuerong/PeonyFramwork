@@ -13,7 +13,6 @@ import com.peony.engine.framework.data.entity.account.LogoutEventData;
 import com.peony.engine.framework.data.entity.account.MessageSender;
 import com.peony.engine.framework.data.entity.session.Session;
 import com.peony.engine.framework.data.tx.LockerService;
-import com.peony.engine.framework.data.tx.Tx;
 import com.peony.engine.framework.server.SysConstantDefine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,39 +58,23 @@ public class SendMessageService {
         Session session = (Session) ((List)data.getData()).get(0);
         MessageSender messageSender = session.getMessageSender();
         if(messageSender != null){
-            messageSenderMap.put(session.getAccountId(),messageSender);
+            messageSenderMap.put(session.getUid(),messageSender);
         }
     }
     @EventListener(event = SysConstantDefine.Event_AccountLogout)
     public void logout(EventData data){
         LogoutEventData logoutEventData = (LogoutEventData)data.getData();
-        if(logoutEventData.getSession().getAccountId() != null) {
-            messageSenderMap.remove(logoutEventData.getSession().getAccountId());
+        if(logoutEventData.getSession().getUid() != null) {
+            messageSenderMap.remove(logoutEventData.getSession().getUid());
         }
     }
 
-    public void sendMessage(String accountId,int opcode,byte[] data){
-        doSendMessage(accountId,null,opcode,data);
-    }
     public void broadcastMessage(int opcode,byte[] data){
         for(Map.Entry<String,MessageSender> entry : messageSenderMap.entrySet()){
             doSendMessage(entry.getKey(),entry.getValue(),opcode,data);
         }
     }
-    private void doSendMessage(String accountId,MessageSender messageSender,int opcode,byte[] data){
-        try {
-            if(messageSender == null){
-                messageSender = messageSenderMap.get(accountId);
-            }
-            if(messageSender != null){
-                messageSender.sendMessage(opcode, data);
-            }else{
-//                log.info("account not login,accountId="+accountId);
-            }
-        }catch (Throwable e){
-            log.error("broadcast message fail ,opcode = " + opcode+",e = "+e.getMessage()+",accountId+"+accountId);
-        }
-    }
+
 
     // TODO 这个产生大量的远程调用，却很少是需要的，可以有个地方获取在线玩家，只给在线玩家推送
     public void sendMessageRemotable(Collection<String> uids, int opcode, JSONObject data){
@@ -109,25 +92,29 @@ public class SendMessageService {
         doSendMessage(uid,null,opcode,data);
     }
 
-
-
-    public void sendMessage(String accountId,int opcode,JSONObject data){
-        doSendMessage(accountId,null,opcode,data);
+    /**
+     * 推送消息给在线的客户端
+     * @param uid 玩家id
+     * @param opcode 命令号
+     * @param data 消息体
+     */
+    public void sendMessage(String uid,int opcode,Object data){
+        doSendMessage(uid,null,opcode,data);
     }
 
-    private void doSendMessage(String accountId,MessageSender messageSender,int opcode,JSONObject data){
+    private void doSendMessage(String uid,MessageSender messageSender,int opcode,Object data){
         try {
             if(messageSender == null){
-                messageSender = messageSenderMap.get(accountId);
+                messageSender = messageSenderMap.get(uid);
             }
             if(messageSender != null){
                 messageSender.sendMessage(opcode, data);
-                log.info("user:{} push msg:(msgid:{}[{}]),{}", accountId, requestService.getOpName(opcode),opcode, data.toString() );
+                log.info("user:{} push msg:(msgid:{}[{}]),{}", uid, requestService.getOpName(opcode),opcode, data.toString() );
             }else{
 //                log.info("account not login,accountId="+accountId);
             }
         }catch (Throwable e){
-            log.error("broadcast message fail ,opcode = " + opcode+",e = "+e.getMessage()+",accountId+"+accountId);
+            log.error("broadcast message fail ,opcode = " + opcode+",e = "+e.getMessage()+",accountId+"+uid);
         }
     }
 

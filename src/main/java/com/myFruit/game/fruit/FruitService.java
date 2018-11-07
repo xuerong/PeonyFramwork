@@ -16,11 +16,9 @@ import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.event.EventData;
-import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.entity.account.sendMessage.SendMessageService;
 import com.peony.engine.framework.data.entity.session.Session;
-import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.SysConstantDefine;
 import org.slf4j.Logger;
@@ -82,11 +80,11 @@ public class FruitService {
 
         }
         // 默认的果子
-        List<UserFruit> userFruits = dataService.selectList(UserFruit.class,"uid=?",session.getAccountId());
+        List<UserFruit> userFruits = dataService.selectList(UserFruit.class,"uid=?",session.getUid());
         if(userFruits.size()==0){
             for(int i=0;i<5;i++){
                 UserFruit userFruit = new UserFruit();
-                userFruit.setUid(session.getAccountId());
+                userFruit.setUid(session.getUid());
 
                 userFruit.setState(FruitState.Mature.getId());
                 userFruit.setBeginTime(0);
@@ -117,7 +115,7 @@ public class FruitService {
 
     @Request(opcode = Cmd.FruitInfo)
     public JSONObject getUnlockedFruit(JSONObject req,Session session){
-        return getUnlockedFruit(session.getAccountId());
+        return getUnlockedFruit(session.getUid());
     }
 
     public JSONObject getUnlockedFruit(String uid){
@@ -158,7 +156,7 @@ public class FruitService {
     @Request(opcode = Cmd.UnlockFruit)
     public JSONObject UnlockFruit(JSONObject req,Session session){
         int posId = req.getInteger("posId");
-        UserFruit userFruit = dataService.selectObject(UserFruit.class,"uid=? and posId=?",session.getAccountId(),posId);
+        UserFruit userFruit = dataService.selectObject(UserFruit.class,"uid=? and posId=?",session.getUid(),posId);
         if(userFruit != null && userFruit.getState() != FruitState.Locked.getId()){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"has unlocked");
         }
@@ -167,15 +165,15 @@ public class FruitService {
             throw new ToClientException(SysConstantDefine.InvalidParam,"fruit is not exist,posId={}!",posId);
         }
         // 等级
-        if(userBaseService.getLevel(session.getAccountId()) < posConfig.getLevel()){
+        if(userBaseService.getLevel(session.getUid()) < posConfig.getLevel()){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"level is not exist");
         }
         // jinbi
-        int gold = userBaseService.costGold(session.getAccountId(),posConfig.getGold(),"UnlockFruit");
+        int gold = userBaseService.costGold(session.getUid(),posConfig.getGold(),"UnlockFruit");
         // J解锁
         if(userFruit == null){
             userFruit = new UserFruit();
-            userFruit.setUid(session.getAccountId());
+            userFruit.setUid(session.getUid());
             userFruit.setPosId(posId);
             userFruit.setState(FruitState.Idle.getId());
             dataService.insert(userFruit);
@@ -194,7 +192,7 @@ public class FruitService {
     public JSONObject PlantFruit(JSONObject req,Session session) {
         int posId = req.getInteger("posId");
         int itemId = req.getInteger("itemId");
-        UserFruit userFruit = dataService.selectObject(UserFruit.class,"uid=? and posId=?",session.getAccountId(),posId);
+        UserFruit userFruit = dataService.selectObject(UserFruit.class,"uid=? and posId=?",session.getUid(),posId);
         if(userFruit == null){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"pos is not exist,posId={}!",posId);
         }
@@ -205,19 +203,19 @@ public class FruitService {
         if(fruitConfig == null){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"fruit is not exist,fruitId={}!",itemId);
         }
-        UserBase userBase = userBaseService.getUserBase(session.getAccountId());
+        UserBase userBase = userBaseService.getUserBase(session.getUid());
         if(fruitConfig.getUnlockLevel()>userBase.getLevel()){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"fruit is not unlock,fruitId={}!",itemId);
         }
         // 金币
-        int gold = userBaseService.costGold(session.getAccountId(),fruitConfig.getGold(),"PlantFruit");
+        int gold = userBaseService.costGold(session.getUid(),fruitConfig.getGold(),"PlantFruit");
         // 经验
-        int exp =userBaseService.addExp(session.getAccountId(),1);
+        int exp =userBaseService.addExp(session.getUid(),1);
         //种植
         userFruit.setItemId(itemId);
         userFruit.setState(FruitState.Growing.getId());
         //  设置果实数量：科技，属相
-        userFruit.setFruitNum(technologyService.calValue(session.getAccountId(), TecType.ZengChan,1));
+        userFruit.setFruitNum(technologyService.calValue(session.getUid(), TecType.ZengChan,1));
         if(fruitConfig.getShu() == userBase.getShuXiang()){
             userFruit.setFruitNum(userFruit.getFruitNum()*2);
         }
@@ -230,7 +228,7 @@ public class FruitService {
             }
         }
         System.out.println("useTime1:"+useTime);
-        useTime = technologyService.calValue(session.getAccountId(),TecType.JiaSu,useTime);
+        useTime = technologyService.calValue(session.getUid(),TecType.JiaSu,useTime);
         System.out.println("useTime2:"+useTime);
         long now = System.currentTimeMillis();
         userFruit.setBeginTime(now);
@@ -241,14 +239,14 @@ public class FruitService {
         JSONObject ret = new JSONObject();
         ret.put("gold",gold);
         ret.put("fruit",toJson(userFruit));
-        ret.put("level",userBaseService.getLevel(session.getAccountId()));
+        ret.put("level",userBaseService.getLevel(session.getUid()));
         ret.put("exp",exp);
         return ret;
     }
     @Request(opcode = Cmd.HavestFruit)
     public JSONObject HavestFruit(JSONObject req,Session session) {
         int posId = req.getInteger("posId");
-        UserFruit userFruit = dataService.selectObject(UserFruit.class,"uid=? and posId=?",session.getAccountId(),posId);
+        UserFruit userFruit = dataService.selectObject(UserFruit.class,"uid=? and posId=?",session.getUid(),posId);
         if(userFruit == null){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"pos is not exist,posId={}!",posId);
         }
@@ -265,12 +263,12 @@ public class FruitService {
         // 添加背包
         int itemId = userFruit.getItemId();
         int addNum = userFruit.getFruitNum();
-        int num = bagService.addItem(session.getAccountId(),userFruit.getItemId(),addNum);
+        int num = bagService.addItem(session.getUid(),userFruit.getItemId(),addNum);
         // 经验
         // 经验
-        int exp =userBaseService.addExp(session.getAccountId(),FruitConfig.datas.get(userFruit.getItemId()).getExp());
+        int exp =userBaseService.addExp(session.getUid(),FruitConfig.datas.get(userFruit.getItemId()).getExp());
         // 任务
-        taskService.triggerAllFruit(2,session.getAccountId(),addNum,itemId);
+        taskService.triggerAllFruit(2,session.getUid(),addNum,itemId);
         // 设置果实
         userFruit.setState(FruitState.Idle.getId());
         userFruit.setFertilizer(0);
@@ -285,7 +283,7 @@ public class FruitService {
         ret.put("addNum",addNum);
         ret.put("num",num);
         ret.put("fruit",userFruit);
-        ret.put("level",userBaseService.getLevel(session.getAccountId()));
+        ret.put("level",userBaseService.getLevel(session.getUid()));
         ret.put("exp",exp);
         return ret;
     }
@@ -293,7 +291,7 @@ public class FruitService {
     @Request(opcode = Cmd.FertilizerFruit)
     public JSONObject FertilizerFruit(JSONObject req,Session session) {
         int posId = req.getInteger("posId");
-        UserFruit userFruit = dataService.selectObject(UserFruit.class,"uid=? and posId=?",session.getAccountId(),posId);
+        UserFruit userFruit = dataService.selectObject(UserFruit.class,"uid=? and posId=?",session.getUid(),posId);
         if(userFruit == null){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"pos is not exist,posId={}!",posId);
         }
@@ -308,13 +306,13 @@ public class FruitService {
             throw new ToClientException(SysConstantDefine.InvalidParam,"fruit is not Growing,posId={},state={}!",posId,userFruit.getState());
         }
         // 扣除肥料
-        int fertilizer = skillService.costFertilizer(session.getAccountId());
+        int fertilizer = skillService.costFertilizer(session.getUid());
         //
         userFruit.setFruitNum(userFruit.getFruitNum()*2);
         userFruit.setFertilizer(1);
         dataService.update(userFruit);
         // 任务
-        taskService.triggerAllFruit(6,session.getAccountId(),1,0);
+        taskService.triggerAllFruit(6,session.getUid(),1,0);
         //
         JSONObject ret = new JSONObject();
         ret.put("fertilizer",fertilizer);

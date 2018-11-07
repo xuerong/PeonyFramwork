@@ -161,7 +161,7 @@ public class AccountService {
         if(StringUtils.isEmpty(name) && StringUtils.isEmpty(icon)){
             throw new ToClientException(LocalizationMessage.getText("invalidOper"));
         }
-        Account account = dataService.selectObject(Account.class,"id=?",session.getAccountId());
+        Account account = dataService.selectObject(Account.class,"uid=?",session.getUid());
         if(StringUtils.isNotEmpty(name)) {
             account.setName(name);
         }
@@ -178,7 +178,7 @@ public class AccountService {
 //    @Request(opcode = SysConstantDefine.UserInfo)
     public RetPacket getUserInfo(Object data,Session session) throws Throwable{
         AccountPB.CSUserInfo userInfo = AccountPB.CSUserInfo.parseFrom((byte[])data);
-        Account account = dataService.selectObject(Account.class,"id=?",session.getAccountId());
+        Account account = dataService.selectObject(Account.class,"uid=?",session.getUid());
         AccountPB.SCUserInfo.Builder builder = AccountPB.SCUserInfo.newBuilder();
         builder.setIcon(account.getIcon());
         builder.setName(account.getName());

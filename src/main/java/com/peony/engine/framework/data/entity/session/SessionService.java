@@ -39,7 +39,7 @@ public class SessionService {
             Iterator<Session> it = sessionMap.values().iterator();
             while (it.hasNext()){
                 Session session = it.next();
-                accountSysService.doLogout(session.getAccountId(),session.getSessionId(),LogoutReason.CloseServer);
+                accountSysService.doLogout(session.getUid(),session.getSessionId(),LogoutReason.CloseServer);
             }
         }
     }
@@ -88,7 +88,7 @@ public class SessionService {
             log.warn("session == null while remove session");
             return;
         }
-        Account account = dataService.selectObject(Account.class,"id=?",session.getAccountId());
+        Account account = dataService.selectObject(Account.class,"uid=?",session.getUid());
         if(account != null){
             account.destroySession();
         }

@@ -126,12 +126,6 @@ public class EventService {
     /**
      *
      */
-    public void fireAll(Object data, int event){
-        fireAll(data,event,false);
-    }
-    /**
-     *
-     */
     public void fireAll(Object data, int event, final boolean broadcast){
         EventData eventData = new EventData(event);
         eventData.setData(data);
@@ -183,10 +177,11 @@ public class EventService {
     /**
      * 事件是异步的
      * TODO 发出事件改为四种:同步|异步*广播|不广播
-     * **/
-
+     * @param data 事件参数
+     * @param event 事件id
+     */
     public void fireEvent(Object data, int event){
-        fireAll(data,event);
+        fireAll(data,event,false);
     }
 
     // 接受到其它服务器发送的事件

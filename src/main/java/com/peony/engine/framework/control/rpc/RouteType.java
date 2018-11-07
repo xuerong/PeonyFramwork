@@ -1,12 +1,15 @@
 package com.peony.engine.framework.control.rpc;
 
 
+import com.peony.engine.framework.server.IdService;
+import com.peony.engine.framework.tool.helper.BeanHelper;
+
 public enum RouteType implements IRoute {
     UID() {
         @Override
         public int getServerId(Object para) {
-            //
-            return Math.abs(para.hashCode()%10);
+            IdService idService = BeanHelper.getServiceBean(IdService.class);
+            return idService.getServerIdById(Long.parseLong((String)para));
         }
     },
 

@@ -33,6 +33,11 @@ public class HttpService {
         httpclient = HttpClients.createDefault();
     }
 
+    /**
+     * get访问
+     * @param url 地址
+     * @return 访问返回信息
+     */
     public String doGet(String url){
         HttpGet request = new HttpGet(url);
         String str = "";
@@ -52,6 +57,12 @@ public class HttpService {
         return str;
     }
 
+    /**
+     * post访问
+     * @param url 地址
+     * @param json 访问数据，json格式
+     * @return 访问返回信息
+     */
     public String doPost(String url, JSONObject json){
         HttpPost post = new HttpPost(url);
         String str = "";
@@ -76,6 +87,13 @@ public class HttpService {
         return str;
     }
 
+    /**
+     * post访问
+     * @param url 地址
+     * @param body 访问数据
+     * @param contentType 访问的格式
+     * @return 访问返回值
+     */
     public String doPost(String url, final String body, ContentType contentType){
         HttpPost post = new HttpPost(url);
         String str = "";
@@ -101,7 +119,7 @@ public class HttpService {
     }
 
 
-    public String convertStreamToString(InputStream is) {
+    private String convertStreamToString(InputStream is) {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         StringBuilder sb = new StringBuilder();
 

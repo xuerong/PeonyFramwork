@@ -30,9 +30,10 @@ public class HeartService {
     }
     @Request(opcode = SysConstantDefine.Heart)
     public JSONObject heart(JSONObject req, Session session){
-        lastTime.put(session.getAccountId(),System.currentTimeMillis());
+        lastTime.put(session.getUid(),System.currentTimeMillis());
         return new JSONObject();
     }
+
 
     @Updatable(isAsynchronous = true,cycle = 300000)
     public void monitorDataBase(int interval){
@@ -53,8 +54,8 @@ public class HeartService {
     @EventListener(event = SysConstantDefine.Event_AccountLogout)
     public void logout(EventData data) {
         LogoutEventData logoutEventData = (LogoutEventData) data.getData();
-        if (logoutEventData.getSession().getAccountId() != null) {
-            lastTime.remove(logoutEventData.getSession().getAccountId());
+        if (logoutEventData.getSession().getUid() != null) {
+            lastTime.remove(logoutEventData.getSession().getUid());
         }
     }
 }

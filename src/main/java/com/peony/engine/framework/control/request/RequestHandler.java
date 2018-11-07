@@ -10,5 +10,4 @@ import com.peony.engine.framework.data.entity.session.Session;
  */
 public interface RequestHandler {
     public <T> T handle(int opcode,Object clientData, Session session) throws Exception;
-    public <T> T handleJson(int opcode, Object clientData, Session session) throws Exception;
 }

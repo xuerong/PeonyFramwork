@@ -1,8 +1,13 @@
 package com.peony.engine.framework.data.entity.account;
 
+import com.alibaba.fastjson.JSONObject;
 import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.annotation.Updatable;
 import com.peony.engine.framework.control.event.EventService;
 import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
+import com.peony.engine.framework.control.statistics.Statistics;
+import com.peony.engine.framework.control.statistics.StatisticsData;
+import com.peony.engine.framework.control.statistics.StatisticsStore;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.entity.session.ConnectionClose;
 import com.peony.engine.framework.data.entity.session.Session;
@@ -15,13 +20,17 @@ import com.peony.engine.framework.server.IdService;
 import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.tool.util.Util;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -85,7 +94,7 @@ public class AccountSysService {
             loginInfo.setUid(uid);
         }
         // get account
-        Account account = dataService.selectObject(Account.class,"id=?",loginInfo.getUid());
+        Account account = dataService.selectObject(Account.class,"uid=?",loginInfo.getUid());
         boolean newUser = false;
         if(account == null){
             // 没有则创建
@@ -162,7 +171,7 @@ public class AccountSysService {
             doLogout(loginInfo.getUid(),olderSessionId,LogoutReason.replaceLogout);
             nodeServerLoginMark.put(loginInfo.getUid(),session.getSessionId());
         }
-        session.setAccountId(loginInfo.getUid());
+        session.setUid(loginInfo.getUid());
         List<Object> loginEventData = Arrays.asList(session,loginInfo.getLoginParams());
 
         session.setMessageSender(loginInfo.getMessageSender());
@@ -203,7 +212,7 @@ public class AccountSysService {
             // 说明：1还没有登录nodeServer，2正常的登出，该清理的已经清理完成
             return null;
         }
-        doLogout(session.getAccountId(),sessionId,LogoutReason.netDisconnect);
+        doLogout(session.getUid(),sessionId,LogoutReason.netDisconnect);
         return session;
     }
 
@@ -224,10 +233,10 @@ public class AccountSysService {
         if(session == null){ // todo 这个为啥会出现？
             return ;
         }
-        if(session.getAccountId() == null){
+        if(session.getUid() == null){
             log.error("session.getAccountId() == null"+logoutReason.toString());
         }else{
-            Account account = dataService.selectObject(Account.class,"id=?",session.getAccountId());
+            Account account = dataService.selectObject(Account.class,"uid=?",session.getUid());
             if(account!=null){
                 account.setLastLogoutTime(new Timestamp(System.currentTimeMillis()));
                 dataService.update(account);
@@ -267,5 +276,90 @@ public class AccountSysService {
         return account;
     }
 
+
+    /**
+     * 统计
+     * 1玩家注册（新注册）
+     * 2玩家登陆（日活跃，留存(1,3,7,14,30)）
+     * @return
+     */
+    List<String> heads = Arrays.asList("日期","玩家数","日活跃","新注册","1日留存","3日留存","7日留存","14日留存","30日留存");
+    List<String> headKeys = Arrays.asList("date","userCount","dayLogin","new","liu1","liu3","liu7","liu14","liu30");
+    @Statistics(id = "accountStatistics",name = "玩家统计")
+    public StatisticsData accountStatistics(){
+        StatisticsData ret = new StatisticsData();
+        ret.setHeads(heads);
+
+        List<List<String>> datas = new ArrayList<>();
+        List<StatisticsStore> statisticsStores = dataService.selectList(StatisticsStore.class,"type=?","accountStatistics");
+        if(statisticsStores != null) {
+            for(StatisticsStore statisticsStore : statisticsStores){
+                JSONObject jsonObject = JSONObject.parseObject(statisticsStore.getContent());
+                List<String> list = new ArrayList<>();
+                for(String head : headKeys) {
+                    list.add(jsonObject.get(head).toString());
+                }
+                datas.add(list);
+            }
+        }
+        ret.setDatas(datas);
+        return ret;
+    }
+    /**
+     * 每天统计一下数据，保存在数据库中
+     * @param interval
+     */
+    @Updatable(cronExpression = "0 0 0 * * ?")
+    public void accountStatistics(int interval){
+        StatisticsStore statisticsStore = new StatisticsStore();
+        statisticsStore.setId(idService.acquireLong(StatisticsStore.class));
+        statisticsStore.setType("accountStatistics");
+
+        JSONObject jsonObject = new JSONObject();
+        // 这里的单位用s
+        long oneDay = 24l*60*60;
+        long staTime = Util.getBeginTimeToday()/1000 - oneDay;
+
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");//
+
+        jsonObject.put("date",df.format(new Date(staTime*1000)));
+
+        jsonObject.put("userCount",dataService.selectCount(Account.class,""));
+        jsonObject.put("dayLogin", dataService.selectCountBySql("select count(*) from account where unix_timestamp(lastLoginTime) > ?",staTime));
+        jsonObject.put("new",dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ?",staTime));
+
+        long from = staTime - oneDay,to = staTime;
+        long all = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<?",from,to);
+        long liu = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<? and unix_timestamp(lastLoginTime) >?",from,to,staTime);
+        jsonObject.put("liu1",liu==0?0:liu*100/all + "%");
+
+        from = staTime - oneDay*3;
+        to = staTime - oneDay*2;
+        all = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<?",from,to);
+        liu = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<? and unix_timestamp(lastLoginTime) >?",from,to,staTime);
+        jsonObject.put("liu3",liu==0?0:liu*100/all + "%");
+
+        from = staTime - oneDay*7;
+        to = staTime - oneDay*6;
+        all = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<?",from,to);
+        liu = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<? and unix_timestamp(lastLoginTime) >?",from,to,staTime);
+        jsonObject.put("liu7",liu==0?0:liu*100/all + "%");
+
+        from = staTime - oneDay*14;
+        to = staTime - oneDay*13;
+        all = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<?",from,to);
+        liu = dataService.selectCountBySql("select count(*) from account where unix_timestamp(createTime) > ? and unix_timestamp(createTime)<? and unix_timestamp(lastLoginTime) >?",from,to,staTime);
+        jsonObject.put("liu14",liu==0?0:liu*100/all + "%");
+
+        from = staTime - oneDay*30;
+        to = staTime - oneDay*29;
+        all = dataService.selectCountBySql("select count(*) from account where createTime > ? and createTime<?",from,to);
+        liu = dataService.selectCountBySql("select count(*) from account where createTime > ? and createTime<? and lastLoginTime >?",from,to,staTime);
+        jsonObject.put("liu30",liu==0?0:liu*100/all + "%");
+
+
+        statisticsStore.setContent(jsonObject.toString());
+        dataService.insert(statisticsStore);
+    }
 
 }

@@ -5,7 +5,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.myFruit.cmd.Cmd;
 import com.myFruit.cmd.config.FruitConfig;
 import com.myFruit.cmd.config.PosConfig;
-import com.myFruit.cmd.config.TecConfig;
 import com.myFruit.game.bag.BagService;
 import com.myFruit.game.fruit.FruitService;
 import com.myFruit.game.fruit.FruitState;
@@ -22,7 +21,6 @@ import com.peony.engine.framework.control.annotation.Updatable;
 import com.peony.engine.framework.control.event.EventData;
 import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.data.DataService;
-import com.peony.engine.framework.data.entity.account.Account;
 import com.peony.engine.framework.data.entity.account.sendMessage.SendMessageService;
 import com.peony.engine.framework.data.entity.session.Session;
 import com.peony.engine.framework.data.tx.Tx;
@@ -147,24 +145,24 @@ public class FriendService {
     @EventListener(event = SysConstantDefine.Event_AccountLogin)
     public void loginEvent(EventData eventData) {
         Session session = (Session) ((List) eventData.getData()).get(0);
-        UserBase userBase = userBaseService.getUserBase(session.getAccountId());
+        UserBase userBase = userBaseService.getUserBase(session.getUid());
         ShuXiang shuXiang = ShuXiang.valueOf(userBase.getShuXiang());
         String shengUid = Math.random()*2==0?sysUser.get(shuXiang.getSheng1()-1):sysUser.get(shuXiang.getSheng2()-1);
         String keUid = Math.random()*2==0?sysUser.get(shuXiang.getKe1()-1):sysUser.get(shuXiang.getKe2()-1);
-        UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getAccountId(),shengUid);
+        UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getUid(),shengUid);
         if(userFriend == null){
-            userFriend = createUserFriend(session.getAccountId(),shengUid);
+            userFriend = createUserFriend(session.getUid(),shengUid);
         }
-        userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getAccountId(),keUid);
+        userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getUid(),keUid);
         if(userFriend == null){
-            userFriend = createUserFriend(session.getAccountId(),keUid);
+            userFriend = createUserFriend(session.getUid(),keUid);
         }
     }
 
 
     @Request(opcode = Cmd.GetFriendList)
     public JSONObject GetFriendList(JSONObject req, Session session){
-        List<UserFriend> userFriendList = dataService.selectList(UserFriend.class,"uid=?",session.getAccountId());
+        List<UserFriend> userFriendList = dataService.selectList(UserFriend.class,"uid=?",session.getUid());
         JSONArray array = new JSONArray();
         for(UserFriend userFriend : userFriendList){
             refreshUserFriendEnery(userFriend);
@@ -172,7 +170,7 @@ public class FriendService {
         }
         JSONObject ret = new JSONObject();
         ret.put("friends",array);
-        ret.put("randomFriendCount",getUserFriendInfo(session.getAccountId()).getRandomCount());
+        ret.put("randomFriendCount",getUserFriendInfo(session.getUid()).getRandomCount());
         return ret;
     }
 
@@ -197,28 +195,28 @@ public class FriendService {
             if(randomFriendUid.size() == 0){
                 throw new ToClientException(SysConstantDefine.InvalidOperation,"random uid error");
             }
-            UserFriendInfo userFriendInfo = getUserFriendInfo(session.getAccountId());
+            UserFriendInfo userFriendInfo = getUserFriendInfo(session.getUid());
             if(userFriendInfo.getRandomCount()>3){
                 throw new ToClientException(SysConstantDefine.InvalidOperation,"random uid count limit");
             }
 
             for(int i =0;i<5;i++){
                 String friendUid = randomFriendUid.get((int)(Math.random()*randomFriendUid.size()));
-                if(session.getAccountId().equals(friendUid)){
+                if(session.getUid().equals(friendUid)){
                     continue;
                 }
-                UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getAccountId(),friendUid);
+                UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getUid(),friendUid);
                 if(userFriend != null){
                     logger.warn("has been friend1");
                     continue;
                 }
-                UserFriend retUserFriend = createUserFriend(session.getAccountId(),friendUid);
-                userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",friendUid,session.getAccountId());
+                UserFriend retUserFriend = createUserFriend(session.getUid(),friendUid);
+                userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",friendUid,session.getUid());
                 if(userFriend != null){
                     logger.error("has been friend2");
                     return retUserFriend.toJson();
                 }
-                UserFriend friendFriend =  createUserFriend(friendUid,session.getAccountId());
+                UserFriend friendFriend =  createUserFriend(friendUid,session.getUid());
                 sendMessageService.sendMessage(friendUid,Cmd.Push_NewFriendByShare,friendFriend.toJson());
                 userFriendInfo.setRandomCount(userFriendInfo.getRandomCount()+1);
                 dataService.update(userFriendInfo);
@@ -227,21 +225,21 @@ public class FriendService {
             throw new ToClientException(SysConstantDefine.InvalidOperation,"random uid error");
         }
         String friendUid = req.getString("friendUid");
-        if(session.getAccountId().equals(friendUid)){
+        if(session.getUid().equals(friendUid)){
             return new JSONObject();
         }
-        UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getAccountId(),friendUid);
+        UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getUid(),friendUid);
         if(userFriend != null){
             logger.error("has been friend1");
             return new JSONObject();
         }
-        UserFriend retUserFriend = createUserFriend(session.getAccountId(),friendUid);
-        userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",friendUid,session.getAccountId());
+        UserFriend retUserFriend = createUserFriend(session.getUid(),friendUid);
+        userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",friendUid,session.getUid());
         if(userFriend != null){
             logger.error("has been friend2");
             return retUserFriend.toJson();
         }
-        UserFriend friendFriend =  createUserFriend(friendUid,session.getAccountId());
+        UserFriend friendFriend =  createUserFriend(friendUid,session.getUid());
         sendMessageService.sendMessage(friendUid,Cmd.Push_NewFriendByShare,friendFriend.toJson());
         return retUserFriend.toJson();
     }
@@ -255,7 +253,7 @@ public class FriendService {
     @Request(opcode = Cmd.GetFriendInfo)
     public JSONObject GetFriendInfo(JSONObject req, Session session){
         String friendUid = req.getString("friendUid");
-        UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getAccountId(),friendUid);
+        UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getUid(),friendUid);
         if(userFriend == null){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"not your friend ever");
         }
@@ -265,7 +263,7 @@ public class FriendService {
     @Request(opcode = Cmd.VisitFriend)
     public JSONObject VisitFriend(JSONObject req, Session session){
         String friendUid = req.getString("friendUid");
-        UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getAccountId(),friendUid);
+        UserFriend userFriend = dataService.selectObject(UserFriend.class,"uid=? and friendUid=?",session.getUid(),friendUid);
         if(userFriend == null){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"not your friend ever");
         }
@@ -283,7 +281,7 @@ public class FriendService {
         userFriend.setEnergy(userFriend.getEnergy() - 1);
         dataService.update(userFriend);
         // 根据相生相克关系给予果实
-        UserBase userBase = userBaseService.getUserBase(session.getAccountId());
+        UserBase userBase = userBaseService.getUserBase(session.getUid());
         ShuXiang myShuxiang = ShuXiang.valueOf(userBase.getShuXiang());
         // 相生相克
         int getRate = 0;
@@ -298,17 +296,17 @@ public class FriendService {
         ret.put("energy",userFriend.getEnergy());
 
         //
-        getRate = technologyService.calValue(session.getAccountId(), TecType.YouYi,getRate);
+        getRate = technologyService.calValue(session.getUid(), TecType.YouYi,getRate);
         if(Math.random()*100<getRate){
             // 中奖
-            int num = bagService.addItem(session.getAccountId(),userFruit.getItemId(),1);
+            int num = bagService.addItem(session.getUid(),userFruit.getItemId(),1);
             // 经验
-            int exp =userBaseService.addExp(session.getAccountId(),1);
+            int exp =userBaseService.addExp(session.getUid(),1);
             //
             ret.put("itemId",userFruit.getItemId());
             ret.put("num",num);
             ret.put("addNum",1);
-            ret.put("level",userBaseService.getLevel(session.getAccountId()));
+            ret.put("level",userBaseService.getLevel(session.getUid()));
             ret.put("exp",exp);
         }
         return ret;

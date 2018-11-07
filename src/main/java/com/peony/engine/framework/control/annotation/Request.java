@@ -20,5 +20,5 @@ public @interface Request {
      * opcode,框架根据该参数进行路径导航
      * TODO 这个可以考虑换成int类型
      * **/
-    short opcode();
+    int opcode();
 }

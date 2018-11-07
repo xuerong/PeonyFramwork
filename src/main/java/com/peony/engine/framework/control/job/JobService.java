@@ -51,6 +51,14 @@ public class JobService {
         }
     }
 
+    /**
+     * 启动一个Job
+     * @param delay 延时时间
+     * @param service Service类，必须是@Service
+     * @param method 方法名
+     * @param params 方法的参数
+     * @return Job的id
+     */
     @Tx
     public long startJob(int delay,Class<?> service, String method,Object... params){
         Job job = new Job();
@@ -89,6 +97,11 @@ public class JobService {
             jobExecutor.future = future;
         }
     }
+
+    /**
+     * 删除一个任务
+     * @param id job的id
+     */
     @Tx
     public void deleteJob(long id){
         deleteJob(id,false);

@@ -21,7 +21,7 @@ public class TechnologyService {
 
     @Request(opcode = Cmd.TechnologyInfo)
     public JSONObject TechnologyInfo(JSONObject req, Session session) {
-        Technology technology = getTechnology(session.getAccountId());
+        Technology technology = getTechnology(session.getUid());
         return technology.toJson();
     }
 
@@ -63,7 +63,7 @@ public class TechnologyService {
     public JSONObject TechnologyUpLevel(JSONObject req, Session session) {
         int type = req.getInteger("type");
 
-        Technology technology = getTechnology(session.getAccountId());
+        Technology technology = getTechnology(session.getUid());
 
         TecType tecType = TecType.valueOf(type);
         int level = 1;
@@ -77,10 +77,10 @@ public class TechnologyService {
         }
 
         TecConfig tecConfig = TecConfig.getTecConfig(tecType,level);
-        if(userBaseService.getLevel(session.getAccountId()) < tecConfig.getUpgradeLevel()){
+        if(userBaseService.getLevel(session.getUid()) < tecConfig.getUpgradeLevel()){
             throw new ToClientException(SysConstantDefine.InvalidOperation,"level is not enough");
         }
-        int gold = userBaseService.costGold(session.getAccountId(),tecConfig.getUpgradeGold(),"TechnologyUpLevel");
+        int gold = userBaseService.costGold(session.getUid(),tecConfig.getUpgradeGold(),"TechnologyUpLevel");
         //
         switch (tecType){
             case ZengChan: technology.setZengchan(technology.getZengchan()+1); break;

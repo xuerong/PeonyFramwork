@@ -8,7 +8,6 @@ import com.myFruit.game.userBase.UserBase;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.annotation.Updatable;
-import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.entity.session.Session;
 
@@ -34,7 +33,7 @@ public class RankService {
     public JSONObject getRankData(JSONObject req, Session session){
         JSONObject ret = new JSONObject();
         ret.put("top",top);
-        JSONObject you = all.get(session.getAccountId());
+        JSONObject you = all.get(session.getUid());
         ret.put("you",you);
         ret.put("nextRefreshTime",this.nextRefreshTime);
         return ret;

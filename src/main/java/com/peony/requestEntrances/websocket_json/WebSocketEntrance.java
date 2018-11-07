@@ -64,7 +64,7 @@ public class WebSocketEntrance extends Entrance {
             String sessionId = ctx.channel().attr(sessionKey).get();
             if(sessionId != null) {
                 Session session = accountSysService.netDisconnect(sessionId);
-                log.info("disConnect,ip = {},sessionId = {},userId = {}",ctx.channel().remoteAddress().toString(),sessionId,session==null?null:session.getAccountId());
+                log.info("disConnect,ip = {},sessionId = {},userId = {}",ctx.channel().remoteAddress().toString(),sessionId,session==null?null:session.getUid());
             }else{
                 log.error("disConnect , but session = {},ip = {}",sessionId,ctx.channel().remoteAddress().toString());
             }
@@ -135,12 +135,12 @@ public class WebSocketEntrance extends Entrance {
                     }else{
                         Session session = checkAndGetSession(sessionId);
                         if(opcode != SysConstantDefine.Heart) {
-                            log.info("user:{},request msg:(msgid: {}[{}]),{}", session.getAccountId(), requestService.getOpName(opcode),opcode, reqJson.toString());
+                            log.info("user:{},request msg:(msgid: {}[{}]),{}", session.getUid(), requestService.getOpName(opcode),opcode, reqJson.toString());
                         }
                         LocalizationMessage.setThreadLocalization(session.getLocalization());
                         retPacket = requestService.handleRequest(opcode,reqJson.getJSONObject("data"),session);
                         if(opcode != SysConstantDefine.Heart) {
-                            log.info("user:{},response msg:(msgid: {}[{}]),{}", session.getAccountId(), requestService.getOpName(opcode),opcode, retPacket.toString());
+                            log.info("user:{},response msg:(msgid: {}[{}]),{}", session.getUid(), requestService.getOpName(opcode),opcode, retPacket.toString());
                         }
                     }
 
