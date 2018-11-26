@@ -470,7 +470,12 @@ public class ConfigService {
 
                     Field field = fieldCache.get(name);
                     if (field == null) {
-                        field = configClass.getDeclaredField(name);
+                        try {
+                            field = configClass.getDeclaredField(name);
+                        }catch (NoSuchFieldException e){
+                            logger.error("config name is not exist {} {}",tableName,name);
+                            continue;
+                        }
                         field.setAccessible(true);
                         fieldCache.put(name, field);
                     }

@@ -246,8 +246,8 @@ public class FriendService {
 
     @Gm(id="testAddFriend")
     public void testAddFriend(){
-        UserFriend friendFriend =  createUserFriend("zyz09","zyz08");
-        sendMessageService.sendMessage("zyz09",Cmd.Push_NewFriendByShare,friendFriend.toJson());
+        UserFriend friendFriend =  createUserFriend("zyz30","zyz08");
+        sendMessageService.sendMessage("zyz30",Cmd.Push_NewFriendByShare,friendFriend.toJson());
     }
 
     @Request(opcode = Cmd.GetFriendInfo)

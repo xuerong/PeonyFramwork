@@ -19,8 +19,6 @@ public class ServerInfo implements Serializable {
     private int requestPort;
     private int type;
 
-    private int verifyServer; // 是否是审核服
-
     private int accountCount;
     private int hot; // 火爆程度，根据最近的登陆情况计算
     private int state; // 状态 0不能用，1能用
@@ -47,7 +45,6 @@ public class ServerInfo implements Serializable {
         ret.put("netEventPort",netEventPort);
         ret.put("requestPort",requestPort);
         ret.put("type",type);
-        ret.put("verifyServer",verifyServer);
         ret.put("accountCount",accountCount);
         ret.put("hot",hot);
         ret.put("state",state);
@@ -58,7 +55,6 @@ public class ServerInfo implements Serializable {
         ret.put("id",id);
         ret.put("publicHost",publicHost);
         ret.put("requestPort",requestPort);
-        ret.put("verifyServer",verifyServer);
         return ret;
     }
 
@@ -136,13 +132,6 @@ public class ServerInfo implements Serializable {
         this.innerHost = innerHost;
     }
 
-    public int getVerifyServer() {
-        return verifyServer;
-    }
-
-    public void setVerifyServer(int verifyServer) {
-        this.verifyServer = verifyServer;
-    }
 
     public int getAccountCount() {
         return accountCount;

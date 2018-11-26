@@ -46,6 +46,7 @@ public class ToClientException extends RuntimeException {
         return errCode;
     }
 
+    @Override
     public String getMessage(){
         String tmp = this.errMsg;
         if (tmp==null && this.getCause()!=null){

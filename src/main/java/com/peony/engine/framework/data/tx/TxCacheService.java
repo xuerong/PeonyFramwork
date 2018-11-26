@@ -138,12 +138,17 @@ public class TxCacheService {
             }
         }
     }
+
+
+
     // 事务结束
-    public boolean after(){
+    public boolean after(boolean tx){
         if(!isInTx()){
             return true;
         }
-        txHierarchy.set(txHierarchy.get()-1);
+        if(tx) {
+            txHierarchy.set(txHierarchy.get() - 1);
+        }
         int hierarchy = txHierarchy.get();
         if(hierarchy>0){
             return true;

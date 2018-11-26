@@ -3,6 +3,7 @@ package com.myFruit.cmd;
 public class Cmd {
     public static final int UserInit = 10001;
 
+
     //
 
     public static final int GetUserBase = 20001;
@@ -50,4 +51,6 @@ public class Cmd {
     public static final int GetTaskInfo = 20091; // 任务信息
     public static final int AwarkTask = 20092; // 领取任务
     public static final int PushTask = 20093; // 推送任务
+
+    public static final int ShareOpen = 20100;
 }

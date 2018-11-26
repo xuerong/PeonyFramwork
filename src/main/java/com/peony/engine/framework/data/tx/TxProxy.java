@@ -41,13 +41,13 @@ public class TxProxy extends AspectProxy {
     @Override
     public void after(Object object,Class<?> cls, Method method, Object[] params, Object result) {
 //        log.info("----------------------------after------"+cls+","+method+","+txCacheService.isInTx());
-        boolean success = txCacheService.after();
+        Tx tx = method.getAnnotation(Tx.class);
+        boolean success = txCacheService.after(tx.tx());
         //
         if(success){ // 没有事务或事务提交成功
 
         }else{
             // 事务提交失败，要重新执行该事务
-            Tx tx = method.getAnnotation(Tx.class);
             if(tx.tx()) {
                 throw new MMException(MMException.ExceptionType.TxCommitFail, "tx commit fail");
             }
