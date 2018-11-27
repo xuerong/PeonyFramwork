@@ -133,9 +133,16 @@
                             <tr><td style="text-align: right;">ssh用户名</td><td><input name="sshUser" type="text" style="width: 200px" /></td></tr>
                             <tr><td style="text-align: right;">ssh密码</td><td><input name="sshPassword" type="text" style="width: 200px"  /></td></tr>
                             <tr><td style="text-align: right;">服务器目录</td><td><input name="path" type="text" style="width: 200px" /></td></tr>
+                            <tr><td style="text-align: right;">配置文件参数</td><td>
+                                <table id="configTable" hidden>
+                                    <tr><th>key</th><th>value</th></tr>
+                                </table>
+                                <input style="float: right" type="button" name="addConfig" value=" 添加 " onclick="showAddConfig();" />
 
-                            <tr><td> </td><td><input type="button" name="addDeploy" value=" 添加 " onclick="submitAddServer();" />
-                                <input type="button" name="addDeploy" value=" 取消 " onclick="cancleSubmitAddServer();" /></td></tr>
+                            </td></tr>
+
+                            <tr><td> </td><td><input style="font-size: 16px" type="button" name="addDeploy" value=" 添加 " onclick="submitAddServer();" />
+                                <input style="font-size: 16px" type="button" name="addDeploy" value=" 取消 " onclick="cancleSubmitAddServer();" /></td></tr>
                         </table>
                     </form>
                     <table id="setDeployServerList" cellspacing="0" border="1" align="center" width="100%" style="border-color: darkgray;text-align: center;">
@@ -261,9 +268,21 @@
             ServerListParams.finishServerNum = 0;
             ServerListParams.errorServer = {};
         },
-        "page":0
-
+        "page":0,
     };
+
+    function showAddConfig() {
+        var configTable = document.getElementById("configTable");
+        $('#configTable').show();
+        var tr = document.createElement("tr");
+        var tdkey = document.createElement("td");
+        tdkey.innerHTML="<input name=\"configkey\" type=\"text\" style=\"width: 160px\" />";
+        tr.appendChild(tdkey);
+        var tdvalue = document.createElement("td");
+        tdvalue.innerHTML="<input name=\"configvalue\" type=\"text\" style=\"width: 240px\" />";
+        tr.appendChild(tdvalue);
+        configTable.appendChild(tr);
+    }
 
     function setProgress(div,index) {
         var nodes = div.children;

@@ -12,6 +12,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by a on 2016/9/29.
@@ -191,7 +193,20 @@ public class DeployServlet extends HttpServlet {
                     String sshUser = req.getParameter("sshUser");
                     String sshPassword = req.getParameter("sshPassword");
                     String path = req.getParameter("path");
-                    ret = deployService.addDeployServer(projectId,Integer.parseInt(id),name,sshIp,sshUser,sshPassword,path);
+
+                    System.out.println(req.getParameterMap());
+
+                    String[] configKeys = req.getParameterMap().get("configkey");
+                    Map<String,String> configMap = null;
+                    if(configKeys != null && configKeys.length>0){
+                        configMap = new HashMap<>();
+                        String[] configValues = req.getParameterMap().get("configvalue");
+                        for(int i=0;i<configKeys.length;i++){
+                            configMap.put(configKeys[i],configValues[i]);
+                        }
+                    }
+
+                    ret = deployService.addDeployServer(projectId,Integer.parseInt(id),name,sshIp,sshUser,sshPassword,path,configMap);
                 }
 
                 break;

@@ -235,7 +235,7 @@ public class DeployService {
     }
 
 
-    public JSONObject addDeployServer(String projectId, int id, String name, String sshIp, String sshUser, String sshPassword, String path){
+    public JSONObject addDeployServer(String projectId, int id, String name, String sshIp, String sshUser, String sshPassword, String path,Map<String,String> configMap){
 
         DeployServer deployServer = dataService.selectObject(DeployServer.class,"projectId=? and id=?",projectId,id);
         if(deployServer != null){

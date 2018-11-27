@@ -134,10 +134,7 @@ public class EntityHelper {
     }
 
 
-
-    private static void initEntity(Class<?> entityClass){
-        // ----------------initEntityNameMap
-        DBEntity dbEntity=entityClass.getAnnotation(DBEntity.class);
+    private static Map<String,ColumnDesc> getColumnDescMap(DBEntity dbEntity){
         String tableName=dbEntity.tableName();
 
         Map<String,ColumnDesc> columnDescMap;
@@ -147,6 +144,19 @@ public class EntityHelper {
         }else{
             columnDescMap = DataSet.getTableDescForMap(tableName);
         }
+        // 查看table是否存在，并获取列名
+
+        return columnDescMap;
+    }
+
+
+    private static void initEntity(Class<?> entityClass){
+        // ----------------initEntityNameMap
+        DBEntity dbEntity=entityClass.getAnnotation(DBEntity.class);
+        String tableName=dbEntity.tableName();
+
+        Map<String,ColumnDesc> columnDescMap = getColumnDescMap(dbEntity);
+
         // 查看table是否存在，并获取列名
         columnDescMap = checkAndModifyTable(columnDescMap,entityClass,dbEntity);
 //        if(columnDescList == null){
@@ -257,6 +267,8 @@ public class EntityHelper {
         boolean modifyIfTypeDifferent = ConfigHelper.getBoolean("databasetable.modifyIfTypeDifferent");
         boolean deleteIfMore = ConfigHelper.getBoolean("databasetable.deleteIfMore");
 
+        boolean syncPriKey = createIfNotExist;
+
         boolean create = columnDescList==null && createIfNotExist;
 
         Field[] fields = entityClass.getDeclaredFields();
@@ -354,17 +366,10 @@ public class EntityHelper {
             nameAfter.append("`(\n");
             nameAfter.append(createSb);
             if(dbEntity.pks().length>0){
-                first = true;
                 nameAfter.append(",\n").append("PRIMARY KEY (");
-                for(String pk : dbEntity.pks()){
-                    // PRIMARY KEY (`shareId`,`fff`);
-                    if(first){
-                        first = false;
-                    }else{
-                        nameAfter.append(",");
-                    }
-                    nameAfter.append("`").append(pk).append("`");
-                }
+
+                nameAfter.append(getKeyStr(dbEntity));
+
                 nameAfter.append(")");
             }
             nameAfter.append("\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
@@ -411,7 +416,66 @@ public class EntityHelper {
             }
         }
 
+        columnDescList = getColumnDescMap(dbEntity);
+        if(syncPriKey){
+            // 主键是否有变化-重置主键
+            // 主键同步
+            boolean isChangeKey=false;
+            Set<String> pkSet = new HashSet<>();
+            for(String pk : dbEntity.pks()){
+                ColumnDesc columnDesc = columnDescList.get(pk);
+                if(!columnDesc.isKey()){
+                    // 有增加主键
+                    isChangeKey = true;
+                    break;
+                }
+                pkSet.add(pk);
+            }
+            if(!isChangeKey){
+                for(Map.Entry<String,ColumnDesc> entry : columnDescList.entrySet()){
+                    if(entry.getValue().isKey() && !pkSet.contains(entry.getKey())){
+                        // 有删除主键
+                        isChangeKey = true;
+                        break;
+                    }
+                }
+            }
+            if(isChangeKey){
+
+                String keyStr = getKeyStr(dbEntity);
+
+                if(dbEntity.tableNum() > 1){
+                    for(int i=0;i<dbEntity.tableNum();i++){
+                        String tableName = dbEntity.tableName()+"_"+i;
+                        String sql = "alter table `" + tableName + "` drop primary key ,add primary key ("+keyStr+")";
+                        DatabaseHelper.updateForCloseConn(sql);
+                        log.warn("change pk in table {},sql= {}", tableName,sql);
+                    }
+                }else {
+                    String sql = "alter table `" + dbEntity.tableName() + "` drop primary key ,add primary key ("+keyStr+")";
+                    DatabaseHelper.updateForCloseConn(sql);
+                    log.warn("change pk in table {},sql= {}", dbEntity.tableName(),sql);
+                }
+                columnDescList = getColumnDescMap(dbEntity);
+            }
+        }
+
         return columnDescList;
+    }
+
+    private static String getKeyStr(DBEntity dbEntity){
+        StringBuilder keyStr =new StringBuilder();
+        boolean first = true;
+        for(String pk : dbEntity.pks()){
+            // PRIMARY KEY (`shareId`,`fff`);
+            if(first){
+                first = false;
+            }else{
+                keyStr.append(",");
+            }
+            keyStr.append("`").append(pk).append("`");
+        }
+        return keyStr.toString();
     }
 
     private static String createSqlType(Class clazz,StringTypeCollation typeCollation){
