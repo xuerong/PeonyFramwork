@@ -152,10 +152,25 @@ task build_online(dependsOn: ['build_server']) {
 
 
 task build_param(dependsOn: ['build_server']) {
+    delete outDir
     doLast {
         copy {
             from projectDir.absolutePath + '/env/'+env
             into outDir
+        }
+    }
+}
+
+task build_update_config() {
+    delete outDir
+    doLast {
+        copy {
+            from projectDir.absolutePath + '/src/main/resources/csv'
+            into outDir + '/config/csv'
+            String[] names=config.split(",")
+            for(String name:names){
+                include name.endsWith(".csv")?name:(name+".csv")
+            }
         }
     }
 }

@@ -13,8 +13,11 @@ public class DeployType implements Serializable{
     private String id;
     private String name;
     private int codeOrigin;
-    private String env;
-    private String buildParams;
+    private String buildTask;
+    @Column(stringColumnType = StringTypeCollation.Text)
+    private String fixedParam;
+    @Column(stringColumnType = StringTypeCollation.Text)
+    private String packParam;
     private int restart;
     @Column(stringColumnType = StringTypeCollation.Text)
     private String serverIds; // 该部署对应的serverIds
@@ -24,8 +27,9 @@ public class DeployType implements Serializable{
         ret.put("id",id);
         ret.put("name",name);
         ret.put("codeOrigin", codeOrigin);
-        ret.put("env",env);
-        ret.put("buildParams",buildParams);
+        ret.put("buildTask",buildTask);
+        ret.put("fixedParam",fixedParam);
+        ret.put("packParam",packParam);
         ret.put("restart",restart);
         ret.put("serverIds",serverIds);
         return ret;
@@ -63,20 +67,28 @@ public class DeployType implements Serializable{
         this.codeOrigin = codeOrigin;
     }
 
-    public String getEnv() {
-        return env;
+    public String getBuildTask() {
+        return buildTask;
     }
 
-    public void setEnv(String env) {
-        this.env = env;
+    public void setBuildTask(String buildTask) {
+        this.buildTask = buildTask;
     }
 
-    public String getBuildParams() {
-        return buildParams;
+    public String getFixedParam() {
+        return fixedParam;
     }
 
-    public void setBuildParams(String buildParams) {
-        this.buildParams = buildParams;
+    public void setFixedParam(String fixedParam) {
+        this.fixedParam = fixedParam;
+    }
+
+    public String getPackParam() {
+        return packParam;
+    }
+
+    public void setPackParam(String packParam) {
+        this.packParam = packParam;
     }
 
     public int getRestart() {

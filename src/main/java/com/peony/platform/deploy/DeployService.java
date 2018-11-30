@@ -37,8 +37,8 @@ public class DeployService {
 
     final String endStr = "command end exit";
 
-    private ConcurrentLinkedQueue<String> logQueue = new ConcurrentLinkedQueue<>();
-    private ConcurrentHashMap<Integer,String> deployStateMap = new ConcurrentHashMap<>(); // 各个服务器部署的状态提示
+//    private ConcurrentLinkedQueue<String> logQueue = new ConcurrentLinkedQueue<>();
+//    private ConcurrentHashMap<Integer,String> deployStateMap = new ConcurrentHashMap<>(); // 各个服务器部署的状态提示
 //    private ConcurrentHashMap<Integer,String> deployStateMap = new ConcurrentHashMap<>(); // 各个服务器部署的状态提示
 
     @Gm(id = "deploytest")
@@ -179,8 +179,9 @@ public class DeployService {
         return ret;
     }
 
-    public JSONObject addDeployType(String projectId,String id,String name,int codeOrigin,String env,String buildParams,int restart){
-        checkParams(projectId,id,name,env);
+
+    public JSONObject addDeployType(String projectId,String id,String name,int codeOrigin,String buildTask,String fixedParam,String packParam,int restart){
+        checkParams(projectId,id,name,buildTask);
         DeployProject deployProject = dataService.selectObject(DeployProject.class,"projectId=?",projectId);
         if(deployProject == null){
             throw new ToClientException(SysConstantDefine.InvalidParam,"project is not exist ,projectId={}",projectId);
@@ -195,8 +196,9 @@ public class DeployService {
         deployType.setId(id);
         deployType.setName(name);
         deployType.setCodeOrigin(codeOrigin);
-        deployType.setBuildParams(buildParams);
-        deployType.setEnv(env);
+        deployType.setBuildTask(buildTask);
+        deployType.setFixedParam(fixedParam);
+        deployType.setPackParam(packParam);
         deployType.setRestart(restart);
         dataService.insert(deployType);
         return getDeployTypes(projectId);
@@ -249,6 +251,14 @@ public class DeployService {
         deployServer.setSshUser(sshUser);
         deployServer.setSshPassword(sshPassword);
         deployServer.setPath(path);
+        if(configMap != null && configMap.size()>0){
+            JSONObject configJsonObject = new JSONObject();
+            for(Map.Entry<String,String> entry:configMap.entrySet() ){
+                configJsonObject.put(entry.getKey(),entry.getValue());
+            }
+            deployServer.setConfig(configJsonObject.toJSONString());
+        }
+
         dataService.insert(deployServer);
         JSONObject ret = getDeployServerList(projectId,0,serverPageSize);
         JSONArray array = ret.getJSONArray("deployServers");
@@ -288,7 +298,7 @@ public class DeployService {
         return ret;
     }
 
-    public JSONObject doDeploy(String projectId,int deployId,String serverIds){
+    public JSONObject doDeploy(String projectId,int deployId,String serverIds,String[] packParam){
         checkParams(projectId,serverIds);
         DeployProject deployProject = dataService.selectObject(DeployProject.class,"projectId=?",projectId);
         if(deployProject == null){
@@ -303,6 +313,15 @@ public class DeployService {
         CodeOrigin codeOrigin = dataService.selectObject(CodeOrigin.class,"projectId=? and id=?",projectId,deployType.getCodeOrigin());
         if(codeOrigin == null){
             throw new ToClientException(SysConstantDefine.InvalidParam,"code origin  is not exist!projectId={},deployId={},codeOrigin={}",projectId,deployId,deployType.getCodeOrigin());
+        }
+
+        // packparams
+        Map<String,String> packParams = new HashMap<>();
+        if(StringUtils.isNotEmpty(deployType.getPackParam())){
+            JSONArray array = JSONArray.parseArray(deployType.getPackParam());
+            for(int i=0;i<array.size();i++){
+                packParams.put((String)array.get(i),packParam[i]);
+            }
         }
         //
         switch (codeOrigin.getType()){ // 1本地，2git，3svn
@@ -326,8 +345,20 @@ public class DeployService {
                     deployState.stateInfo.put("state",1);
                     String projectUrl = deployGit(params.getString("gitPath"),params.getString("gitBranch"),params.getString("gitName"),params.getString("gitPassword"),deployState);
                     // 打包和部署
+                    // 构造部署参数
+                    StringBuilder sb = new StringBuilder();
+
+                    JSONObject fixedParamJson = JSONObject.parseObject(deployType.getFixedParam());
+                    for(Map.Entry<String,Object> entry : fixedParamJson.entrySet()){
+                        sb.append(" -P "+entry.getKey()+"="+entry.getValue());
+                    }
+
+                    for(Map.Entry<String,String> entry : packParams.entrySet()){
+                        sb.append(" -P "+entry.getKey()+"="+entry.getValue());
+                    }
+
                     try{
-                        deployLocal(projectId,deployType.getEnv(),projectUrl,serverIds,deployState);
+                        deployLocal(projectId,deployType,sb.toString(),projectUrl,serverIds,deployState);
                     }catch (Exception e){
                         logger.error("",e);
                     }
@@ -473,13 +504,13 @@ public class DeployService {
         @Override
         public void start(int totalTasks) {
             System.out.println("start:"+totalTasks);
-            deployState.log.add(des+" start,totalTasks="+totalTasks);
+            deployState.appendLog(des+" start,totalTasks="+totalTasks);
         }
 
         @Override
         public void beginTask(String title, int totalWork) {
             System.out.println("beginTask:title="+title+",totalWork="+totalWork);
-            deployState.log.add(des+"beginTask:title="+title+",totalWork="+totalWork);
+            deployState.appendLog(des+"beginTask:title="+title+",totalWork="+totalWork);
             completed=0;
         }
 
@@ -493,7 +524,7 @@ public class DeployService {
         @Override
         public void endTask() {
             System.out.println("endTask");
-            deployState.log.add(des+"endTask");
+            deployState.appendLog(des+"endTask");
         }
 
         @Override
@@ -535,6 +566,9 @@ public class DeployService {
      * 是否正在部署，部署的信息
      */
     class DeployState{
+
+        public ThreadLocal logPre = new ThreadLocal();
+
         private String projectId;
         private int deployId;
         private volatile AtomicBoolean running = new AtomicBoolean(false); // 当前的状态，同步代码，打包，部署具体服，
@@ -547,22 +581,29 @@ public class DeployService {
             log = new JSONArray();
         }
 
-        public JSONObject toClientJson(int logRow){
+        public synchronized void appendLog(String log){
+            if(logPre.get() != null){
+                log = logPre.get()+log;
+            }
+            this.log.add(log);
+        }
+
+        public synchronized  JSONObject toClientJson(int logRow){
             JSONObject ret = stateInfo;
             int size = log.size();
             if(size>logRow){
-                ret.put("log",new JSONArray(log.subList(logRow,size-1)));
+                ret.put("log",new JSONArray(log.subList(logRow,size)));
                 ret.put("logRow",size);
             }else{
                 ret.put("log",new JSONArray());
                 ret.put("logRow",logRow);
             }
-            return ret;
+            // 这个地方是防止并发，返回他的copy
+            return JSONObject.parseObject(ret.toJSONString());
         }
     }
 
-    public void deployLocal(String projectId,String env,String projectUrl,String serverIds,DeployState deployState)throws Exception{
-        deployStateMap.clear();
+    public void deployLocal(String projectId,DeployType deployType,String paramsStr,String projectUrl,String serverIds,DeployState deployState)throws Exception{
 
         deployState.stateInfo.put("state",2);
         // 本地编译
@@ -571,7 +612,7 @@ public class DeployService {
         StringBuilder cmd = new StringBuilder("cd "+projectUrl+" \n");
         cmd.append("pwd \n");
         cmd.append("echo build... \n");
-        cmd.append("gradle  build_param -P env="+env+" \n");
+        cmd.append("gradle  "+deployType.getBuildTask()+paramsStr+" \n");
         //tar -xzvf im_toby.tar.gz
         cmd.append("cd "+projectUrl+"/build \n");
         cmd.append("echo tar begin... \n");
@@ -589,20 +630,18 @@ public class DeployService {
         String line = null;
         while((line = read.readLine())!=null){
             System.out.println(line);
-            logQueue.offer(line);
-            deployState.log.add(line);
+            deployState.appendLog(line);
         }
         System.out.println("-------------------------------");
         Thread.sleep(500);
-        logQueue.offer(endStr);
-        deployState.log.add(endStr);
+        deployState.appendLog(endStr);
         // sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
         // sudo launchctl list | grep ssh
 
 
         deployState.stateInfo.put("state",3);
 
-        List<String> list = Util.split2List(serverIds,String.class);
+        List<String> list = Util.split2List(serverIds,String.class,",");
         StringBuilder sb = new StringBuilder();
         String sp = "";
         for(String _serverId:list){
@@ -631,10 +670,10 @@ public class DeployService {
             object.put("serverId",deployServer.getId());
             array.add(object);
             executorService.execute(()->{
+                deployState.logPre.set(deployServer.getId()+"服\t\t");
                 Session session = null;
                 try{
-                    deployStateMap.put(deployServer.getId(),"开始连接");
-                    object.put("st","1");
+                    object.put("st","1"); // 开始连接
                     // 连接
 //                    Session session  = this.connect("localhost","郑玉振elex",22,"zhengyuzhen");
 //                    Session session  = connect("47.93.249.150","root",22,"Zyz861180416");
@@ -643,28 +682,39 @@ public class DeployService {
                     System.out.println("isConnected:"+session!=null);
 
                     // 创建目录
-                    deployStateMap.put(deployServer.getId(),"创建目录");
-                    object.put("st","2");
+                    object.put("st","2");// 正在上传
 
                     StringBuilder uploadCmds = new StringBuilder();
                     uploadCmds.append("mkdir -p "+deployServer.getPath()+" \n");
                     uploadCmds.append("cd "+deployServer.getPath()+" \n");
                     execCmd(session,uploadCmds.toString(),object,deployState);
                     // 上传
-                    deployStateMap.put(deployServer.getId(),"正在上传");
-//                    object.put("des","正在上传");
-                    upload(session,deployServer.getPath()+"/target.tar.gz",projectUrl+"/build/target.tar.gz",new DeployProgressSetter(object,deployStateMap,deployServer.getId()));
+                    upload(session,deployServer.getPath()+"/target.tar.gz",projectUrl+"/build/target.tar.gz",new DeployProgressSetter(deployState,deployServer.getId()));
 
                     // 解压并执行
-                    deployStateMap.put(deployServer.getId(),"解压并执行");
-                    object.put("st","3");
+                    object.put("st","3"); // 解压并执行
                     StringBuilder execCmds = new StringBuilder();
                     execCmds.append("cd "+deployServer.getPath()+" \n");
-                    execCmds.append("tar -xzvf target.tar.gz \n");
-                    execCmds.append("cd target \n");
-                    execCmds.append("echo begin start server \n");
-                    execCmds.append("sh start.sh \n");
-                    execCmd(session,execCmds.toString(),true,object,deployState);
+                    execCmds.append("tar -xzvf target.tar.gz --strip-components 2 ./target\n");
+//                    execCmds.append("cd target \n");
+                    // sed -r 's/^\s*serverId\s*=.*/serverId=3/g'
+                    // 修改参数
+                    if(StringUtils.isNotEmpty(deployServer.getConfig())){
+                        JSONObject configObject = JSONObject.parseObject(deployServer.getConfig());
+                        for(Map.Entry<String,Object> entry : configObject.entrySet()){
+                            // 这个sed命令在mac上有问题，需要在-i 后面加个空字符串参数：''
+                            String replaceCmd = "sed -i 's#^\\s*"+entry.getKey()+"\\s*=.*#"+(entry.getKey()+"="+entry.getValue())+"#g' config/mmserver.properties \n";
+                            execCmds.append(replaceCmd);
+                        }
+                    }
+                    boolean restart = deployType.getRestart()>0;
+                    if(restart){
+                        execCmds.append("echo begin start server \n");
+                        execCmds.append("sh start.sh \n");
+                    }else{
+                        execCmds.append("echo no need restart server \n");
+                    }
+                    execCmd(session,execCmds.toString(),restart,object,deployState);
                     // 断开
 //                    session.disconnect();
                     //
@@ -676,6 +726,7 @@ public class DeployService {
                     if(session!= null){
                         session.disconnect();
                     }
+                    deployState.logPre.remove();
                 }
             });
         }
@@ -835,15 +886,18 @@ public class DeployService {
                         if(congratulations && startupSuccess){
                             logger.info("start finish!!!!-------======");
                             object.put("st","5");
-                            deployState.log.add("start finish!!!!-------======");
+                            deployState.appendLog("start finish!!!!-------======");
                             break;
                         }
                     }
                     if(msg.contains("begin start server")){
                         object.put("st","4");
                     }
+                    if(msg.contains( "no need restart server")){
+                        object.put("st","5");
+                    }
                     System.out.println(msg);
-                    deployState.log.add(msg);
+                    deployState.appendLog(msg);
                 }
             }
         }catch (Throwable e){
@@ -857,17 +911,15 @@ public class DeployService {
     }
 
     public static class DeployProgressSetter{
-        Map<Integer,String> map;
         int id;
-        JSONObject serverInfo;
-        DeployProgressSetter(JSONObject serverInfo,Map<Integer,String> map,int id){
-            this.map = map;
+        DeployState deployState;
+        DeployProgressSetter(DeployState deployState,int id){
             this.id = id;
-            this.serverInfo = serverInfo;
+            this.deployState = deployState;
         }
         public void set(String msg){
-            map.put(id,msg);
-            this.serverInfo.put("des",msg);
+            this.deployState.stateInfo.put("des",msg);
+            this.deployState.appendLog(id+"服\t\t"+msg);
         }
     }
 }

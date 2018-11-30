@@ -423,16 +423,29 @@ public class AsyncService {
         System.out.println(testKey1+":"+testDbEntities.size()+"    "+testDbEntities);
     }
     @Gm(id="insertUpdateForList")
-    public void insertUpdateForList(String uid) {
+    public void insertUpdateForList(String uid,int id) {
         DataService dataService = BeanHelper.getServiceBean(DataService.class);
         Random random = new Random();
-        for(int i = 0;i<1000;i++){
-            TestDbEntity testDbEntity = new TestDbEntity();
-            testDbEntity.setUid(uid+"--"+i);
-            testDbEntity.setAaa(random.nextInt(20)+"");
-            testDbEntity.setBbb(random.nextInt(300)+"");
-            dataService.insert(testDbEntity);
-        }
+        TestDbEntity testDbEntity = new TestDbEntity();
+        testDbEntity.setUid(uid);
+        testDbEntity.setAaa(id+"");
+        testDbEntity.setCcc(random.nextInt(300)+"");
+        dataService.insert(testDbEntity);
+    }
+    @Gm(id="updateUpdateForList")
+    public void updateUpdateForList(String uid,int id) {
+        DataService dataService = BeanHelper.getServiceBean(DataService.class);
+        TestDbEntity testDbEntity =  dataService.selectObject(TestDbEntity.class,"uid=? and aaa=?",uid,id);
+        testDbEntity.setCcc(999+"");
+        dataService.update(testDbEntity);
+//        Random random = new Random();
+//        for(int i = 0;i<1000;i++){
+//            TestDbEntity testDbEntity = new TestDbEntity();
+//            testDbEntity.setUid(uid+"--"+i);
+//            testDbEntity.setAaa(random.nextInt(20)+"");
+//            testDbEntity.setCcc(random.nextInt(300)+"");
+//            dataService.insert(testDbEntity);
+//        }
     }
 
     private String getValueKey(String[] fieldNames,Map<String,Method> getMethodMap,Object object){

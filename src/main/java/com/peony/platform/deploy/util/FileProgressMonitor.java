@@ -35,6 +35,8 @@ public class FileProgressMonitor extends TimerTask implements SftpProgressMonito
 
     private DeployService.DeployProgressSetter deployProgressSetter;
 
+
+
     public FileProgressMonitor(long fileSize,DeployService.DeployProgressSetter deployProgressSetter) {
         this.fileSize = fileSize;
         this.deployProgressSetter = deployProgressSetter;

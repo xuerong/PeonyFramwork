@@ -12,7 +12,7 @@ public class TestDbEntity implements Serializable {
     private String aaa;
 
     @Column(stringColumnType = StringTypeCollation.Text_Mb4)
-    private String bbb;
+    private String ccc;
 
 
     public String getUid() {
@@ -31,16 +31,25 @@ public class TestDbEntity implements Serializable {
         this.aaa = aaa;
     }
 
-    public String getBbb() {
-        return bbb;
+//    public String getBbb() {
+//        return bbb;
+//    }
+//
+//    public void setBbb(String bbb) {
+//        this.bbb = bbb;
+//    }
+
+
+    public String getCcc() {
+        return ccc;
     }
 
-    public void setBbb(String bbb) {
-        this.bbb = bbb;
+    public void setCcc(String ccc) {
+        this.ccc = ccc;
     }
 
     public String toString(){
-        return new StringBuilder("uid="+uid).append(",aaa=").append(aaa).append(",bbb=").append(bbb).toString();
+        return new StringBuilder("uid="+uid).append(",aaa=").append(aaa).append(",bbb=").append(ccc).toString();
     }
 
 }

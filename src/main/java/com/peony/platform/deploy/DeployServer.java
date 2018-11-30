@@ -1,7 +1,9 @@
 package com.peony.platform.deploy;
 
 import com.alibaba.fastjson.JSONObject;
+import com.peony.engine.framework.data.persistence.orm.annotation.Column;
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
+import com.peony.engine.framework.data.persistence.orm.annotation.StringTypeCollation;
 
 import java.io.Serializable;
 @DBEntity(tableName = "deployserver",pks = {"projectId","id"})
@@ -16,6 +18,9 @@ public class DeployServer implements Serializable {
     private String sshIp;
     private String sshUser;
     private String sshPassword;
+    //
+    @Column(stringColumnType = StringTypeCollation.Text)
+    private String config; // 配置参数的设置
 
     public JSONObject toJson(){
         JSONObject ret = new JSONObject();
@@ -26,6 +31,7 @@ public class DeployServer implements Serializable {
         ret.put("sshIp",sshIp);
         ret.put("sshUser",sshUser);
         ret.put("sshPassword",sshPassword);
+        ret.put("config",config);
         return ret;
     }
 
@@ -84,5 +90,13 @@ public class DeployServer implements Serializable {
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public String getConfig() {
+        return config;
+    }
+
+    public void setConfig(String config) {
+        this.config = config;
     }
 }

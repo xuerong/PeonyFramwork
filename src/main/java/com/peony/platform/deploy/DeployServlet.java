@@ -1,9 +1,12 @@
 package com.peony.platform.deploy;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.peony.engine.framework.control.gm.GmService;
 import com.peony.engine.framework.security.exception.MMException;
+import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,8 +73,17 @@ public class DeployServlet extends HttpServlet {
             resp.getWriter().write(ret.toJSONString());
 //            resp.getWriter().flush();
         }catch (Throwable e){
-            log.error("",e);
-            resp.getWriter().write("error:"+e.getMessage());
+            e.printStackTrace();
+            if(e instanceof ToClientException){
+                JSONObject ret = new JSONObject();
+                ret.put("exception",((ToClientException) e).getMessage());
+                resp.getWriter().write(ret.toJSONString());
+                return;
+            }
+            JSONObject ret = new JSONObject();
+            ret.put("exception",e.getMessage());
+            resp.getWriter().write(ret.toJSONString());
+            return;
 //            resp.getWriter().flush();
         }
     }
@@ -169,11 +181,34 @@ public class DeployServlet extends HttpServlet {
                 String id = req.getParameter("id");
                 String name = req.getParameter("name");
                 String codeOrigin = req.getParameter("codeOrigin");
-                String env = req.getParameter("env");
-                String param = req.getParameter("param");
+                String buildTask = req.getParameter("buildTask");
+
+                String[] fixParamKey = req.getParameterMap().get("fixParamKey");
+                JSONObject fixParamJson = new JSONObject();
+                if(fixParamKey != null && fixParamKey.length>0){
+                    String[]  fixParamValue = req.getParameterMap().get("fixParamValue");
+                    for(int i=0;i<fixParamKey.length;i++){
+                        if(StringUtils.isNotEmpty(fixParamKey[i])){
+                            fixParamJson.put(fixParamKey[i],fixParamValue[i]);
+                        }
+                    }
+                }
+
+                String[] packParamKey = req.getParameterMap().get("packParamKey");
+                JSONArray packParamKeyJson = new JSONArray();
+                if(packParamKey != null && packParamKey.length>0){
+                    for(String key :packParamKey){
+                        if(StringUtils.isNotEmpty(key)) {
+                            packParamKeyJson.add(key);
+                        }
+                    }
+                }
+
+
                 String restartStr = req.getParameter("restart");
                 int restart = "on".equals(restartStr)?1:0;
-                ret = deployService.addDeployType(projectId,id,name,Integer.parseInt(codeOrigin),env,param,restart);
+
+                ret = deployService.addDeployType(projectId,id,name,Integer.parseInt(codeOrigin),buildTask,fixParamJson.toJSONString(),packParamKeyJson.toJSONString(),restart);
             }
                 break;
             case "delDeployForm":
@@ -193,16 +228,28 @@ public class DeployServlet extends HttpServlet {
                     String sshUser = req.getParameter("sshUser");
                     String sshPassword = req.getParameter("sshPassword");
                     String path = req.getParameter("path");
+                    String isReplaceIdStr = req.getParameter("isReplaceId");
+                    String isReplaceNameStr = req.getParameter("isReplaceName");
 
                     System.out.println(req.getParameterMap());
+                    // isReplaceId
+                    boolean isReplaceId = "on".equals(isReplaceIdStr);
+                    boolean isReplaceName = "on".equals(isReplaceNameStr);
 
                     String[] configKeys = req.getParameterMap().get("configkey");
-                    Map<String,String> configMap = null;
+                    Map<String,String> configMap = new HashMap<>();
+                    if(isReplaceId){
+                        configMap.put("serverId",id);
+                    }
+                    if(isReplaceName){
+                        configMap.put("serverName",name);
+                    }
                     if(configKeys != null && configKeys.length>0){
-                        configMap = new HashMap<>();
                         String[] configValues = req.getParameterMap().get("configvalue");
                         for(int i=0;i<configKeys.length;i++){
-                            configMap.put(configKeys[i],configValues[i]);
+                            if(StringUtils.isNotEmpty(configKeys[i].trim())){
+                                configMap.put(configKeys[i],configValues[i]);
+                            }
                         }
                     }
 
@@ -236,7 +283,9 @@ public class DeployServlet extends HttpServlet {
                 String projectId = req.getParameter("projectId");
                 String deployId = req.getParameter("deployId");
                 String serverIds = req.getParameter("serverIds");
-                ret = deployService.doDeploy(projectId,Integer.parseInt(deployId),serverIds);
+                String[] packParam = req.getParameterMap().get("packParam");
+
+                ret = deployService.doDeploy(projectId,Integer.parseInt(deployId),serverIds,packParam);
                 break;
             }
             case "getDeployState":
