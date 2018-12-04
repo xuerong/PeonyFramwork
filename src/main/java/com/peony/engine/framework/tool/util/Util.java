@@ -418,4 +418,30 @@ public final class Util {
     public static String formatMsg(String msg,Object... args){
         return MessageFormatter.arrayFormat(msg,args);
     }
+
+
+    static Set<Character> spci = new HashSet<>();
+    static {
+        spci.add('.');spci.add('*');spci.add('[');
+        spci.add(']');spci.add('^');spci.add('$');
+        spci.add('{');spci.add('}');spci.add('\\');
+        spci.add('+');spci.add('?');spci.add('|');
+        spci.add('(');spci.add(')');spci.add(':');spci.add('&');
+    }
+
+    public static String regReplace(String regStr){
+        // . * [ ] ^ $ { } \ + ? | ( )
+        if(StringUtils.isEmpty(regStr)){
+            return regStr;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for(char c : regStr.toCharArray()){
+            if(spci.contains(c)){
+                sb.append("\\");
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
 }

@@ -18,10 +18,6 @@
 <div style="margin: 0 auto;text-align: center;">
     <h1>PeonyFramwork Deploy Tool</h1>
     项目名称：<select id="projectSelect" onchange="projectSelect(this)"  style="width: 200px;font-size: 16px">
-            <option value ="projectId1">Volvo</option>
-            <option value ="projectId2">Saab</option>
-            <option value="projectId3">Opel</option>
-            <option value="projectId4">Audi</option>
         </select>
         <input style="font-size: 16px;" type="button" value="添加项目" onclick="addProject();" />
         <input style="background-color: red;" type="button" value="删除项目" onclick="delProject();" />
@@ -43,12 +39,6 @@
                     部署类型:<br/>
                     <select id="deployList" onchange="deploySelect(this)" size='30' style="width: 200px;">
                         <option value ="set">设置</option>
-                        <%--<option value ="gameserver">游戏服部署</option>--%>
-                        <%--<option value ="mainserver">主服部署</option>--%>
-                        <%--<option value="deployserver">部署服部署</option>--%>
-                        <%--<option value="hotcode">热更代码</option>--%>
-                        <%--<option value ="hotconfig">热更配置文件</option>--%>
-                        <%--<option value ="userdefined">自定义部署</option>--%>
                     </select>
                 </div>
             </td>
@@ -63,7 +53,7 @@
                     </div>
                     <div id="codeOriginSet" hidden>
 
-                        <form  id="addCodeOriginForm" method="post" style="background-color: aqua;">
+                        <form  id="addCodeOriginForm" method="post" style="background-color: aliceblue;">
 
                             <table  style="margin: 0 auto;">
                                 <tr><td style="text-align: right;">id</td><td><input name="id" type="text" style="width: 200px" /></td></tr>
@@ -105,7 +95,7 @@
                         <input style="float: right; font-size: 20px; margin-top: 10px" type="button" value="添加部署类型" onclick="addDeployType();">
                     </div>
                     <div>
-                        <form hidden id="addDeployForm" method="post" style="background-color: aqua;">
+                        <form hidden id="addDeployForm" method="post" style="background-color: aliceblue;">
                             <table id="addDeploySet" style="margin: 0 auto;">
                                 <tr><td style="text-align: right;">id</td><td><input name="id" type="text" style="width: 200px" /></td></tr>
                                 <tr><td style="text-align: right;">名字</td><td><input name="name" type="text" style="width: 200px" /></td></tr>
@@ -399,8 +389,20 @@
             showStr += ("<tr><td>");
             showStr+=(item.id+"</td><td>");
             showStr+=(item.name+"</td><td>");
-            showStr+=(item.type+"</td><td style='max-width: 460px;word-wrap:break-word;'>");
-            showStr+=(item.params+"</td><td>");
+            var typeStr = item.type;
+            switch (item.type){
+                case 1:typeStr = "本地";break;
+                case 2:typeStr = "Git";break;
+                case 3:typeStr = "Svn";break;
+            }
+            showStr+=(typeStr+"</td><td style='max-width: 460px;word-wrap:break-word;'>");
+            var params = eval("("+item.params+")");
+            var paramTable = "<table style='padding: 0;line-height: 16px;'>";
+            $.each(params,function (key, value) {
+                paramTable+=("<tr><td style='text-align: right;'>"+key+":&nbsp;</td><td>"+value+"</td></tr>");
+            });
+            paramTable += "</table>";
+            showStr+=(paramTable+"</td><td>");
             showStr+=("<input type='button' style='font-size: 16px' value='删除' onclick='delCodeOrigin(\""+item.id+"\",\""+item.name+"\")' /></td>");
             showStr+=("</tr>");
         });
@@ -771,10 +773,10 @@
             //
             var packParam = eval("("+selected.obj.packParam+")");
 
+            var packParamShow = document.getElementById("packParamShow");
+            var packParamTable = document.getElementById("packParamTable");
+            removeAllChild(packParamTable);
             if(packParam.length>0){
-                var packParamShow = document.getElementById("packParamShow");
-                var packParamTable = document.getElementById("packParamTable");
-                removeAllChild(packParamTable);
                 $(packParamShow).show();
                 //
                 $.each(packParam, function(id,item) {
@@ -791,6 +793,8 @@
 
                     packParamTable.appendChild(tr);
                 });
+            }else{
+                $(packParamShow).hide();
             }
             //
             refreshDeployState(selected.obj,200);

@@ -5,13 +5,14 @@ import com.alibaba.fastjson.JSONObject;
 import com.jcraft.jsch.*;
 import com.peony.engine.framework.cluster.ServerInfo;
 import com.peony.engine.framework.control.annotation.Service;
-import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.data.DataService;
+import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.util.Util;
 import com.peony.platform.deploy.util.FileProgressMonitor;
+import jdk.nashorn.internal.runtime.regexp.RegExp;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.CreateBranchCommand;
@@ -27,23 +28,25 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 
-@Service(destroy = "destroy")
+@Service(destroy = "destroy",init = "init")
 public class DeployService {
     private static final Logger logger = LoggerFactory.getLogger(DeployService.class);
+
+
+    // 一些参数，用于判断服务器启动状态
+    public static final String started = "log for deploy service: server start finish";
+    public static final String startError = "log for deploy service: server start error";
+
+
     private DataService dataService;
 
     public final int serverPageSize = 10;
 
     final String endStr = "command end exit";
 
-//    private ConcurrentLinkedQueue<String> logQueue = new ConcurrentLinkedQueue<>();
-//    private ConcurrentHashMap<Integer,String> deployStateMap = new ConcurrentHashMap<>(); // 各个服务器部署的状态提示
-//    private ConcurrentHashMap<Integer,String> deployStateMap = new ConcurrentHashMap<>(); // 各个服务器部署的状态提示
-
-    @Gm(id = "deploytest")
-    public void gm(){
-        //
+    public void init(){
 
     }
 
@@ -64,6 +67,7 @@ public class DeployService {
 
     public JSONObject getCodeOriginList(String projectId){
         List<CodeOrigin> codeOrigins = dataService.selectList(CodeOrigin.class,"projectId=?",projectId);
+        codeOrigins.sort(Comparator.comparing(CodeOrigin::getId));
         JSONArray array = new JSONArray();
         for(CodeOrigin codeOrigin : codeOrigins){
             array.add(codeOrigin.toJson());
@@ -104,10 +108,14 @@ public class DeployService {
 
     public JSONObject getDeployProject(){
         List<DeployProject> deployProjects = dataService.selectList(DeployProject.class,"");
+
+        deployProjects.sort(Comparator.comparing(DeployProject::getProjectId));
+
         JSONArray array = new JSONArray();
         for(DeployProject deployProject : deployProjects){
             array.add(deployProject.toJson());
         }
+
         JSONObject ret = new JSONObject();
         ret.put("deployProjects",array);
         return ret;
@@ -170,6 +178,7 @@ public class DeployService {
 
     public JSONObject getDeployTypes(String projectId){
         List<DeployType> deployTypes = dataService.selectList(DeployType.class,"projectId=?",projectId);
+        deployTypes.sort(Comparator.comparing(DeployType::getId));
         JSONArray jsonArray = new JSONArray();
         for(DeployType deployType:deployTypes){
             jsonArray.add(deployType.toJson());
@@ -219,6 +228,7 @@ public class DeployService {
 
     public JSONObject getDeployServerList(String projectId,int pageNum,int pageSize){
         List<DeployServer> deployServers = dataService.selectListBySql(DeployServer.class,"select * from deployserver where projectId=? order by id limit ?,?",projectId,pageSize*pageNum,pageSize);
+        deployServers.sort(Comparator.comparing(DeployServer::getId));
         JSONObject ret = new JSONObject();
         JSONArray array = new JSONArray();
         for(DeployServer deployServer: deployServers){
@@ -250,7 +260,7 @@ public class DeployService {
         deployServer.setSshIp(sshIp);
         deployServer.setSshUser(sshUser);
         deployServer.setSshPassword(sshPassword);
-        deployServer.setPath(path);
+        deployServer.setPath(path.trim());
         if(configMap != null && configMap.size()>0){
             JSONObject configJsonObject = new JSONObject();
             for(Map.Entry<String,String> entry:configMap.entrySet() ){
@@ -315,6 +325,46 @@ public class DeployService {
             throw new ToClientException(SysConstantDefine.InvalidParam,"code origin  is not exist!projectId={},deployId={},codeOrigin={}",projectId,deployId,deployType.getCodeOrigin());
         }
 
+
+        DeployState deployState = getDeployState(projectId, deployId);
+        if (deployState.running.compareAndSet(false, true)) {
+            JSONObject params = JSONObject.parseObject(codeOrigin.getParams());
+
+            String projectUrl = null;
+            deployState.stateInfo.put("state", 1);
+            switch (codeOrigin.getType()){ // 1本地，2git，3svn
+                case 1:
+                    projectUrl = params.getString("localPath");
+                    break;
+                case 2: {
+                    // 从git拉取
+                    projectUrl = fetchFromGit(params.getString("gitPath"), params.getString("gitBranch"), params.getString("gitName"), params.getString("gitPassword"), deployState);
+                    break;
+                }
+                case 3:
+                    throw new ToClientException(SysConstantDefine.InvalidParam, "当前不支持");
+                default:
+                    throw new ToClientException(SysConstantDefine.InvalidParam, "codeOrigin.getType() error!codeOrigin.getType()={}",codeOrigin.getType());
+            }
+            // 部署参数
+            String paramsStr = buildTaskParamsStr(deployType,packParam);
+            // 打包和部署
+            try {
+                deployLocal(projectId, deployType, paramsStr, projectUrl, serverIds, deployState);
+            } catch (Exception e) {
+                logger.error("", e);
+            }
+            // 结束
+            deployState.reset();
+        } else {
+            throw new ToClientException(SysConstantDefine.InvalidParam, "on deploy,不能重复部署");
+        }
+        return new JSONObject();
+
+    }
+
+    private String buildTaskParamsStr(DeployType deployType,String[] packParam){
+        // 部署参数
         // packparams
         Map<String,String> packParams = new HashMap<>();
         if(StringUtils.isNotEmpty(deployType.getPackParam())){
@@ -323,58 +373,18 @@ public class DeployService {
                 packParams.put((String)array.get(i),packParam[i]);
             }
         }
-        //
-        switch (codeOrigin.getType()){ // 1本地，2git，3svn
-            case 1:
-                break;
-            case 2:
-                // git拉取(如果不存在，则clone，否则，fetch)，打包压缩，多线程连接不同服务器，上传
-                /**
-                 * params.put("gitPath",gitPath);
-                 params.put("gitBranch",gitBranch);
-                 params.put("gitName",gitName);
-                 params.put("gitPassword",gitPassword);
+        // 构造部署参数
+        StringBuilder sb = new StringBuilder();
 
-                 String name,String gitUrl,String credentialsName,String credentialsPassword,String branch)
-                 */
-                JSONObject params = JSONObject.parseObject(codeOrigin.getParams());
-
-                DeployState deployState = getDeployState(projectId,deployId);
-                if(deployState.running.compareAndSet(false,true)){
-                    // 从git拉取
-                    deployState.stateInfo.put("state",1);
-                    String projectUrl = deployGit(params.getString("gitPath"),params.getString("gitBranch"),params.getString("gitName"),params.getString("gitPassword"),deployState);
-                    // 打包和部署
-                    // 构造部署参数
-                    StringBuilder sb = new StringBuilder();
-
-                    JSONObject fixedParamJson = JSONObject.parseObject(deployType.getFixedParam());
-                    for(Map.Entry<String,Object> entry : fixedParamJson.entrySet()){
-                        sb.append(" -P "+entry.getKey()+"="+entry.getValue());
-                    }
-
-                    for(Map.Entry<String,String> entry : packParams.entrySet()){
-                        sb.append(" -P "+entry.getKey()+"="+entry.getValue());
-                    }
-
-                    try{
-                        deployLocal(projectId,deployType,sb.toString(),projectUrl,serverIds,deployState);
-                    }catch (Exception e){
-                        logger.error("",e);
-                    }
-
-
-                    // 结束
-                    deployState.reset();
-                }else{
-                    throw new ToClientException(SysConstantDefine.InvalidParam,"on deploy,不能重复部署");
-                }
-                break;
-            case 3:
-                break;
+        JSONObject fixedParamJson = JSONObject.parseObject(deployType.getFixedParam());
+        for (Map.Entry<String, Object> entry : fixedParamJson.entrySet()) {
+            sb.append(" -P " + entry.getKey() + "=" + entry.getValue());
         }
-        return new JSONObject();
 
+        for (Map.Entry<String, String> entry : packParams.entrySet()) {
+            sb.append(" -P " + entry.getKey() + "=" + entry.getValue());
+        }
+        return sb.toString();
     }
 
 
@@ -413,7 +423,7 @@ public class DeployService {
      *
      * gradle  build_param -P env=test;
      */
-    public String deployGit(String gitUrl,String branch,String credentialsName,String credentialsPassword,DeployState deployState){
+    public String fetchFromGit(String gitUrl, String branch, String credentialsName, String credentialsPassword, DeployState deployState){
         try{
             String projectUrl = System.getProperty("user.dir");
 
@@ -422,25 +432,6 @@ public class DeployService {
             String localPath = projectUrl+"deploy/git/"+Math.abs(gitUrl.hashCode());
             // 更新本地代码
             gitFetchCode(gitUrl,localPath,branch,credentialsName,credentialsPassword,deployState);
-            // 压缩
-
-
-
-//            CloneCommand cloneCommand = Git.cloneRepository();
-//            if(StringUtils.isNotEmpty(credentialsName)){
-//                cloneCommand.setCredentialsProvider(new UsernamePasswordCredentialsProvider(credentialsName, credentialsPassword));
-//            }
-//            cloneCommand.setURI(gitUrl)
-//                    .setDirectory(new File(projectUrl+"/deploy/git/"+name))
-//                    .setBranch(branch)
-//                    .setProgressMonitor(new GitMonitor())
-//                    .call();
-
-//            Repository rep = new FileRepository("/Users/zhengyuzhenelex/Documents/testgit/.git");
-//            Git git = new Git(rep);
-//            git.pull().setRemote("origin").call();
-            //fetch命令提供了setRefSpecs方法，而pull命令并没有提供，所有pull命令只能fetch所有的分支
-//        git.fetch().setRefSpecs("refs/heads/*:refs/heads/*").call();
             return localPath;
         }catch (Exception e){
             logger.error("",e);
@@ -685,25 +676,26 @@ public class DeployService {
                     object.put("st","2");// 正在上传
 
                     StringBuilder uploadCmds = new StringBuilder();
-                    uploadCmds.append("mkdir -p "+deployServer.getPath()+" \n");
-                    uploadCmds.append("cd "+deployServer.getPath()+" \n");
+                    uploadCmds.append("mkdir -p "+deployServer.getPath().trim()+" \n");
+                    uploadCmds.append("cd "+deployServer.getPath().trim()+" \n");
                     execCmd(session,uploadCmds.toString(),object,deployState);
                     // 上传
-                    upload(session,deployServer.getPath()+"/target.tar.gz",projectUrl+"/build/target.tar.gz",new DeployProgressSetter(deployState,deployServer.getId()));
+                    upload(session,deployServer.getPath().trim()+"/target.tar.gz",projectUrl+"/build/target.tar.gz",new DeployProgressSetter(deployState,deployServer.getId()));
 
                     // 解压并执行
                     object.put("st","3"); // 解压并执行
                     StringBuilder execCmds = new StringBuilder();
-                    execCmds.append("cd "+deployServer.getPath()+" \n");
+                    execCmds.append("cd "+deployServer.getPath().trim()+" \n");
                     execCmds.append("tar -xzvf target.tar.gz --strip-components 2 ./target\n");
 //                    execCmds.append("cd target \n");
                     // sed -r 's/^\s*serverId\s*=.*/serverId=3/g'
+//                    RegExp regExp = new RegExp("");
                     // 修改参数
                     if(StringUtils.isNotEmpty(deployServer.getConfig())){
                         JSONObject configObject = JSONObject.parseObject(deployServer.getConfig());
                         for(Map.Entry<String,Object> entry : configObject.entrySet()){
                             // 这个sed命令在mac上有问题，需要在-i 后面加个空字符串参数：''
-                            String replaceCmd = "sed -i 's#^\\s*"+entry.getKey()+"\\s*=.*#"+(entry.getKey()+"="+entry.getValue())+"#g' config/mmserver.properties \n";
+                            String replaceCmd = "sed -i 's#^\\s*"+ Util.regReplace(entry.getKey())+"\\s*=.*#"+Util.regReplace(entry.getKey()+"="+entry.getValue())+"#g' config/mmserver.properties \n";
                             execCmds.append(replaceCmd);
                         }
                     }
@@ -816,6 +808,7 @@ public class DeployService {
             long fileSize = file.length();
 
             /*方法一*/
+            System.out.println(directory);
             try(OutputStream out = chSftp.put(directory, new FileProgressMonitor(fileSize,deployProgressSetter), ChannelSftp.OVERWRITE)) { // 使用OVERWRITE模式{
                 byte[] buff = new byte[1024 * 256]; // 设定每次传输的数据块大小为256KB
                 int read;
@@ -888,6 +881,9 @@ public class DeployService {
                             object.put("st","5");
                             deployState.appendLog("start finish!!!!-------======");
                             break;
+                        }
+                        if(msg.endsWith(DeployService.startError)){
+                            throw new MMException(MMException.ExceptionType.StartUpFail,"start error!");
                         }
                     }
                     if(msg.contains("begin start server")){

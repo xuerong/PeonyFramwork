@@ -7,6 +7,7 @@ import com.peony.engine.framework.security.MonitorService;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.configure.EngineConfigure;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.platform.deploy.DeployService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +45,8 @@ public final class Server {
         Server.serverId = configure.getInteger("serverId");
 
         if(configure.getInteger("serverId") == null) {
-            System.err.println("mmserver.properties 缺少配置[服务器 id] serverId ");
-            System.exit(1);
+            log.error("mmserver.properties 缺少配置[服务器 id] serverId ");
+            throw new MMException(MMException.ExceptionType.StartUpFail,"mmserver.properties 缺少配置[服务器 id] serverId");
         }
     }
 
@@ -65,13 +66,13 @@ public final class Server {
             resource = Server.class.getClassLoader().getResource("./csv");
         }
         if(resource == null) {
-            System.err.println("请把config所在的路径[.]加到 classpath 中.");
-            System.exit(1);
+            log.error("请把config所在的路径[.]加到 classpath 中.");
+            throw new MMException(MMException.ExceptionType.StartUpFail,"请把config所在的路径[.]加到 classpath 中.");
         } else {
             resource = Server.class.getClassLoader().getResource("log4j.properties");
             if(resource == null) {
-                System.err.println("请把config目录[./config]加到 classpath 中.");
-                System.exit(1);
+                log.error("请把config目录[./config]加到 classpath 中.");
+                throw new MMException(MMException.ExceptionType.StartUpFail,"请把config目录[./config]加到 classpath 中.");
             }
         }
 
@@ -228,8 +229,16 @@ public final class Server {
      * @param args
      */
     public static void main(String[] args) {
-        EngineConfigure configure = new EngineConfigure();
-        Server.init(configure);
-        Server.start();
+        try{
+            EngineConfigure configure = new EngineConfigure();
+            Server.init(configure);
+            Server.start();
+//            log.info(DeployService.started);
+        }catch (Throwable e){
+            log.error("start error!");
+            log.error(DeployService.startError);
+            System.exit(1);
+        }
+
     }
 }

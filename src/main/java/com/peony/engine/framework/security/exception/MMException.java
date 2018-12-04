@@ -56,5 +56,6 @@ public class MMException extends RuntimeException {
         DataBaseFail, // 数据库提交失败
         SendNetEventFail, // 远程调用失败
         RemoteFail,
+        StartUpFail, // 启动失败
     }
 }

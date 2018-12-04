@@ -109,9 +109,9 @@ public final class EngineConfigure {
         if(netEventEntrance == null){
             throw new MMException("configure has no netEventEntrance");
         }
-        if(requestEntrance == null){
-            throw new MMException("configure has no requestEntrance");
-        }
+//        if(requestEntrance == null){
+//            throw new MMException("configure has no requestEntrance");
+//        }
 //        if(roomEntrance == null){
 //            throw new MMException("configure has no roomEntrance");
 //        }
