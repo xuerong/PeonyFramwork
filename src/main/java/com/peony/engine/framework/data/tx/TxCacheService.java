@@ -375,6 +375,7 @@ public class TxCacheService {
                     int begin = 0;
                     for(Integer index : deleteIndex){
                         if(index <=begin){
+                            begin = index+1;
                             continue;
                         }
                         for(int i=begin;i<index;i++){
@@ -387,7 +388,7 @@ public class TxCacheService {
                     }
                     return ret;
                 }else{
-                    deleteIndex.sort((o1,o2)->o1-o2);
+                    deleteIndex.sort((o1,o2)->o2-o1);
                     for(Integer index : deleteIndex){
                         objectList.remove(index.intValue());
                     }

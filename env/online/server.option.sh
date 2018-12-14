@@ -13,3 +13,5 @@
 
 # 远程调试
 # -Xrunjdwp:transport=dt_socket,address=5088,server=y,suspend=n
+
+-Dco.paralleluniverse.fibers.detectRunawayFibers=false

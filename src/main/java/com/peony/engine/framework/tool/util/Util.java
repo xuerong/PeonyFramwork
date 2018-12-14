@@ -214,6 +214,21 @@ public final class Util {
         return ret;
     }
 
+    public static <K> Set<K> split2Set(String content,Class<K> cls){
+        return split2Set(content,cls,";");
+    }
+    public static <K> Set<K> split2Set(String content,Class<K> cls,String sp){
+        Set<K> ret = new HashSet<>();
+        if (StringUtils.isBlank(content)) {
+            return ret;
+        }
+        String[] entryArray = StringUtils.splitByWholeSeparator(content, sp);
+        for (String entry : entryArray) {
+            ret.add(convert(cls, entry));
+        }
+        return ret;
+    }
+
     public static <K> List<List<K>> split2NestingList(String content, Class<K> cls){
         List<List<K>> ret = new ArrayList<>();
         if (StringUtils.isBlank(content)) {
@@ -264,12 +279,22 @@ public final class Util {
     }
 
     public static <K> String list2String(List<K> list) {
-        if (list == null) {
+
+        return collection2String(list);
+    }
+
+    public static <K> String set2String(Set<K> set) {
+
+        return collection2String(set);
+    }
+
+    private static <K> String collection2String(Collection<K> collection) {
+        if (collection == null) {
             return "";
         }
         StringBuilder sb = new StringBuilder("");
         String seperator = "";
-        for (K entry : list) {
+        for (K entry : collection) {
             sb.append(seperator).append(entry.toString());
             seperator = ";";
         }

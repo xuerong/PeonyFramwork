@@ -1,7 +1,12 @@
 package com.peony.engine.framework.net;
 
+import co.paralleluniverse.fibers.Fiber;
+import co.paralleluniverse.fibers.SuspendExecution;
+import co.paralleluniverse.fibers.Suspendable;
+import co.paralleluniverse.strands.SuspendableRunnable;
 import com.alibaba.fastjson.JSONObject;
 import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.gm.Gm;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -33,11 +38,62 @@ public class HttpService {
         httpclient = HttpClients.createDefault();
     }
 
+    public static interface HttpHandler{
+        public void handle(String ret);
+    }
+    class HttpHandlerSuspendableRunnable implements SuspendableRunnable{
+        final int method; // 0get,1post
+        final String url;
+        final HttpHandler httpHandler;
+        final String body;
+        final ContentType contentType;
+
+        public HttpHandlerSuspendableRunnable(String url,String body, ContentType contentType,HttpHandler httpHandler){
+            this(1,url,body,contentType,httpHandler);
+        }
+        public HttpHandlerSuspendableRunnable(String url,HttpHandler httpHandler){
+            this(0,url,null,null,httpHandler);
+        }
+        public HttpHandlerSuspendableRunnable(int method,String url,String body, ContentType contentType,HttpHandler httpHandler){
+            this.method = method;
+            this.url = url;
+            this.httpHandler = httpHandler;
+            this.body = body;
+            this.contentType = contentType;
+        }
+
+        @Override
+        public void run() throws SuspendExecution, InterruptedException {
+            if(method==0){
+                String ret = doGet(url);
+                httpHandler.handle(ret);
+            }else if(method == 1){
+                String ret = doPost(url,body,contentType);
+                httpHandler.handle(ret);
+            }
+        }
+    }
+
+
+
+    public void doGetAsync(String url,HttpHandler httpHandler){
+        new Fiber<String>(new HttpHandlerSuspendableRunnable(url,httpHandler)).start();
+    }
+
+    public void doPostAsync(String url,JSONObject param,HttpHandler httpHandler){
+        doPostAsync(url,param.toJSONString(),ContentType.APPLICATION_JSON,httpHandler);
+    }
+
+    public void doPostAsync(String url,String body, ContentType contentType,HttpHandler httpHandler){
+        new Fiber<String>(new HttpHandlerSuspendableRunnable(url,body,contentType,httpHandler)).start();
+    }
+
     /**
      * get访问
      * @param url 地址
      * @return 访问返回信息
      */
+    @Suspendable
     public String doGet(String url){
         HttpGet request = new HttpGet(url);
         String str = "";
@@ -64,27 +120,7 @@ public class HttpService {
      * @return 访问返回信息
      */
     public String doPost(String url, JSONObject json){
-        HttpPost post = new HttpPost(url);
-        String str = "";
-        try {
-
-            StringEntity strEn = new StringEntity(json.toString(), ContentType.APPLICATION_JSON);
-            post.setEntity(strEn);
-
-            HttpResponse response = httpclient.execute(post);
-            HttpEntity entity = response.getEntity();
-
-            if (entity != null) {
-                InputStream instreams = entity.getContent();
-                str = convertStreamToString(instreams);
-                logger.info("get http post response:{}", str);
-            }
-        }catch (Exception e){
-            logger.error("post exception:", e);
-        }finally {
-            post.abort();
-        }
-        return str;
+        return doPost(url,json.toString(),ContentType.APPLICATION_JSON);
     }
 
     /**
@@ -94,6 +130,7 @@ public class HttpService {
      * @param contentType 访问的格式
      * @return 访问返回值
      */
+    @Suspendable
     public String doPost(String url, final String body, ContentType contentType){
         HttpPost post = new HttpPost(url);
         String str = "";

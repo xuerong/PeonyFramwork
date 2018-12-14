@@ -84,6 +84,9 @@ dependencies {
     compile 'com.jcraft:jsch:0.1.54'
     // https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit
     compile group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.1.3.201810200350-r'
+    // https://mvnrepository.com/artifact/com.vlkan/quasar-maven-plugin
+    compile group: 'com.vlkan', name: 'quasar-maven-plugin', version: '0.7.9'
+
 
 
 }
