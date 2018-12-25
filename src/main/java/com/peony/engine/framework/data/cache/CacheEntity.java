@@ -1,5 +1,6 @@
 package com.peony.engine.framework.data.cache;
 
+import com.peony.engine.framework.data.persistence.orm.EntityHelper;
 import com.peony.engine.framework.tool.util.ObjectUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,40 +82,40 @@ public class CacheEntity implements Serializable{
 
             // TODO 这个地方有两种优化的方向：完全可行的是，不用反射创建，而是用生成代码创建，另一种是缓存，对象池
 
-            Class<?> cls = entity.getClass();
-            Object target = ObjectUtil.newInstance(cls);
-            Field[] fields = clsFieldMap.get(cls);
-            if(fields == null){
-                Field[] fs = cls.getDeclaredFields();
-                List<Field> fieldsList = new ArrayList<>();
-                for(Field field : fs){
-                    if (!Modifier.isStatic(field.getModifiers())) {
-                        fieldsList.add(field);
-                    }
-                }
-                fields =new Field[fieldsList.size()];
-                int i=0;
-                for(Field field:fieldsList){
-                    field.setAccessible(true);
-                    fields[i++] = field;
-                }
-                clsFieldMap.putIfAbsent(cls,fields);
-            }
-
-            try {
-                for (Field field : fields) {
-                    //
-                    field.set(target, field.get(entity));
-                }
-            } catch (Exception e) {
-                logger.error("复制成员变量出错！", e);
-                throw new RuntimeException(e);
-            }
+//            Class<?> cls = entity.getClass();
+//            Object target = ObjectUtil.newInstance(cls);
+//            Field[] fields = clsFieldMap.get(cls);
+//            if(fields == null){
+//                Field[] fs = cls.getDeclaredFields();
+//                List<Field> fieldsList = new ArrayList<>();
+//                for(Field field : fs){
+//                    if (!Modifier.isStatic(field.getModifiers())) {
+//                        fieldsList.add(field);
+//                    }
+//                }
+//                fields =new Field[fieldsList.size()];
+//                int i=0;
+//                for(Field field:fieldsList){
+//                    field.setAccessible(true);
+//                    fields[i++] = field;
+//                }
+//                clsFieldMap.putIfAbsent(cls,fields);
+//            }
+//
+//            try {
+//                for (Field field : fields) {
+//                    //
+//                    field.set(target, field.get(entity));
+//                }
+//            } catch (Exception e) {
+//                logger.error("复制成员变量出错！", e);
+//                throw new RuntimeException(e);
+//            }
 
 //            t2 = System.nanoTime();
 //            ObjectUtil.copyFields(entity,target);
 //            t3 = System.nanoTime();
-            cacheEntity.setEntity(target);
+            cacheEntity.setEntity(EntityHelper.copyEntity(entity));
         }
         /**
          * __________--------------------40347,346590

@@ -1,12 +1,15 @@
 package com.peony.engine.framework.data;
 
+import com.myFruit.game.bag.BagItem;
 import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.data.cache.CacheEntity;
 import com.peony.engine.framework.data.cache.CacheService;
 import com.peony.engine.framework.data.cache.KeyParser;
 import com.peony.engine.framework.data.persistence.dao.DataAccessor;
 import com.peony.engine.framework.data.persistence.dao.DatabaseHelper;
 import com.peony.engine.framework.data.persistence.orm.DataSet;
+import com.peony.engine.framework.data.persistence.orm.EntityHelper;
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
 import com.peony.engine.framework.data.tx.AsyncService;
 import com.peony.engine.framework.data.tx.LockerService;
@@ -339,6 +342,7 @@ public class DataService {
         // 在事事务中仅插入事务
         if(txCacheService.isInTx()){
             txCacheService.insert(key,object);
+            return;
         }
         // 不在事务中,先插入缓存,再插入异步服务器
         // 这里要用update,因为delete用的是异步,缓存中存在其key,insert不考虑其版本
@@ -397,7 +401,7 @@ public class DataService {
         // 在事事务中仅在事务中删除事务
         if(txCacheService.isInTx()){
             txCacheService.delete(key,object);
-//            return true;
+            return;
         }
         // 不再事务中,先更新缓存,再放入异步数据库
         CacheEntity cacheEntity = new CacheEntity(object);

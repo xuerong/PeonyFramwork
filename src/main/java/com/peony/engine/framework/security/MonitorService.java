@@ -113,7 +113,7 @@ public class MonitorService {
         setMonitorNum(MonitorNumType.CacheNum,cacheService.size());
         setMonitorNum(MonitorNumType.CacheEvictedNum,cacheService.evictNum());
         setMonitorNum(MonitorNumType.OnlineUserNum,onlineUser.size());
-        setMonitorNum(MonitorNumType.LockerNum,lockerService.getLockerNum());
+        setMonitorNum(MonitorNumType.LockerNum,lockerService.getLockingNum());
 
         String date = DateUtils.formatNow("yyyy-MM-dd HH:mm:ss");
         // 打印监控数据

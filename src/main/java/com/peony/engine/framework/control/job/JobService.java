@@ -80,7 +80,7 @@ public class JobService {
 
     private void startJob(Job job,boolean isDb){
         JobExecutor jobExecutor = createJobExecutor(job);
-        synchronized (jobExecutor) {
+        synchronized (jobExecutor) { // TODO 这个锁好像有问题
             // 本地验证唯一性
             JobExecutor oldJ = jobExecutorMap.putIfAbsent(job.getId(), jobExecutor);
             if (oldJ != null) { // 已经存在了

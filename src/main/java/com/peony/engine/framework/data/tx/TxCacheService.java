@@ -6,6 +6,7 @@ import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.OperType;
 import com.peony.engine.framework.data.cache.CacheEntity;
 import com.peony.engine.framework.data.cache.KeyParser;
+import com.peony.engine.framework.data.entity.account.Account;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.tool.helper.BeanHelper;
 import org.slf4j.Logger;
@@ -268,8 +269,9 @@ public class TxCacheService {
                     asyncDataList.add(asyncData);
                 }
             }
-            // 提交异步服务器
+
             if(asyncDataList!=null && asyncDataList.size()>0){
+                // 提交异步服务器
                 asyncService.asyncData(asyncDataList);
             }
         }finally {

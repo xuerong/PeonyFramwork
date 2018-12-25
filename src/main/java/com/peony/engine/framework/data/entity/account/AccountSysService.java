@@ -109,7 +109,7 @@ public class AccountSysService {
             newUser = true;
             log.info("new user register,uid={}",account.getUid());
         }
-        account.setLastLoginTime(new Timestamp(System.currentTimeMillis()));
+        account.setLastLoginTime(System.currentTimeMillis());
 
 
         Session session = applyForLogin(loginInfo);
@@ -238,7 +238,7 @@ public class AccountSysService {
         }else{
             Account account = dataService.selectObject(Account.class,"uid=?",session.getUid());
             if(account!=null){
-                account.setLastLogoutTime(new Timestamp(System.currentTimeMillis()));
+                account.setLastLogoutTime(System.currentTimeMillis());
                 dataService.update(account);
                 nodeServerLoginMark.remove(account.getUid());
             }
@@ -269,9 +269,10 @@ public class AccountSysService {
         account.setUid(id);
         account.setName(id); // todo 暂时用这个
         account.setIcon("default");
+        long now = System.currentTimeMillis();
         Timestamp curTime = new Timestamp(System.currentTimeMillis());
-        account.setCreateTime(curTime);
-        account.setLastLoginTime(curTime);
+        account.setCreateTime(now);
+        account.setLastLoginTime(now);
 
         return account;
     }

@@ -87,6 +87,7 @@ dependencies {
     // https://mvnrepository.com/artifact/com.vlkan/quasar-maven-plugin
     compile group: 'com.vlkan', name: 'quasar-maven-plugin', version: '0.7.9'
 
+    compile 'com.zaxxer:HikariCP:2.6.3'
 
 
 }

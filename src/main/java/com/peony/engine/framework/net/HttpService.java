@@ -75,7 +75,12 @@ public class HttpService {
     }
 
 
-
+    /**
+     * TODO 下面三个方法提供了http服务的协程支持，但是要考虑事务啊
+     * 其实调用第三方本来就无法支持事务（除非用回滚，但这和业务直接相关）
+     *
+     *
+     */
     public void doGetAsync(String url,HttpHandler httpHandler){
         new Fiber<String>(new HttpHandlerSuspendableRunnable(url,httpHandler)).start();
     }

@@ -49,6 +49,7 @@ public class TxProxy extends AspectProxy {
         }else{
             // 事务提交失败，要重新执行该事务
             if(tx.tx()) {
+                // TODO 这里也要清理事务缓存
                 throw new MMException(MMException.ExceptionType.TxCommitFail, "tx commit fail");
             }
         }

@@ -17,6 +17,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by apple on 16-8-21.
@@ -28,13 +31,8 @@ public class LockerService {
     private static final Logger log = LoggerFactory.getLogger(LockerService.class);
     private static final int maxTryLockTimes = 20;
 
-    private ConcurrentHashMap<String,String> lockers = new ConcurrentHashMap<>();
-    private ThreadLocal<Map<String,Integer>> threadLocalLockers = new ThreadLocal<Map<String,Integer>>(){
-        @Override
-        protected Map<String, Integer> initialValue() {
-            return new HashMap<>();
-        }
-    }; // 做可重入锁
+    StringLocker stringLocker = new StringLockerReentrantLock();
+
     private CacheCenter cacheCenter;
 
     private NetEventService netEventService;
@@ -82,7 +80,7 @@ public class LockerService {
         boolean result = true;
         String failKey = null;
         for (String key : keys) {
-            if(!lock(key)){
+            if(!stringLocker.lock(key)){
                 result = false;
                 failKey = key;
                 break;
@@ -90,7 +88,7 @@ public class LockerService {
         }
         if(!result){ // 如果加锁失败,已经加锁的要解锁
             for (String key : keys) {
-                unlock(key);
+                stringLocker.unlock(key);
                 if(key.equals(failKey)){
                     break;
                 }
@@ -111,7 +109,7 @@ public class LockerService {
         }
         if(!result){ // 如果加锁失败,已经加锁的要解锁
             for (LockerData lockerData : lockerDatas) {
-                unlock(lockerData.getKey());
+                stringLocker.unlock(lockerData.getKey());
                 if(lockerData.getKey().equals(failKey)){
                     break;
                 }
@@ -121,7 +119,7 @@ public class LockerService {
     }
     public void receiveUnLockRequest(String[] keys){
         for(String key : keys){
-            unlock(key);
+            stringLocker.unlock(key);
         }
     }
     /**
@@ -135,7 +133,7 @@ public class LockerService {
      * @param casUnique
      */
     private boolean lockAndCheck(String key, OperType operType, long casUnique){
-        if(!lock(key)){
+        if(!stringLocker.lock(key)){
             return false;
         }
         if(operType == OperType.Update){
@@ -143,7 +141,7 @@ public class LockerService {
             if(cacheEntity!= null && cacheEntity.getState() != CacheEntity.CacheEntityState.Normal){
                 return false;
             }
-            if(cacheEntity.getCasUnique() != casUnique){ // 没有更新过
+            if(cacheEntity.getCasUnique() != casUnique){ // 没有更新过 todo 这里没有考虑casUnique为-1的情况
                 return false;
             }
         }else if(operType == OperType.Insert){
@@ -154,52 +152,9 @@ public class LockerService {
         }
         return true;
     }
-    private boolean lock(String key){
-        // 加锁
-        String olderKey = lockers.putIfAbsent(key,key);
-        int lockTime = 0;
-        while(olderKey != null){ // 加锁失败,稍等再加
-            Integer count = threadLocalLockers.get().get(key);
-            if(count != null && count >0){
-                // 重入
-                threadLocalLockers.get().put(key,++count);
-                monitorService.addMonitorNum(MonitorNumType.DoLockSuccessNum,1);
-                return true;
-            }
-            if(lockTime++>maxTryLockTimes){
-                // 这个地方不能用异常,因为加锁失败,要清理之前加成功的锁:如果考虑用最终捕获异常来清理锁，也可以考虑，但还是不如这样
-//                ExceptionHelper.handle(ExceptionLevel.Warn,"锁超时,key = "+key,null);
-                log.warn("锁超时,key = "+key+",olderKey="+olderKey);
-                monitorService.addMonitorNum(MonitorNumType.DoLockFailNum,1);
-                return false;
-            }
-            try {
-                Thread.sleep(10);
-                olderKey = lockers.putIfAbsent(key,key);
-            }catch (InterruptedException e){
-                monitorService.addMonitorNum(MonitorNumType.DoLockFailNum,1);
-                throw new MMException("锁异常,key = "+key);
-            }
-        }
-        threadLocalLockers.get().put(key,1);
-        monitorService.addMonitorNum(MonitorNumType.DoLockSuccessNum,1);
-        return true;
-    }
-    private void unlock(String key){
-        Integer count = threadLocalLockers.get().get(key);
-        if(count == null || count <=1){
-            if(lockers.remove(key) != null){
-                threadLocalLockers.get().put(key,0);
-                monitorService.addMonitorNum(MonitorNumType.DoUnLockNum,1);
-            }
-        }else{
-            threadLocalLockers.get().put(key,--count);
-            monitorService.addMonitorNum(MonitorNumType.DoUnLockNum,1);
-        }
-    }
 
-    public int getLockerNum(){
-        return lockers.size();
+    public int getLockingNum(){
+        return stringLocker.getLockingNum();
     }
 
     public static class LockerData implements Serializable,Comparable<LockerData>{
@@ -235,6 +190,131 @@ public class LockerService {
         public int compareTo(LockerData o) {
             return key.compareTo(o.getKey());
         }
+    }
+
+    class StringLockerConHashMap implements StringLocker{
+
+        private ConcurrentHashMap<String,String> lockers = new ConcurrentHashMap<>();
+        private ThreadLocal<Map<String,Integer>> threadLocalLockers = new ThreadLocal<Map<String,Integer>>(){
+            @Override
+            protected Map<String, Integer> initialValue() {
+                return new HashMap<>();
+            }
+        }; // 做可重入锁
+
+        @Override
+        public boolean lock(String key) {
+            // 加锁
+            String olderKey = lockers.putIfAbsent(key,key);
+            int lockTime = 0;
+            while(olderKey != null){ // 加锁失败,稍等再加
+                Integer count = threadLocalLockers.get().get(key);
+                if(count != null && count >0){
+                    // 重入
+                    threadLocalLockers.get().put(key,++count);
+                    monitorService.addMonitorNum(MonitorNumType.DoLockSuccessNum,1);
+                    return true;
+                }
+                if(lockTime++>maxTryLockTimes){
+                    // 这个地方不能用异常,因为加锁失败,要清理之前加成功的锁:如果考虑用最终捕获异常来清理锁，也可以考虑，但还是不如这样
+//                ExceptionHelper.handle(ExceptionLevel.Warn,"锁超时,key = "+key,null);
+                    log.warn("锁超时,key = "+key+",olderKey="+olderKey);
+                    monitorService.addMonitorNum(MonitorNumType.DoLockFailNum,1);
+                    return false;
+                }
+                try {
+                    Thread.sleep(10); // TODO 这个时间要随机
+                    olderKey = lockers.putIfAbsent(key,key);
+                }catch (InterruptedException e){
+                    monitorService.addMonitorNum(MonitorNumType.DoLockFailNum,1);
+                    throw new MMException("锁异常,key = "+key);
+                }
+            }
+            threadLocalLockers.get().put(key,1);
+            monitorService.addMonitorNum(MonitorNumType.DoLockSuccessNum,1);
+            return true;
+        }
+
+        @Override
+        public void unlock(String key) {
+            Integer count = threadLocalLockers.get().get(key);
+            if(count == null || count <=1){
+                if(lockers.remove(key) != null){
+                    threadLocalLockers.get().put(key,0);
+                    monitorService.addMonitorNum(MonitorNumType.DoUnLockNum,1);
+                }
+            }else{
+                threadLocalLockers.get().put(key,--count);
+                monitorService.addMonitorNum(MonitorNumType.DoUnLockNum,1);
+            }
+        }
+
+        @Override
+        public int getLockingNum() {
+            return lockers.size();
+        }
+    }
+
+    class StringLockerReentrantLock implements StringLocker{
+        final int lockerNum = 1<<14;
+        final int spit = lockerNum-1;
+        static final int HASH_BITS = 0x7fffffff; // usable bits of normal node hash
+
+        ReentrantLock[] lockers = new ReentrantLock[lockerNum];
+        AtomicInteger lockingNum = new AtomicInteger();
+
+        StringLockerReentrantLock(){
+            for(int i=0;i<lockerNum;i++){
+                lockers[i] = new ReentrantLock();
+            }
+        }
+
+        @Override
+        public boolean lock(String key){
+            int hash = spread(key.hashCode());
+            int index = hash & spit;
+//            System.out.println("index:"+index);
+            ReentrantLock lock = lockers[index];
+            try {
+                boolean ret = lock.tryLock(200, TimeUnit.MILLISECONDS);
+                if(ret){
+                    lockingNum.incrementAndGet();
+                    monitorService.addMonitorNum(MonitorNumType.DoLockSuccessNum,1);
+//                    System.out.println("lock success");
+                }else{
+                    monitorService.addMonitorNum(MonitorNumType.DoLockFailNum,1);
+                    log.warn("lock fail ,key = {},",key);
+                }
+                return ret;
+            } catch (InterruptedException e) {
+//                e.printStackTrace();
+                log.warn("lock InterruptedException fail ,key = {},",key,e);
+                monitorService.addMonitorNum(MonitorNumType.DoLockFailNum,1);
+                return false;
+            }
+        }
+
+        public void unlock(String key){
+            int hash = spread(key.hashCode());
+            ReentrantLock lock = lockers[hash & spit];
+            lock.unlock();
+            lockingNum.decrementAndGet();
+            monitorService.addMonitorNum(MonitorNumType.DoUnLockNum,1);
+//            System.out.println("unlock success");
+        }
+
+        final int spread(int h) {
+            return (h ^ (h >>> 16)) & HASH_BITS;
+        }
+        public int getLockingNum(){
+            return lockingNum.get();
+        }
+    }
+
+    interface StringLocker{
+        boolean lock(String key);
+        void unlock(String key);
+        int getLockingNum();
     }
 
 }

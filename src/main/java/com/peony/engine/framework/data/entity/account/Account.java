@@ -22,9 +22,9 @@ public class Account implements SessionClient {
     protected String icon;
     protected String clientVersion;//客户端版本号
 
-    protected Timestamp createTime;
-    protected Timestamp lastLoginTime;
-    protected Timestamp lastLogoutTime;
+    protected long createTime;
+    protected long lastLoginTime;
+    protected long lastLogoutTime;
 
     // 玩家注册相关信息
     protected int channelId; // 渠道
@@ -72,27 +72,27 @@ public class Account implements SessionClient {
         this.clientVersion = clientVersion;
     }
 
-    public Date getCreateTime() {
+    public long getCreateTime() {
         return createTime;
     }
 
-    public void setCreateTime(Timestamp createTime) {
+    public void setCreateTime(long createTime) {
         this.createTime = createTime;
     }
 
-    public Timestamp getLastLoginTime() {
+    public long getLastLoginTime() {
         return lastLoginTime;
     }
 
-    public void setLastLoginTime(Timestamp lastLoginTime) {
+    public void setLastLoginTime(long lastLoginTime) {
         this.lastLoginTime = lastLoginTime;
     }
 
-    public Timestamp getLastLogoutTime() {
+    public long getLastLogoutTime() {
         return lastLogoutTime;
     }
 
-    public void setLastLogoutTime(Timestamp lastLogoutTime) {
+    public void setLastLogoutTime(long lastLogoutTime) {
         this.lastLogoutTime = lastLogoutTime;
     }
 

@@ -1,5 +1,6 @@
 package com.peony.engine.framework.data.persistence.orm;
 
+import com.peony.engine.framework.data.entity.account.Account;
 import com.peony.engine.framework.data.persistence.dao.ColumnDesc;
 import com.peony.engine.framework.data.persistence.dao.DatabaseHelper;
 import com.peony.engine.framework.data.persistence.orm.annotation.Column;
@@ -9,6 +10,7 @@ import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.tool.helper.ClassHelper;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
 import com.peony.engine.framework.tool.util.ObjectUtil;
+import net.sf.cglib.beans.BeanCopier;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -54,6 +56,11 @@ public class EntityHelper {
      * fieldName-method
      */
     private static final Map<Class<?>,Map<String,Method>> getPkMethodMap = new HashMap<>();
+
+    /**
+     * 用于快速复制类的复制器
+     */
+    private static final Map<Class<?>,BeanCopier> beanCopierMap = new HashMap<>();
 
     public static Map<String,Method> getGetMethodMap(Class<?> entityClass){
         return getMethodMap.get(entityClass);
@@ -242,6 +249,35 @@ public class EntityHelper {
         }
         EntityHelper.getMethodMap.put(entityClass,getMethodMap);
         EntityHelper.getPkMethodMap.put(entityClass,getPkMethodMap);
+        // TODO 对于非基本类型，会出错，所以，要判断一下比如timestamp
+        BeanCopier beanCopier = BeanCopier.create(entityClass,entityClass,false);
+        beanCopierMap.put(entityClass,beanCopier);
+
+    }
+
+
+    /**
+     * 复制一个DBEntity对象
+     * @param entity
+     * @param <T>
+     * @return
+     */
+    public static <T> T copyEntity(T entity){
+        Class<?> entityClass = entity.getClass();
+        BeanCopier  beanCopier = beanCopierMap.get(entityClass);
+        if(beanCopier == null){
+            throw new MMException("beanCopier is not exist!entityClass = {}",entityClass);
+        }
+        try {
+            Object object = entityClass.newInstance();
+            beanCopier.copy(entity,object,null);
+            return (T)object;
+        } catch (InstantiationException e) {
+            log.error(entityClass+" has no construct method",e);
+        } catch (IllegalAccessException e) {
+            log.error("",e);
+        }
+        throw new MMException("copyEntity error!entityClass={}",entityClass);
     }
 
 
@@ -332,8 +368,13 @@ public class EntityHelper {
                     ColumnDesc columnDesc = columnDescList.get(columnName);
                     boolean changeColumn = false;
                     // 类型不同
-                    if(!columnDesc.getType().equals(createSqlType(field.getType(),collation))){
-                        changeColumn = true;
+                    String type = createSqlType(field.getType(),collation);
+                    if(!columnDesc.getType().equals(type)){
+                        if(columnDesc.getType().equals("float") && type.equals("float(11)")){
+
+                        }else{
+                            changeColumn = true;
+                        }
                     }
                     // 编码不同
                     if(collation != null && !columnDesc.getCollation().equals(collation.getCollation())){
