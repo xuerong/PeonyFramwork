@@ -57,8 +57,8 @@ public final class ServiceHelper {
     private static final Logger log = LoggerFactory.getLogger(ServiceHelper.class);
 
     private static TIntObjectHashMap<Class<?>> requestHandlerClassMap = new TIntObjectHashMap<>();
-    private static TShortObjectHashMap<Set<Class<?>>> eventListenerHandlerClassMap = new TShortObjectHashMap<>();
-    private static TShortObjectHashMap<Set<Class<?>>> eventSynListenerHandlerClassMap = new TShortObjectHashMap<>();
+    private static TIntObjectHashMap<Set<Class<?>>> eventListenerHandlerClassMap = new TIntObjectHashMap<>();
+    private static TIntObjectHashMap<Set<Class<?>>> eventSynListenerHandlerClassMap = new TIntObjectHashMap<>();
     private static TIntObjectHashMap<Class<?>> netEventListenerHandlerClassMap = new TIntObjectHashMap<>();
     private static Map<Class<?>, List<Method>> updatableClassMap = new HashMap<>();
     private static Map<Class<?>, List<Method>> monitorClassMap = new HashMap<>();
@@ -182,8 +182,8 @@ public final class ServiceHelper {
             for (Class<?> serviceClass : serviceClasses) {
                 // 对于request，用opcode导航
                 List<Integer> opcodeList = null;
-                List<Short> eventList = null;
-                List<Short> eventSynList = null;
+                List<Integer> eventList = null;
+                List<Integer> eventSynList = null;
                 List<Integer> netEventList = null;
 
                 Class<?> newServiceClass = serviceClass;
@@ -299,7 +299,7 @@ public final class ServiceHelper {
                 // event
                 if (eventList != null) {
                     // 一个event可能对应多个类
-                    for (short event : eventList) {
+                    for (int event : eventList) {
                         if (eventListenerHandlerClassMap.containsKey(event)) {
                             Set<Class<?>> classes = eventListenerHandlerClassMap.get(event);
                             classes.add(serviceClass);
@@ -312,7 +312,7 @@ public final class ServiceHelper {
                 }
                 if (eventSynList != null) {
                     // 一个event可能对应多个类
-                    for (short event : eventSynList) {
+                    for (int event : eventSynList) {
                         if (eventSynListenerHandlerClassMap.containsKey(event)) {
                             Set<Class<?>> classes = eventSynListenerHandlerClassMap.get(event);
                             classes.add(serviceClass);
@@ -581,10 +581,10 @@ public final class ServiceHelper {
         return requestHandlerClassMap;
     }
 
-    public static TShortObjectHashMap<Set<Class<?>>> getEventListenerHandlerClassMap() {
+    public static TIntObjectHashMap<Set<Class<?>>> getEventListenerHandlerClassMap() {
         return eventListenerHandlerClassMap;
     }
-    public static TShortObjectHashMap<Set<Class<?>>> getEventSynListenerHandlerClassMap() {
+    public static TIntObjectHashMap<Set<Class<?>>> getEventSynListenerHandlerClassMap() {
         return eventSynListenerHandlerClassMap;
     }
 
@@ -702,8 +702,8 @@ public final class ServiceHelper {
 
     // 生成event的处理类
     private static Class generateEventListenerHandlerClass(Class clazz, Class<?> oriClass) throws Exception {
-        Map<Short, List<String>> opMethods = new TreeMap<Short, List<String>>();
-        Map<Short, List<String>> opSynMethods = new TreeMap<Short, List<String>>(); // 同步事件
+        Map<Integer, List<String>> opMethods = new TreeMap<Integer, List<String>>();
+        Map<Integer, List<String>> opSynMethods = new TreeMap<Integer, List<String>>(); // 同步事件
         Method[] methods = oriClass.getDeclaredMethods();
 //        Method[] methods = clazz.getMethods();
         for (Method method : methods) { //遍历所有方法，将其中标注了是包处理方法的方法名加入到opMethods中
@@ -748,11 +748,11 @@ public final class ServiceHelper {
                 //添加handler方法，在其中添上switch...case段
                 StringBuilder sb = new StringBuilder("public void handle(" +
                         "com.peony.engine.framework.control.event.EventData eventData) throws Exception{");
-                sb.append("short event = $1.getEvent();");//$1.getOpcode();");
+                sb.append("int event = $1.getEvent();");//$1.getOpcode();");
                 sb.append("switch (event) {");
-                Iterator<Map.Entry<Short, List<String>>> ite = opMethods.entrySet().iterator();
+                Iterator<Map.Entry<Integer, List<String>>> ite = opMethods.entrySet().iterator();
                 while (ite.hasNext()) {
-                    Map.Entry<Short, List<String>> entry = ite.next();
+                    Map.Entry<Integer, List<String>> entry = ite.next();
                     sb.append("case ").append(entry.getKey()).append(":");
                     for (String meName : entry.getValue()) {
                         sb.append(meName).append("($1);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
@@ -769,11 +769,11 @@ public final class ServiceHelper {
                 //添加handler方法，在其中添上switch...case段
                 StringBuilder sb = new StringBuilder("public void handleSyn(" +
                         "com.peony.engine.framework.control.event.EventData eventData) throws Exception{");
-                sb.append("short event = $1.getEvent();");//$1.getOpcode();");
+                sb.append("int event = $1.getEvent();");//$1.getOpcode();");
                 sb.append("switch (event) {");
-                Iterator<Map.Entry<Short, List<String>>> ite = opSynMethods.entrySet().iterator();
+                Iterator<Map.Entry<Integer, List<String>>> ite = opSynMethods.entrySet().iterator();
                 while (ite.hasNext()) {
-                    Map.Entry<Short, List<String>> entry = ite.next();
+                    Map.Entry<Integer, List<String>> entry = ite.next();
                     sb.append("case ").append(entry.getKey()).append(":");
                     for (String meName : entry.getValue()) {
                         sb.append(meName).append("($1);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错

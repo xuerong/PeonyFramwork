@@ -8,8 +8,8 @@ import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.data.tx.TxCacheService;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
-import gnu.trove.map.hash.TShortObjectHashMap;
-import gnu.trove.procedure.TShortObjectProcedure;
+import gnu.trove.map.hash.TIntObjectHashMap;
+import gnu.trove.procedure.TIntObjectProcedure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +34,6 @@ public class EventService {
 
     private ThreadLocal<List<EventData>> cacheDatas = new ThreadLocal<>();
 
-
     private final ThreadPoolExecutor executor = new ThreadPoolExecutor(
             10,100,3000, TimeUnit.MILLISECONDS,new LinkedBlockingDeque<Runnable>(),
             new RejectedExecutionHandler(){
@@ -45,17 +44,17 @@ public class EventService {
     });
 
 
-    private final TShortObjectHashMap<Set<EventListenerHandler>> handlerMap=new TShortObjectHashMap<>();
-    private final TShortObjectHashMap<Set<EventListenerHandler>> synHandlerMap=new TShortObjectHashMap<>();
+    private final TIntObjectHashMap<Set<EventListenerHandler>> handlerMap=new TIntObjectHashMap<>();
+    private final TIntObjectHashMap<Set<EventListenerHandler>> synHandlerMap=new TIntObjectHashMap<>();
 
     private NetEventService netEventService;
     private TxCacheService txCacheService;
 
     public void init(){
-        TShortObjectHashMap<Set<Class<?>>> handlerClassMap= ServiceHelper.getEventListenerHandlerClassMap();
-        handlerClassMap.forEachEntry(new TShortObjectProcedure<Set<Class<?>>>() {
+        TIntObjectHashMap<Set<Class<?>>> handlerClassMap= ServiceHelper.getEventListenerHandlerClassMap();
+        handlerClassMap.forEachEntry(new TIntObjectProcedure<Set<Class<?>>>() {
             @Override
-            public boolean execute(short i, Set<Class<?>> classes) {
+            public boolean execute(int i, Set<Class<?>> classes) {
                 if(classes.size() > 0) {
                     Set<EventListenerHandler> handlerSet = new HashSet<EventListenerHandler>();
                     for (Class<?> cls : classes) {
@@ -67,10 +66,10 @@ public class EventService {
             }
         });
 
-        TShortObjectHashMap<Set<Class<?>>> synHandlerClassMap= ServiceHelper.getEventSynListenerHandlerClassMap();
-        synHandlerClassMap.forEachEntry(new TShortObjectProcedure<Set<Class<?>>>() {
+        TIntObjectHashMap<Set<Class<?>>> synHandlerClassMap= ServiceHelper.getEventSynListenerHandlerClassMap();
+        synHandlerClassMap.forEachEntry(new TIntObjectProcedure<Set<Class<?>>>() {
             @Override
-            public boolean execute(short i, Set<Class<?>> classes) {
+            public boolean execute(int i, Set<Class<?>> classes) {
                 Set<EventListenerHandler> handlerSet=new HashSet<EventListenerHandler>();
                 for(Class<?> cls : classes){
                     handlerSet.add((EventListenerHandler)BeanHelper.getServiceBean(cls));
@@ -80,6 +79,7 @@ public class EventService {
             }
         });
     }
+
     // 最后用一个系统的检测服务update进行系统所有的监测任务
     public String getMonitorData(){
         BlockingQueue<Runnable> queue = executor.getQueue();
@@ -126,7 +126,7 @@ public class EventService {
     /**
      *
      */
-    public void fireAll(Object data, int event, final boolean broadcast){
+    public void fireEvent(Object data, int event, final boolean broadcast){
         EventData eventData = new EventData(event);
         eventData.setData(data);
 
@@ -181,7 +181,7 @@ public class EventService {
      * @param event 事件id
      */
     public void fireEvent(Object data, int event){
-        fireAll(data,event,false);
+        fireEvent(data,event,false);
     }
 
     // 接受到其它服务器发送的事件
@@ -206,17 +206,13 @@ public class EventService {
         EventData eventData = new EventData(event);
         eventData.setData(data);
 
+        checkAndHandle(handlerSet1,eventData);
+        checkAndHandle(handlerSet2,eventData);
+    }
+
+    private void checkAndHandle(Set<EventListenerHandler> handlerSet1,EventData eventData){
         if(handlerSet1 != null){
             for (EventListenerHandler handler : handlerSet1) {
-                try {
-                    handler.handle(eventData);
-                }catch (Throwable e){
-                    log.error("exception happened while fire event :"+eventData.getEvent(),e);
-                }
-            }
-        }
-        if(handlerSet2 != null){
-            for (EventListenerHandler handler : handlerSet2) {
                 try {
                     handler.handle(eventData);
                 }catch (Throwable e){

@@ -23,7 +23,7 @@ public @interface EventListener{
     /**
      * event,
      * **/
-    short event();
+    int event();
     /**
      * TODO 是否同步，也就是说同步也异步决定于监听方
      */
