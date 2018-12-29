@@ -73,8 +73,8 @@ public class MonitorService {
     }
 
     @EventListener(event = SysConstantDefine.Event_AccountLoginAsync)
-    public void login(EventData data){
-        Session session = (Session) ((List)data.getData()).get(0);
+    public void login(List<Object> loginEventData){
+        Session session = (Session) (loginEventData).get(0);
         if(session.getUid() != null) {
             onlineUser.putIfAbsent(session.getUid(),session.getUid());
         }else{
@@ -83,8 +83,7 @@ public class MonitorService {
 
     }
     @EventListener(event = SysConstantDefine.Event_AccountLogoutAsync)
-    public void logout(EventData data){
-        LogoutEventData logoutEventData = (LogoutEventData)data.getData();
+    public void logout(LogoutEventData logoutEventData){
         if(logoutEventData.getSession().getUid() != null) {
             onlineUser.remove(logoutEventData.getSession().getUid());
         }

@@ -101,13 +101,13 @@ public class EventService {
             if(eventData == null){
                 continue;
             }
-            doASyncEvent(eventData);
+            doASyncEvent(eventData.getEvent(),eventData.getData());
         }
     }
 
     AtomicInteger test = new AtomicInteger();
     // 事件事务只存在于异步事件中，同步事件执行原来就在事务中，
-    private boolean checkAndAddTx(EventData eventData){
+    private boolean checkAndAddTx(int event,Object data){
         if(txCacheService.isInTx()){
             test.getAndIncrement();
             List<EventData> list = cacheDatas.get();
@@ -115,6 +115,8 @@ public class EventService {
                 list = new ArrayList<>();
                 cacheDatas.set(list);
             }
+            EventData eventData = new EventData(event);
+            eventData.setData(data);
             list.add(eventData);
             return true;
         }
@@ -123,30 +125,30 @@ public class EventService {
 
 
 
-    private void doSyncEvent(EventData eventData){
-        Set<EventListenerHandler> synHandlerSet = synHandlerMap.get(eventData.getEvent());
+    private void doSyncEvent(int event,Object data){
+        Set<EventListenerHandler> synHandlerSet = synHandlerMap.get(event);
         if(synHandlerSet != null && synHandlerSet.size() > 0){
             for (EventListenerHandler handler : synHandlerSet) {
                 try {
-                    handler.handleSyn(eventData);
+                    handler.handleSyn(event,data);
                 }catch (Throwable e){
-                    log.error("exception happened while syn fire event :"+eventData.getEvent()+",handler in:"+handler.getClass(),e);
+                    log.error("exception happened while syn fire event :"+event+",handler in:"+handler.getClass(),e);
                 }
             }
         }
     }
-    private void doASyncEvent(EventData eventData){
-        final Set<EventListenerHandler> handlerSet = handlerMap.get(eventData.getEvent());
+    private void doASyncEvent(int event,Object data){
+        final Set<EventListenerHandler> handlerSet = handlerMap.get(event);
         if(handlerSet != null && handlerSet.size() > 0) {
-            if(checkAndAddTx(eventData)){
+            if(checkAndAddTx(event, data)){
                 return;
             }
             executor.execute(() -> {
                 for (EventListenerHandler handler : handlerSet) {
                     try {
-                        handler.handle(eventData);
+                        handler.handle(event, data);
                     } catch (Throwable e) {
-                        log.error("exception happened while fire event :" + eventData.getEvent() + ",handler in:" + handler.getClass(), e);
+                        log.error("exception happened while fire event :" + event + ",handler in:" + handler.getClass(), e);
                     }
                 }
             });
@@ -161,13 +163,13 @@ public class EventService {
      * @param event 事件id
      */
     public void fireEvent(Object data, int event){
-        EventData eventData = new EventData(event);
-        eventData.setData(data);
+//        EventData eventData = new EventData(event);
+//        eventData.setData(data);
 
         // 同步的
-        doSyncEvent(eventData);
+        doSyncEvent(event, data);
         // 异步的
-        doASyncEvent(eventData);
+        doASyncEvent(event, data);
     }
 
     /**
@@ -181,20 +183,25 @@ public class EventService {
         if(handlerSet1 == null && handlerSet2 == null){
             return;
         }
-        EventData eventData = new EventData(event);
-        eventData.setData(data);
+//        EventData eventData = new EventData(event);
+//        eventData.setData(data);
 
-        checkAndHandle(handlerSet1,eventData);
-        checkAndHandle(handlerSet2,eventData);
+        checkAndHandle(handlerSet1,event,data,false);
+        checkAndHandle(handlerSet2,event,data,true);
     }
 
-    private void checkAndHandle(Set<EventListenerHandler> handlerSet1,EventData eventData){
+    private void checkAndHandle(Set<EventListenerHandler> handlerSet1,int event,Object data,boolean syncMethod){
         if(handlerSet1 != null){
             for (EventListenerHandler handler : handlerSet1) {
                 try {
-                    handler.handle(eventData);
+                    if(syncMethod){
+                        handler.handleSyn(event, data);
+                    }else{
+                        handler.handle(event, data);
+                    }
+
                 }catch (Throwable e){
-                    log.error("exception happened while fire event :"+eventData.getEvent(),e);
+                    log.error("exception happened while fire event :"+event,e);
                 }
             }
         }

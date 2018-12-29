@@ -52,8 +52,7 @@ public class HeartService {
     }
 
     @EventListener(event = SysConstantDefine.Event_AccountLogout)
-    public void logout(EventData data) {
-        LogoutEventData logoutEventData = (LogoutEventData) data.getData();
+    public void logout(LogoutEventData logoutEventData) {
         if (logoutEventData.getSession().getUid() != null) {
             lastTime.remove(logoutEventData.getSession().getUid());
         }

@@ -38,8 +38,7 @@ public class FruitService {
     private TaskService taskService;
 
     @EventListener(event = SysConstantDefine.Event_AccountRegister)
-    public void Event_AccountRegister(EventData eventData) {
-        List<Object> regEventData = (List<Object>)eventData.getData();
+    public void Event_AccountRegister(List regEventData) {
         JSONObject lginParams = (JSONObject)regEventData.get(1);
         if(lginParams.containsKey("shareQuery")){
             JSONObject shareQuery = lginParams.getJSONObject("shareQuery");
@@ -73,8 +72,8 @@ public class FruitService {
     }
 
     @EventListener(event = SysConstantDefine.Event_AccountLogin)
-    public void loginEvent(EventData eventData) {
-        Session session = (Session) ((List) eventData.getData()).get(0);
+    public void loginEvent(List loginEventData) {
+        Session session = (Session) (loginEventData).get(0);
         // 新用户，如果是通过果子分享进来的，则解锁分享者的果子
         if(session.isNewUser()){
 

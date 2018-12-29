@@ -37,8 +37,7 @@ public class RemoteExceptionQueueService {
 
     // 用于自动重连后更新 client
     @EventListener(event = SysConstantDefine.Event_ConnectNewServerAsy)
-    public void onClientConnected(EventData eventData) {
-        NettyServerClient client = (NettyServerClient) eventData.getData();
+    public void onClientConnected(NettyServerClient client) {
         List<RemoteExceptionQueue> remoteExceptionQueueList = dataService.selectList(RemoteExceptionQueue.class,"serverId=?",client.getServerId());
         if(remoteExceptionQueueList.size() > 0){
             for(RemoteExceptionQueue remoteExceptionQueue : remoteExceptionQueueList){

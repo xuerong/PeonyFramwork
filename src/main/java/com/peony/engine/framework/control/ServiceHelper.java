@@ -25,11 +25,13 @@ import com.peony.engine.framework.data.tx.Tx;
 import com.peony.engine.framework.net.packet.RetPacket;
 import com.peony.engine.framework.security.Monitor;
 import com.peony.engine.framework.security.exception.MMException;
+import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.ServerType;
 import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.helper.ClassHelper;
 import com.peony.engine.framework.tool.util.ClassUtil;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TShortObjectHashMap;
 import javassist.*;
@@ -394,8 +396,6 @@ public final class ServiceHelper {
                     // 有些远程调用不需要参数
                     body.append(String.format("\tint serverId = route.getServerId(null);\n"));
                 }
-                //praseBaseTypeStrToObjectTypeStr
-                // test
                 // body.append(String.format("\tif(serverId == 0 || serverId == %s.getServerId().intValue()) {\n", Server.class.getName()));
                 body.append(String.format("\tif((%s.getEngineConfigure().getBoolean(\"server.is.test\", false)) || serverId == %s.getServerId().intValue() ) {\n", Server.class.getName(), Server.class.getName()));
 
@@ -493,7 +493,7 @@ public final class ServiceHelper {
         }
     }
 
-    public static String praseBaseTypeStrToObjectTypeStr(String typeStr, String paramStr) {
+    public static String parseBaseTypeStrToObjectTypeStr(String typeStr, String paramStr) {
         if (typeStr.equals("byte")) {
             return "new Byte(" + paramStr + ")";
         } else if (typeStr.equals("short")) {
@@ -685,6 +685,7 @@ public final class ServiceHelper {
         Map<Integer, List<String>> opMethods = new TreeMap<Integer, List<String>>();
         Map<Integer, List<String>> opSynMethods = new TreeMap<Integer, List<String>>(); // 同步事件
         Method[] methods = oriClass.getDeclaredMethods();
+        Map<Integer, Class> paramsType = new TreeMap<Integer, Class>(); // 第一个参数类型的字符串
 //        Method[] methods = clazz.getMethods();
         for (Method method : methods) { //遍历所有方法，将其中标注了是包处理方法的方法名加入到opMethods中
             if (method.isAnnotationPresent(EventListener.class)) {
@@ -695,9 +696,11 @@ public final class ServiceHelper {
                 if (parameterTypes.length != 1) {
                     throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
                 }
-                if (parameterTypes[0] != EventData.class) {
-                    throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
-                }
+//                paramsType.put(op.event(),parameterTypes[0].toString().replace("class ",""));
+                paramsType.put(op.event(),parameterTypes[0]);
+//                if (parameterTypes[0] != EventData.class) {
+//                    throw new IllegalStateException("Method " + method.getName() + " Parameter Error");
+//                }
                 // 一个类中可能存在多个对该事件的监听
                 if(op.sync()){
                     if (opSynMethods.containsKey(op.event())) {
@@ -726,50 +729,73 @@ public final class ServiceHelper {
             ct.addInterface(superCt);
             if(opMethods.size() > 0) {
                 //添加handler方法，在其中添上switch...case段
-                StringBuilder sb = new StringBuilder("public void handle(" +
-                        "com.peony.engine.framework.control.event.EventData eventData) throws Exception{");
-                sb.append("int event = $1.getEvent();");//$1.getOpcode();");
-                sb.append("switch (event) {");
-                Iterator<Map.Entry<Integer, List<String>>> ite = opMethods.entrySet().iterator();
-                while (ite.hasNext()) {
-                    Map.Entry<Integer, List<String>> entry = ite.next();
-                    sb.append("case ").append(entry.getKey()).append(":");
-                    for (String meName : entry.getValue()) {
-                        sb.append(meName).append("($1);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
-                    }
-                    sb.append("break;");
-                    //opcodes.add(entry.getKey());
-                }
-                sb.append("}");
-                sb.append("}");
-                CtMethod method = CtMethod.make(sb.toString(), ct);
-                ct.addMethod(method);
+                appendEventHandler(opMethods,ct,paramsType,false);
             }
             if(opSynMethods.size() > 0) {
                 //添加handler方法，在其中添上switch...case段
-                StringBuilder sb = new StringBuilder("public void handleSyn(" +
-                        "com.peony.engine.framework.control.event.EventData eventData) throws Exception{");
-                sb.append("int event = $1.getEvent();");//$1.getOpcode();");
-                sb.append("switch (event) {");
-                Iterator<Map.Entry<Integer, List<String>>> ite = opSynMethods.entrySet().iterator();
-                while (ite.hasNext()) {
-                    Map.Entry<Integer, List<String>> entry = ite.next();
-                    sb.append("case ").append(entry.getKey()).append(":");
-                    for (String meName : entry.getValue()) {
-                        sb.append(meName).append("($1);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
-                    }
-                    sb.append("break;");
-                    //opcodes.add(entry.getKey());
-                }
-                sb.append("}");
-                sb.append("}");
-                CtMethod method = CtMethod.make(sb.toString(), ct);
-                ct.addMethod(method);
+                appendEventHandler(opSynMethods,ct,paramsType,true);
             }
             return ct.toClass();
         } else {
             return clazz;
         }
+    }
+    private static void appendEventHandler(Map<Integer, List<String>> opMethods,CtClass ct,Map<Integer, Class> paramsType,boolean sync) throws Exception{
+        //添加handler方法，在其中添上switch...case段
+        StringBuilder sb = new StringBuilder("public void "+(sync?"handleSyn":"handle")+"(" +
+                "int event,Object data) throws Exception{");
+//        sb.append("int event = $1.getEvent();");//$1.getOpcode();");
+        sb.append("switch (event) {");
+        Iterator<Map.Entry<Integer, List<String>>> ite = opMethods.entrySet().iterator();
+        while (ite.hasNext()) {
+            Map.Entry<Integer, List<String>> entry = ite.next();
+            sb.append("case ").append(entry.getKey()).append(":");
+            for (String meName : entry.getValue()) {
+                Class typeCls  = paramsType.get(entry.getKey());
+                if(typeCls.isPrimitive()){
+                    sb.append("try{");
+                    String parseStr = parsePrimitiveStringByTypeClass(typeCls);
+                    sb.append(meName).append("("+parseStr+");");
+                    sb.append("}catch(ClassCastException e){");
+                    sb.append("org.slf4j.LoggerFactory.getLogger(this.getClass()).error(\"[Peony] Event param type cast error!listener="+typeCls+",firer={}\",$2.getClass().getName());");
+                    sb.append("throw new com.peony.engine.framework.security.exception.MMException(\"[Peony] Event param type cast error!listener="+typeCls+",firer=\"+$2.getClass().getName(),e);");
+                    sb.append("}");
+                }else{
+//                    System.out.println(typeCls.toString().replace("class ",""));
+                    sb.append(meName).append("(("+typeCls.getName()+")$2);");
+                }
+                //parameterTypes[0].toString().replace("class ","")
+//                sb.append(meName).append("(("+paramsType.get(entry.getKey())+")$2);"); //注意，这里所有的方法都必须是protected或者是public的，否则此部生成会出错
+            }
+            sb.append("break;");
+            //opcodes.add(entry.getKey());
+        }
+        sb.append("}");
+        sb.append("}");
+        System.out.println(sb);
+        CtMethod method = CtMethod.make(sb.toString(), ct);
+        ct.addMethod(method);
+    }
+
+    static String parsePrimitiveStringByTypeClass(Class typeCls){
+        if(typeCls == int.class){
+            return "((Integer)$2).intValue()";
+        }else if(typeCls == long.class){
+            return "((Long)$2).longValue()";
+        }else if(typeCls == boolean.class){
+            return "((Boolean)$2).booleanValue()";
+        }else if(typeCls == float.class){
+            return "((Float)$2).floatValue()";
+        }else if(typeCls == double.class){
+            return "((Double)$2).doubleValue()";
+        }else if(typeCls == short.class){
+            return "((Short)$2).shortValue()";
+        }else if(typeCls == char.class){
+            return "((Character)$2).charValue()";
+        }else if(typeCls == byte.class){
+            return "((Byte)$2).byteValue()";
+        }
+        throw new MMException("typeCls error!typeCls:"+typeCls);
     }
 
     private static Class generateNetEventListenerHandlerClass(Class clazz, Class<?> oriClass) throws Exception {

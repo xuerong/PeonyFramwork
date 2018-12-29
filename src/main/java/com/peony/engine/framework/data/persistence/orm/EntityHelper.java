@@ -1,6 +1,6 @@
 package com.peony.engine.framework.data.persistence.orm;
 
-import com.peony.engine.framework.data.entity.account.Account;
+import com.peony.engine.framework.control.ServiceHelper;
 import com.peony.engine.framework.data.persistence.dao.ColumnDesc;
 import com.peony.engine.framework.data.persistence.dao.DatabaseHelper;
 import com.peony.engine.framework.data.persistence.orm.annotation.Column;
@@ -10,6 +10,9 @@ import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.tool.helper.ClassHelper;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
 import com.peony.engine.framework.tool.util.ObjectUtil;
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtMethod;
 import net.sf.cglib.beans.BeanCopier;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -61,6 +64,11 @@ public class EntityHelper {
      * 用于快速复制类的复制器
      */
     private static final Map<Class<?>,BeanCopier> beanCopierMap = new HashMap<>();
+
+    /**
+     * 生成字节码的方式,用于快速把对象的值取出来，根据需求
+     */
+    private static final Map<Class<?>,EntityParser> entityParserMap = new HashMap<>();
 
     public static Map<String,Method> getGetMethodMap(Class<?> entityClass){
         return getMethodMap.get(entityClass);
@@ -157,7 +165,7 @@ public class EntityHelper {
     }
 
 
-    private static void initEntity(Class<?> entityClass){
+    private static void initEntity(Class<?> entityClass) throws Exception{
         // ----------------initEntityNameMap
         DBEntity dbEntity=entityClass.getAnnotation(DBEntity.class);
         String tableName=dbEntity.tableName();
@@ -191,6 +199,7 @@ public class EntityHelper {
         }
         // 创建一个 fieldMap（用于存放列名与字段名的映射关系）
         Map<String, String> fieldMap = new HashMap<String, String>();
+        Map<String, Class> fieldClassMap = new HashMap<String, Class>();
         for (Field field : fields) {
             String fieldName = field.getName();
             String columnName;
@@ -207,12 +216,14 @@ public class EntityHelper {
             }
             if(columnNameSet.contains(columnName)) {
                 fieldMap.put(fieldName, columnName);
+                fieldClassMap.put(fieldName,field.getType());
             }
         }
         entityClassFieldMapMap.put(entityClass, fieldMap);
         // ------------------initEntityGetMethods
         Set<String> set = fieldMap.keySet();
         Map<String,Method> getMethodMap = new HashMap<>(set.size());
+        Map<String,String> getMethodStringMap = new HashMap<>(set.size());
         Map<String,Method> getPkMethodMap = new LinkedHashMap<>(set.size()); // 需要维持顺序，第一个是用于分表的主键
 //        DBEntity dbEntity = entityClass.getAnnotation(DBEntity.class);
         String[] pks = dbEntity.pks();
@@ -235,6 +246,7 @@ public class EntityHelper {
             }
             if (method != null) {
                 getMethodMap.put(fieldName,method);
+                getMethodStringMap.put(fieldName,methodName);
 //                if(pkList.contains(fieldName)){
 //                    getPkMethodMap.put(fieldName,method);
 //                }
@@ -249,11 +261,46 @@ public class EntityHelper {
         }
         EntityHelper.getMethodMap.put(entityClass,getMethodMap);
         EntityHelper.getPkMethodMap.put(entityClass,getPkMethodMap);
+        generateEntityParser(entityClass,getMethodStringMap,fieldClassMap);
         // TODO 对于非基本类型，会出错，所以，要判断一下比如timestamp
         BeanCopier beanCopier = BeanCopier.create(entityClass,entityClass,false);
         beanCopierMap.put(entityClass,beanCopier);
 
     }
+
+    private static void generateEntityParser(Class cls,Map<String,String> getMethodStringMap,Map<String, Class> fieldClassMap) throws Exception{
+        // public Map<String,Object> toMap(Object entity);
+        String clsName = cls.getName();
+        StringBuilder sb = new StringBuilder("public java.util.Map toMap(" +
+                "Object entity) {");
+        sb.append(clsName+" object = ("+clsName+")entity;");
+        sb.append("java.util.Map ret = new java.util.HashMap();");
+        for(Map.Entry<String,String> entry:getMethodStringMap.entrySet()){
+            Class type = fieldClassMap.get(entry.getKey());
+            if(type.isPrimitive()){
+                String back = ServiceHelper.parseBaseTypeStrToObjectTypeStr(type.getName(),"object."+entry.getValue()+"()");
+                sb.append("ret.put(\""+entry.getKey()+"\","+back+");");
+            }else{
+                sb.append("ret.put(\""+entry.getKey()+"\",object."+entry.getValue()+"());");
+            }
+        }
+        sb.append("return ret;");
+        sb.append("}");
+//        System.out.println(sb.toString());
+
+        ClassPool pool = ClassPool.getDefault();
+
+        CtClass ct = pool.makeClass(cls.getSimpleName()+"EntityParser"); //这里需要生成一个新类，并且继承自原来的类
+        CtClass superCt = pool.get(EntityParser.class.getName());  //需要实现RequestHandler接口
+        ct.addInterface(superCt);
+
+        CtMethod method = CtMethod.make(sb.toString(), ct);
+        ct.addMethod(method);
+
+
+        entityParserMap.put(cls,(EntityParser)ct.toClass().newInstance());
+    }
+
 
 
     /**
@@ -592,21 +639,29 @@ public class EntityHelper {
         }
     }
 
+    public static EntityParser getEntityParser(Class<?> cls) {
+        return entityParserMap.get(cls);
+    }
+
 
     public static Map<String, Object> getFieldMap(Object obj) {
         Map<String, Object> fieldMap = new LinkedHashMap<String, Object>();
         Class cls = obj.getClass();
-        Set<String> fieldNameSet = entityClassFieldMapMap.get(cls).keySet(); // 这些是需要保存到数据库中的列
-        Field[] fields = obj.getClass().getDeclaredFields();
-        for (Field field : fields) {
-            String fieldName = field.getName();
-            if(!fieldNameSet.contains(fieldName)){
-                continue;
-            }
-            Object fieldValue = ObjectUtil.getFieldValue(obj, fieldName);
-            fieldMap.put(fieldName, fieldValue);
-        }
-        return fieldMap;
+
+        return entityParserMap.get(cls).toMap(obj);
+
+
+//        Set<String> fieldNameSet = entityClassFieldMapMap.get(cls).keySet(); // 这些是需要保存到数据库中的列
+//        Field[] fields = obj.getClass().getDeclaredFields();
+//        for (Field field : fields) {
+//            String fieldName = field.getName();
+//            if(!fieldNameSet.contains(fieldName)){
+//                continue;
+//            }
+//            Object fieldValue = ObjectUtil.getFieldValue(obj, fieldName);
+//            fieldMap.put(fieldName, fieldValue);
+//        }
+//        return fieldMap;
     }
     /**
      * 将驼峰风格替换为下划线风格

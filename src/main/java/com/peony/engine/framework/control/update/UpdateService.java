@@ -74,7 +74,7 @@ public class UpdateService {
     }
 
     @EventListener(event = SysConstantDefine.Event_ServerStartAsync)
-    public void serverStart(EventData eventData){
+    public void serverStart(Object object){
         // 启动
         start();
     }

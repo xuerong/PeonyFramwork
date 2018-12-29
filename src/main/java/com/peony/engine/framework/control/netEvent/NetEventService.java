@@ -86,8 +86,7 @@ public class NetEventService {
 
     // 用于自动重连后更新 client
     @EventListener(event = SysConstantDefine.Event_ConnectNewServer)
-    public void onClientConnected(EventData eventData) {
-        NettyServerClient client = (NettyServerClient) eventData.getData();
+    public void onClientConnected(NettyServerClient client) {
         addClient(client);
     }
 

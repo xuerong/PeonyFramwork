@@ -18,7 +18,6 @@ import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.annotation.Updatable;
-import com.peony.engine.framework.control.event.EventData;
 import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.entity.account.sendMessage.SendMessageService;
@@ -143,8 +142,8 @@ public class FriendService {
 
     //
     @EventListener(event = SysConstantDefine.Event_AccountLogin)
-    public void loginEvent(EventData eventData) {
-        Session session = (Session) ((List) eventData.getData()).get(0);
+    public void loginEvent(List loginEventData) {
+        Session session = (Session) loginEventData.get(0);
         UserBase userBase = userBaseService.getUserBase(session.getUid());
         ShuXiang shuXiang = ShuXiang.valueOf(userBase.getShuXiang());
         String shengUid = Math.random()*2==0?sysUser.get(shuXiang.getSheng1()-1):sysUser.get(shuXiang.getSheng2()-1);

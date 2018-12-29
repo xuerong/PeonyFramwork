@@ -54,16 +54,15 @@ public class SendMessageService {
 
     }
     @EventListener(event = SysConstantDefine.Event_AccountLogin)
-    public void login(EventData data){
-        Session session = (Session) ((List)data.getData()).get(0);
+    public void login(List loginEventData){
+        Session session = (Session) (loginEventData).get(0);
         MessageSender messageSender = session.getMessageSender();
         if(messageSender != null){
             messageSenderMap.put(session.getUid(),messageSender);
         }
     }
     @EventListener(event = SysConstantDefine.Event_AccountLogout)
-    public void logout(EventData data){
-        LogoutEventData logoutEventData = (LogoutEventData)data.getData();
+    public void logout(LogoutEventData logoutEventData){
         if(logoutEventData.getSession().getUid() != null) {
             messageSenderMap.remove(logoutEventData.getSession().getUid());
         }

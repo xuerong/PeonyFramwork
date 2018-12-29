@@ -30,8 +30,8 @@ public class OrderService {
     private TaskService taskService;
 
     @EventListener(event = SysConstantDefine.Event_AccountLogin)
-    public void loginEvent(EventData eventData){
-        Session session = (Session) ((List)eventData.getData()).get(0);
+    public void loginEvent(List loginEventData){
+        Session session = (Session) (loginEventData).get(0);
         // 创建order
         List<Order> orderList = dataService.selectList(Order.class,"uid=?",session.getUid());
         if(orderList.size() == 0){

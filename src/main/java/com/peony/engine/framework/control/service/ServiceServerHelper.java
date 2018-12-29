@@ -1,21 +1,14 @@
 package com.peony.engine.framework.control.service;
 
-import com.google.api.client.util.Maps;
 import com.peony.engine.framework.control.ServiceHelper;
-import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
-import com.peony.engine.framework.control.rpc.IRoute;
-import com.peony.engine.framework.control.rpc.Remotable;
-import com.peony.engine.framework.control.rpc.RouteType;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.Server;
-import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.helper.ClassHelper;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
 import com.peony.engine.framework.tool.util.Util;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
-import javassist.CtNewMethod;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -319,7 +312,7 @@ service.IdService.selfUseRule = false
                 }
                 sb.append(paramClass.getName() + " p" + i);
                 // 这个地方需要进行一步强制转换,基本类型不能编译成Object类型
-                paramsStr.append(ServiceHelper.praseBaseTypeStrToObjectTypeStr(paramClass.getName(), "p" + i));
+                paramsStr.append(ServiceHelper.parseBaseTypeStrToObjectTypeStr(paramClass.getName(), "p" + i));
                 i++;
             }
             sb.append(") {");
