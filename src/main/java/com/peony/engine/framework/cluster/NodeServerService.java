@@ -9,8 +9,10 @@ import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.tx.Tx;
 import com.peony.engine.framework.security.MonitorService;
 import com.peony.engine.framework.server.Server;
+import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +54,10 @@ public class NodeServerService {
     }
 
     @Gm(id="test remotable tx")
-    public void testGm(){
-        aaa(1);
+    public void testGm() throws Exception{
+        Object serviceBean = BeanHelper.getServiceBean(NodeServerService.class.getName());
+        Method method = serviceBean.getClass().getMethod("aaa",int.class);
+        method.invoke(serviceBean,1);
+//        aaa(1);
     }
 }

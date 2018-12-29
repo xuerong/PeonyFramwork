@@ -67,6 +67,7 @@ public final class ServiceHelper {
     private static Map<Class<?>, List<Method>> updatableClassMap = new HashMap<>();
     private static Map<Class<?>, List<Method>> monitorClassMap = new HashMap<>();
     private static Map<String,Method> remoteMethodIndex = new HashMap<>();
+    private static Map<Method,Method> overrideMethod = new HashMap<>(); // 被重写的方法：key重写之后的-value重写之前的
 
 
     /**
@@ -328,14 +329,21 @@ public final class ServiceHelper {
         CtClass ctClazz = pool.get(serviceClass.getName());
         CtClass proxyClazz = pool.makeClass(ctClazz.getName() + "$Proxy", ctClazz);
 
+        List<Method> oldMethodList = new ArrayList<>();
         // 改写remote方法, 使用远程调用
         for(Map.Entry<Method, Remotable> en:remoteMethods.entrySet()) {
             Remotable remote = en.getValue();
             Method oldMethod = en.getKey();
+            oldMethodList.add(oldMethod);
 
             CtMethod ctMethod = ctClazz.getMethod(oldMethod.getName(), packDescreptor(oldMethod));
             CtMethod proxyMethod = CtNewMethod.copy(ctMethod, proxyClazz, null);
-
+            for(Object attr: ctMethod.getMethodInfo().getAttributes()){
+                if(attr.getClass().isAssignableFrom(AnnotationsAttribute.class)){
+                    AnnotationsAttribute attribute = (AnnotationsAttribute)attr;
+                    proxyMethod.getMethodInfo().addAttribute(attribute);
+                }
+            }
 
             /**
              * 实际的执行逻辑
@@ -418,13 +426,23 @@ public final class ServiceHelper {
             proxyClazz.addMethod(proxyMethod);
         }
         newServiceClass = proxyClazz.toClass();
+
+        for(Method oldMethod : oldMethodList){
+            Method newMethod = newServiceClass.getMethod(oldMethod.getName(),oldMethod.getParameterTypes());
+            overrideMethod.put(newMethod,oldMethod);
+        }
+
         return newServiceClass;
     }
+
 
     public static Map<String,Method> getRemoteMethodIndex(){
         return remoteMethodIndex;
     }
 
+    public static Map<Method, Method> getOverrideMethod() {
+        return overrideMethod;
+    }
 
     private static String genArgsString(Method oldMethod) {
         StringBuilder args = new StringBuilder("");

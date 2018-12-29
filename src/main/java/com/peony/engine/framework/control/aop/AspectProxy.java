@@ -1,5 +1,6 @@
 package com.peony.engine.framework.control.aop;
 
+import com.peony.engine.framework.control.ServiceHelper;
 import com.peony.engine.framework.control.aop.annotation.Aspect;
 import com.peony.engine.framework.control.aop.annotation.AspectMark;
 
@@ -35,7 +36,8 @@ public abstract class AspectProxy implements Proxy {
         if(isExecuteAllMethod){
             return  true;
         }
-        if(executeMethod!=null && executeMethod.contains(method)){
+        Method oldMethod = ServiceHelper.getOverrideMethod().get(method);
+        if(executeMethod!=null && executeMethod.contains(oldMethod==null?method:oldMethod)){
             return true;
         }
         return false;
@@ -64,7 +66,7 @@ public abstract class AspectProxy implements Proxy {
         executeMethod=new LinkedList<>();
         Method[] methods = targetClass.getMethods();
 
-        nextMethod:
+//        nextMethod:
         for(Method method: methods){
             doIt(method);
         }
