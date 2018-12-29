@@ -1,10 +1,12 @@
 package com.peony.engine.framework.cluster;
 
 import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.control.rpc.Remotable;
 import com.peony.engine.framework.control.rpc.RouteType;
 import com.peony.engine.framework.data.DataService;
+import com.peony.engine.framework.data.tx.Tx;
 import com.peony.engine.framework.security.MonitorService;
 import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
@@ -41,5 +43,16 @@ public class NodeServerService {
     public List<ServerInfo> getServerInfoList(int serverId){
         List<ServerInfo> serverInfoList = dataService.selectList(ServerInfo.class,"");
         return serverInfoList;
+    }
+
+    @Tx
+    @Remotable(route = RouteType.SERVERID,routeArgIndex = 1)
+    public void aaa(int serverId){
+        System.out.println("in  --");
+    }
+
+    @Gm(id="test remotable tx")
+    public void testGm(){
+        aaa(1);
     }
 }

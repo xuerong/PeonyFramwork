@@ -3,6 +3,7 @@ package com.peony.engine.framework.tool.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Method;
 import java.net.URL;
 
 /**
@@ -15,6 +16,18 @@ public class ClassUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(ClassUtil.class);
 
+    public static String getMethodSignature(Method method){
+        if(method == null){
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(method.getDeclaringClass().getName());
+        sb.append(method.getName());
+        for(Class<?> ptype:method.getParameterTypes()){
+            sb.append(ptype.getName());
+        }
+        return sb.toString();
+    }
     /**
      * 获取类加载器
      */

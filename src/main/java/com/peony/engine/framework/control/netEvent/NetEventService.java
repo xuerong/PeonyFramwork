@@ -1,9 +1,12 @@
 package com.peony.engine.framework.control.netEvent;
 
 import com.alibaba.fastjson.JSONObject;
+import com.peony.engine.framework.cluster.ServerInfo;
 import com.peony.engine.framework.control.ServiceHelper;
+import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.NetEventListener;
 import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.event.EventData;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.Server;
@@ -81,6 +84,14 @@ public class NetEventService {
         return null;
     }
 
+    // 用于自动重连后更新 client
+    @EventListener(event = SysConstantDefine.Event_ConnectNewServer)
+    public void onClientConnected(EventData eventData) {
+        NettyServerClient client = (NettyServerClient) eventData.getData();
+        addClient(client);
+    }
+
+
     /**
      * 同步注册服务器，连接上该服务器之后，才返回
      * 如果是自己，直接返回
@@ -136,7 +147,7 @@ public class NetEventService {
 
     private void addClient(NettyServerClient client) {
         serverClients.put(client.getServerId(), client);
-        logger.info("client add {} {}", client.getAddress(), serverClients.size());
+        logger.info("client add {} {} {}", client.getServerId(),client.getAddress(), serverClients.size());
     }
 
     // 一个系统的一种NetEvent只有一个监听器(因为很多事件需要返回数据)，可以通过内部事件分发
@@ -321,5 +332,26 @@ public class NetEventService {
             throw new MMException(MMException.ExceptionType.SendNetEventFail,"serverClient is null");
         }
     }
+
+    /**
+     * 向某个服务器发送事件
+     * 同步
+     */
+    public NetEventData fireServerNetEventSyn(ServerInfo serverInfo, NetEventData netEvent) {
+        String address = serverInfo.getInnerAddress();
+        if (address.equals(selfAddress)) {
+            return handleNetEventData(netEvent);
+        }
+
+        ServerClient serverClient = serverClients.get(address);
+
+        if (serverClient != null && serverClient.isConnected()) {
+            return sendNetEvent(serverClient, netEvent);
+        }
+        // 如果是超时, 上面就会抛异常
+        throw new MMException(MMException.ExceptionType.RemoteFail,"服务器尚未建立连接 " + address);
+    }
+
+
 
 }

@@ -1,5 +1,6 @@
 package com.peony.engine.framework.control.aop;
 
+import com.peony.engine.framework.control.ServiceHelper;
 import com.peony.engine.framework.control.aop.annotation.Aspect;
 import com.peony.engine.framework.control.aop.annotation.AspectOrder;
 import com.peony.engine.framework.security.exception.MMException;
@@ -204,10 +205,12 @@ public final class AopHelper {
             // 分别获取 map 中的 key 与 value
             Class<?> proxyClass = proxyEntry.getKey();
             List<Class<?>> targetClassList = proxyEntry.getValue();
+            //
             // 遍历目标类列表
             for (Class<?> targetClass : targetClassList) {
                 // 创建代理类（切面类）实例，即，每个目标类中都有单独的其代理类的实例
                 Proxy baseAspect = (Proxy) proxyClass.newInstance();
+
                 baseAspect.setTargetClass(targetClass);
                 // 初始化 Target Map
                 if (targetMap.containsKey(targetClass)) {

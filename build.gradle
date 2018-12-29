@@ -53,6 +53,7 @@ dependencies {
     compile 'javax.servlet.jsp:javax.servlet.jsp-api:2.3.1'
     compile 'org.slf4j:slf4j-log4j12:1.7.13'
     compile 'org.apache.commons:commons-lang3:3.4'
+    compile group: 'org.apache.commons', name: 'commons-pool2', version: '2.6.0'
     compile 'cglib:cglib:3.2.5'
     compile 'com.alibaba:fastjson:1.2.23'
     compile 'org.javassist:javassist:3.22.0-GA'
@@ -88,6 +89,8 @@ dependencies {
     compile group: 'com.vlkan', name: 'quasar-maven-plugin', version: '0.7.9'
 
     compile 'com.zaxxer:HikariCP:2.6.3'
+
+    compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '5.0.0-RC1'
 
 
 }

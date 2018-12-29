@@ -35,12 +35,12 @@ public class TxProxy extends AspectProxy {
             txCacheService = BeanHelper.getServiceBean(TxCacheService.class);
         }
         txCacheService.begin(tx.tx(),tx.lock(),tx.lockClass());
-//        log.info("----------------------------before-----"+cls+","+method+","+txCacheService.isInTx());
+        log.info("----------------------------before-----"+cls+","+method+","+txCacheService.isInTx());
     }
 
     @Override
     public void after(Object object,Class<?> cls, Method method, Object[] params, Object result) {
-//        log.info("----------------------------after------"+cls+","+method+","+txCacheService.isInTx());
+        log.info("----------------------------after------"+cls+","+method+","+txCacheService.isInTx());
         Tx tx = method.getAnnotation(Tx.class);
         boolean success = txCacheService.after(tx.tx());
         //

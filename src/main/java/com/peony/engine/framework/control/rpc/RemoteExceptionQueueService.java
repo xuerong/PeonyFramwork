@@ -23,13 +23,14 @@ public class RemoteExceptionQueueService {
     private DataService dataService;
     private RemoteCallService remoteCallService;
 
-    public void addQueue(int serverId, Class serviceClass, String methodName, Object[] params, RuntimeException e){
+    public void addQueue(int serverId, Class serviceClass, String methodName,String methodSignature, Object[] params, RuntimeException e){
         RemoteExceptionQueue remoteExceptionQueue = new RemoteExceptionQueue();
         remoteExceptionQueue.setId(UUID.randomUUID().toString());
         remoteExceptionQueue.setServerId(serverId);
         remoteExceptionQueue.setServiceClass(serviceClass.getName());
         remoteExceptionQueue.setMethodName(methodName);
         remoteExceptionQueue.setParams(toByteArray(params));
+        remoteExceptionQueue.setMethodSignature(methodSignature);
         dataService.insert(remoteExceptionQueue);
         log.info("new remote RemoteExceptionQueue,remoteExceptionQueue={}",remoteExceptionQueue.toString());
     }
@@ -43,7 +44,7 @@ public class RemoteExceptionQueueService {
             for(RemoteExceptionQueue remoteExceptionQueue : remoteExceptionQueueList){
                 dataService.delete(remoteExceptionQueue);
                 remoteCallService.remoteCallAsync(remoteExceptionQueue.getServerId(), ServiceHelper.getServiceClassByName(remoteExceptionQueue.getServiceClass()),
-                        remoteExceptionQueue.getMethodName(),toObject(remoteExceptionQueue.getParams()));
+                        remoteExceptionQueue.getMethodName(),remoteExceptionQueue.getMethodSignature(),toObject(remoteExceptionQueue.getParams()));
                 log.info("re remoteCall,remoteExceptionQueue={}",remoteExceptionQueue.toString());
             }
         }

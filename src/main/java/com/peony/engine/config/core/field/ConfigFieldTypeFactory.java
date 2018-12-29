@@ -29,7 +29,7 @@ public class ConfigFieldTypeFactory {
                 IFieldType fieldType = (IFieldType) tempClass.newInstance();
                 fieldTypeMap.put(fieldType.getName(), fieldType);
                 fieldTypeClassMap.put(fieldType.getName(), (Class<? extends IFieldType>) tempClass);
-                logger.info("config type init -- {}", fieldType.getName());
+//                logger.info("config type init -- {}", fieldType.getName());
             } catch (Exception e) {
                 logger.error("verify init error " + tempClass.getSimpleName(), e);
             }

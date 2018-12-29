@@ -9,7 +9,7 @@ public enum RemoteExceptionHandler implements IRemoteExceptionHandler {
 
     Default(){
         @Override
-        public Object handle(int serverId, Class serviceClass, String methodName, Object[] params, RuntimeException e) {
+        public Object handle(int serverId, Class serviceClass, String methodName,String methodSignature, Object[] params, RuntimeException e) {
             log.info("RemoteExceptionHandler default",e);
             throw  e;
 //            return "";
@@ -17,21 +17,20 @@ public enum RemoteExceptionHandler implements IRemoteExceptionHandler {
     },
     Null(){
         @Override
-        public Object handle(int serverId, Class serviceClass, String methodName, Object[] params, RuntimeException e) {
-            log.info("RemoteExceptionHandler Null",e);
+        public Object handle(int serverId, Class serviceClass, String methodName,String methodSignature, Object[] params, RuntimeException e) {            log.info("RemoteExceptionHandler Null",e);
             return null;
         }
     },
 
     AddQueue(){ // 如果不是ToClientException，则加入队列
         @Override
-        public Object handle(int serverId, Class serviceClass, String methodName, Object[] params, RuntimeException e) {
+        public Object handle(int serverId, Class serviceClass, String methodName,String methodSignature, Object[] params, RuntimeException e) {
             if(e instanceof MMException){
                 MMException mmException = (MMException)e;
                 if(mmException.getExceptionType() == MMException.ExceptionType.RemoteFail){
                     //加入缓存队列
                     RemoteExceptionQueueService remoteExceptionQueueService = BeanHelper.getServiceBean(RemoteExceptionQueueService.class);
-                    remoteExceptionQueueService.addQueue(serverId,serviceClass,methodName,params,e);
+                    remoteExceptionQueueService.addQueue(serverId,serviceClass,methodName,methodSignature,params,e);
                     return null;
                 }
             }

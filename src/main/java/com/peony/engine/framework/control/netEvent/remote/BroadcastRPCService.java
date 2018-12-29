@@ -8,6 +8,7 @@ import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.tool.util.ClassUtil;
 import com.peony.engine.framework.tool.util.ReflectionUtil;
 
 import java.lang.reflect.Method;
@@ -40,6 +41,7 @@ public class BroadcastRPCService {
             remoteCallData.setMethodName(method.getName());
             remoteCallData.setParams(params);
             netEventData.setParam(remoteCallData);
+            remoteCallData.setMethodSignature(ClassUtil.getMethodSignature(method));
             if(broadcastRPC.async()){
                 netEventService.broadcastNetEvent(netEventData,false);
             }else {

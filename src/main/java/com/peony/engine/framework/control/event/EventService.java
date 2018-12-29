@@ -4,7 +4,6 @@ import com.peony.engine.framework.control.ServiceHelper;
 import com.peony.engine.framework.control.annotation.NetEventListener;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.netEvent.NetEventData;
-import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.data.tx.TxCacheService;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
@@ -47,7 +46,6 @@ public class EventService {
     private final TIntObjectHashMap<Set<EventListenerHandler>> handlerMap=new TIntObjectHashMap<>();
     private final TIntObjectHashMap<Set<EventListenerHandler>> synHandlerMap=new TIntObjectHashMap<>();
 
-    private NetEventService netEventService;
     private TxCacheService txCacheService;
 
     public void init(){
@@ -103,7 +101,7 @@ public class EventService {
             if(eventData == null){
                 continue;
             }
-            doASyncEvent(eventData,false);
+            doASyncEvent(eventData);
         }
     }
 
@@ -123,27 +121,9 @@ public class EventService {
         return false;
     }
 
-    /**
-     *
-     */
-    public void fireEvent(Object data, int event, final boolean broadcast){
-        EventData eventData = new EventData(event);
-        eventData.setData(data);
 
-        // 同步的
-        doSyncEvent(eventData,broadcast);
-        // 异步的
-        doASyncEvent(eventData,broadcast);
 
-        // TODO 这里没有考虑同步异步的问题，后续要加上
-        if(broadcast){
-            NetEventData netEventData = new NetEventData(SysConstantDefine.broadcastEvent);
-            netEventData.setParam(eventData);
-            netEventService.broadcastNetEvent(netEventData,false);
-        }
-    }
-
-    private void doSyncEvent(EventData eventData,boolean broadcast){
+    private void doSyncEvent(EventData eventData){
         Set<EventListenerHandler> synHandlerSet = synHandlerMap.get(eventData.getEvent());
         if(synHandlerSet != null && synHandlerSet.size() > 0){
             for (EventListenerHandler handler : synHandlerSet) {
@@ -155,7 +135,7 @@ public class EventService {
             }
         }
     }
-    private void doASyncEvent(EventData eventData,boolean broadcast){
+    private void doASyncEvent(EventData eventData){
         final Set<EventListenerHandler> handlerSet = handlerMap.get(eventData.getEvent());
         if(handlerSet != null && handlerSet.size() > 0) {
             if(checkAndAddTx(eventData)){
@@ -176,20 +156,18 @@ public class EventService {
 
     /**
      * 事件是异步的
-     * TODO 发出事件改为四种:同步|异步*广播|不广播
+     * 发出事件改为两种:同步|异步
      * @param data 事件参数
      * @param event 事件id
      */
     public void fireEvent(Object data, int event){
-        fireEvent(data,event,false);
-    }
+        EventData eventData = new EventData(event);
+        eventData.setData(data);
 
-    // 接受到其它服务器发送的事件
-    @NetEventListener(netEvent = SysConstantDefine.broadcastEvent)
-    public NetEventData receiveEventData(NetEventData netEventData){
-        EventData eventData = (EventData)netEventData.getParam();
-        doASyncEvent(eventData,false); // 这个地方分为同步和异步
-        return null;
+        // 同步的
+        doSyncEvent(eventData);
+        // 异步的
+        doASyncEvent(eventData);
     }
 
     /**

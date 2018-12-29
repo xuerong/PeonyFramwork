@@ -336,7 +336,7 @@ public class ConfigService {
             throw new ConfigException(error);
         }
         configContainers = containers;
-        logger.info("load config finish " + (System.currentTimeMillis() - start));
+        logger.info("load config finish use time" + (System.currentTimeMillis() - start));
     }
 
     private Class<? extends ConfigContainer> getContainerClass(String fileName) throws ClassNotFoundException {

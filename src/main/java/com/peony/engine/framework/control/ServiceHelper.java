@@ -29,11 +29,15 @@ import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.ServerType;
 import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.helper.ClassHelper;
+import com.peony.engine.framework.tool.util.ClassUtil;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TShortObjectHashMap;
 import javassist.*;
+import javassist.bytecode.AnnotationsAttribute;
+import javassist.bytecode.AttributeInfo;
 import javassist.bytecode.MethodInfo;
 import com.alibaba.fastjson.JSONObject;
+import javassist.bytecode.SignatureAttribute;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +66,8 @@ public final class ServiceHelper {
     private static TIntObjectHashMap<Class<?>> netEventListenerHandlerClassMap = new TIntObjectHashMap<>();
     private static Map<Class<?>, List<Method>> updatableClassMap = new HashMap<>();
     private static Map<Class<?>, List<Method>> monitorClassMap = new HashMap<>();
+    private static Map<String,Method> remoteMethodIndex = new HashMap<>();
+
 
     /**
      * BeanHelp获取该Map对Service进行实例化，
@@ -113,11 +119,6 @@ public final class ServiceHelper {
                     // 判断是否存在Request
                     if (method.isAnnotationPresent(Request.class)) {
                         addMethodToMap(requestMap, serviceClass, method);
-                    }
-
-                    //
-                    if (!service.runOnEveryServer() && !ServerType.isMainServer()) {
-                        continue;
                     }
 
                     if (method.isAnnotationPresent(EventListener.class)) {
@@ -190,59 +191,9 @@ public final class ServiceHelper {
 
                 Service service = serviceClass.getAnnotation(Service.class);
 
-                // 单一服的某些特定 Service 如排行榜等
-                if (!service.runOnEveryServer() && !ServerType.isMainServer()) {
-                    // 改写所有的public方法,使用远程调用
-                    CtClass oldClass = pool.get(serviceClass.getName());
-                    CtClass cls = pool.makeClass(oldClass.getName() + "$Proxy", oldClass);
-
-                    for (CtMethod ctMethod : oldClass.getDeclaredMethods()) {
-                        MethodInfo methodInfo = ctMethod.getMethodInfo();
-                        if (methodInfo.getAccessFlags() == 1) { // public 的
-                            // 重写该方法
-                            StringBuilder sb = new StringBuilder(ctMethod.getReturnType().getName() + " " + ctMethod.getName() + "(");
-                            CtClass[] paramClasses = ctMethod.getParameterTypes();
-                            int i = 0;
-                            StringBuilder paramsStr = new StringBuilder();
-                            for (CtClass paramClass : paramClasses) {
-                                if (i > 0) {
-                                    sb.append(",");
-                                    paramsStr.append(",");
-                                }
-                                sb.append(paramClass.getName() + " p" + i);
-                                // 这个地方需要进行一步强制转换,基本类型不能编译成Object类型
-                                paramsStr.append(praseBaseTypeStrToObjectTypeStr(paramClass.getName(), "p" + i));
-                                i++;
-                            }
-                            sb.append(") {");
-                            String paramStr = "null";
-                            if (i > 0) {
-                                sb.append("Object[] param = new Object[]{" + paramsStr + "};");
-                                paramStr = "param";
-                            }
-                            // --------------这个地方要进行强制转换
-                            sb.append("com.peony.engine.framework.control.netEvent.remote.RemoteCallService remoteCallService = (com.peony.engine.framework.control.netEvent.remote.RemoteCallService)com.peony.engine.framework.tool.helper.BeanHelper.getServiceBean(com.peony.engine.framework.control.netEvent.remote.RemoteCallService.class);");
-                            String invokeStr = "remoteCallService.remoteCallMainServerSyn(" + serviceClass.getName() + ".class,\"" + ctMethod.getName() + "\"," + paramStr + ");";
-                            if (ctMethod.getReturnType().getName().toLowerCase().equals("void")) {
-                                sb.append(invokeStr);
-                            } else {
-                                sb.append("Object object = " + invokeStr);
-                                sb.append("return " + parseBaseTypeStrToObjectTypeStr(ctMethod.getReturnType().getName()));
-                            }
-                            sb.append("}");
-                            log.info("==============================================\n"+sb.toString());
-                            CtMethod method = CtMethod.make(sb.toString(), cls);
-                            cls.addMethod(method);
-                        }
-                    }
-                    newServiceClass = cls.toClass();
-
-                } else {
-                    // 远程方法处理
-                    if(!Server.getEngineConfigure().getBoolean("server.is.test", false)) {
-                        newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
-                    }
-//                    newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
+                // 远程方法处理
+                if(!Server.getEngineConfigure().getBoolean("server.is.test", false)) {
+                    newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
                 }
 
                 if (requestMap.containsKey(serviceClass)) {
@@ -367,6 +318,7 @@ public final class ServiceHelper {
                 throw new MMException(String.format("Remote接口返回值类型不允许为基本类型. Service: %s method: %s returnType: %s", serviceClass.getSimpleName(), method.getName(), method.getReturnType()));
             }
             remoteMethods.put(method, remote);
+            remoteMethodIndex.put(ClassUtil.getMethodSignature(method),method);
         }
 
         if(remoteMethods.isEmpty()) {
@@ -383,6 +335,7 @@ public final class ServiceHelper {
 
             CtMethod ctMethod = ctClazz.getMethod(oldMethod.getName(), packDescreptor(oldMethod));
             CtMethod proxyMethod = CtNewMethod.copy(ctMethod, proxyClazz, null);
+
 
             /**
              * 实际的执行逻辑
@@ -447,11 +400,15 @@ public final class ServiceHelper {
                 String remoteSerName = RemoteCallService.class.getName();
                 body.append(String.format("\t\t%s remoteService = (%s)%s.getServiceBean(%s.class);\n", remoteSerName, remoteSerName, BeanHelper.class.getName(), remoteSerName));
                 if (oldMethod.getReturnType() != Void.TYPE) {
-                    body.append(String.format("\t\tObject object = remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
+//                    body.append(String.format("\t\tObject object = remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
+                    body.append(String.format("\t\tObject object = remoteService.remoteCallSyn(serverId, %s.class,\"%s\",\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),ClassUtil.getMethodSignature(oldMethod),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
+
                     //body.append(String.format("\t\treturn (%s)object;", oldMethod.getReturnType().getName()));
                     body.append("\t\treturn "+parseBaseTypeStrToObjectTypeStr(oldMethod.getReturnType().getName()));
+
                 } else {
-                    body.append(String.format("remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
+//                    body.append(String.format("remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
+                    body.append(String.format("remoteService.remoteCallSyn(serverId, %s.class,\"%s\",\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),ClassUtil.getMethodSignature(oldMethod),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
                 }
                 body.append(String.format("\n\t}\n"));
                 body.append("}");
@@ -463,6 +420,11 @@ public final class ServiceHelper {
         newServiceClass = proxyClazz.toClass();
         return newServiceClass;
     }
+
+    public static Map<String,Method> getRemoteMethodIndex(){
+        return remoteMethodIndex;
+    }
+
 
     private static String genArgsString(Method oldMethod) {
         StringBuilder args = new StringBuilder("");

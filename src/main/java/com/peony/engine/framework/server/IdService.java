@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 
  * ,runOnEveryServer = false
  */
-@Service(init = "init",initPriority = 3,destroy = "destroy",runOnEveryServer = false)
+@Service(init = "init",initPriority = 3,destroy = "destroy")
 public class IdService {
     private static final Logger log = LoggerFactory.getLogger(IdService.class);
 

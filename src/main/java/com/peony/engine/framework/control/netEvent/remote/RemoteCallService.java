@@ -1,5 +1,6 @@
 package com.peony.engine.framework.control.netEvent.remote;
 
+import com.peony.engine.framework.control.ServiceHelper;
 import com.peony.engine.framework.control.annotation.NetEventListener;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.netEvent.NetEventData;
@@ -36,32 +37,14 @@ public class RemoteCallService {
     private MonitorService monitorService;
     private ExecutorService executorService = Executors.newFixedThreadPool(8);
     ConcurrentLinkedDeque<Integer> timeQueue = new ConcurrentLinkedDeque<>();
+    private Map<String,Method> remoteMethodIndex;
+
 
     public void init(){
         netEventService = BeanHelper.getServiceBean(NetEventService.class);
+        remoteMethodIndex = ServiceHelper.getRemoteMethodIndex();
     }
 
-
-    /**
-     * 异步远程调用
-     * TODO 删除之
-     */
-    public void remoteCallMainServer(Class cls,String methodName,Object... params){
-        NetEventData netEventData = new NetEventData(SysConstantDefine.remoteCall);
-//        Method method = null;
-//        try {
-//            method = cls.getMethod(methodName, ReflectionUtil.getParamsTypes(params));
-//        }catch (NoSuchMethodException e){
-//            throw new MMException(e);
-//        }
-
-        RemoteCallData remoteCallData = new RemoteCallData();
-        remoteCallData.setServiceName(cls.getName());
-        remoteCallData.setMethodName(methodName);
-        remoteCallData.setParams(params);
-        netEventData.setParam(remoteCallData);
-        netEventService.fireServerNetEvent(1,netEventData);
-    }
 
     @NetEventListener(netEvent = SysConstantDefine.remoteCall)
     public NetEventData receiveRemoteCall(NetEventData netEventData){
@@ -76,8 +59,10 @@ public class RemoteCallService {
                 netEventData.setErrorCode(1);
                 return netEventData;
             }
-            Method method = serviceBean.getClass().getMethod(remoteCallData.getMethodName(),
-                        ReflectionUtil.getParamsTypes(remoteCallData.getParams()));
+//            Method method = serviceBean.getClass().getMethod(remoteCallData.getMethodName(),
+//                        ReflectionUtil.getParamsTypes(remoteCallData.getParams()));
+            Method method = this.remoteMethodIndex.get(remoteCallData.getMethodSignature());
+
             if(method == null){
                 logger.error("remote call error!serviceBean {} has not method {},params={}",remoteCallData.getServiceName(),
                         remoteCallData.getMethodName(),remoteCallData.getParams());
@@ -113,22 +98,6 @@ public class RemoteCallService {
     }
 
     /**
-     * 同步远程调用
-     * TODO 删除之
-     */
-    public Object remoteCallMainServerSyn(Class cls,String methodName,Object... params){
-        NetEventData netEventData = new NetEventData(SysConstantDefine.remoteCall);
-        RemoteCallData remoteCallData = new RemoteCallData();
-        remoteCallData.setServiceName(cls.getName());
-        remoteCallData.setMethodName(methodName);
-        remoteCallData.setParams(params);
-        netEventData.setParam(remoteCallData);
-
-        NetEventData retData = netEventService.fireServerNetEventSyn(1,netEventData);
-        return handlerRetParam(retData);
-    }
-
-    /**
      * 此方法由 rpc 底层调用, (!!!勿动!!!)
      *
      * @param serverId
@@ -137,7 +106,8 @@ public class RemoteCallService {
      * @param params
      * @return
      */
-    public Object remoteCallSyn(int serverId, Class serviceClass, String methodName, Object[] params,RemoteExceptionHandler handler) {
+    public Object remoteCallSyn(int serverId, Class serviceClass, String methodName,String methodSignature, Object[] params,RemoteExceptionHandler handler) {
+//    public Object remoteCallSyn(int serverId, Class serviceClass, String methodName, Object[] params,RemoteExceptionHandler handler) {
         long begin = System.currentTimeMillis();
         try {
             NetEventData netEventData = new NetEventData(SysConstantDefine.remoteCall);
@@ -145,6 +115,7 @@ public class RemoteCallService {
             remoteCallData.setServiceName(serviceClass.getName());
             remoteCallData.setMethodName(methodName);
             remoteCallData.setParams(params);
+            remoteCallData.setMethodSignature(methodSignature);
             netEventData.setParam(remoteCallData);
 
             NetEventData retData = netEventService.fireServerNetEventSyn(serverId, netEventData);
@@ -154,7 +125,9 @@ public class RemoteCallService {
             if(handler == null){
                 throw e;
             }
-            return handler.handle(serverId,serviceClass,methodName,params,e);
+            logger.error("remotecall error",e);
+//            return handler.handle(serverId,serviceClass,methodName,params,e);
+            return handler.handle(serverId,serviceClass,methodName,methodSignature,params,e);
         }finally {
             monitorService.addMonitorNum(MonitorNumType.RemoteCallNum,1);
             int useTime = (int)(System.currentTimeMillis() - begin);
@@ -216,10 +189,11 @@ public class RemoteCallService {
         return sb.toString();
     }
 
-    public void remoteCallAsync(int serverId, Class serviceClass, String methodName, Object[] params) {
+//    public void remoteCallAsync(int serverId, Class serviceClass, String methodName, Object[] params) {
+    public void remoteCallAsync(int serverId, Class serviceClass, String methodName,String methodSignature,  Object[] params) {
         executorService.execute(()->{
             try{
-                remoteCallSyn(serverId, serviceClass, methodName, params, null);
+                remoteCallSyn(serverId, serviceClass, methodName, methodSignature,params, null);
             }catch (Throwable e){
                 logger.error("remoteCallAsync error!",e);
             }
@@ -244,12 +218,13 @@ public class RemoteCallService {
     }
 
     // TODO 广播还要同步，如果处理返回值
-    public <T> Map<Integer,T> broadcastRemoteCallSyn(Class cls, String methodName, Object... params){
+    public <T> Map<Integer,T> broadcastRemoteCallSyn(Class cls, String methodName, String methodSignature,Object... params){
         NetEventData netEventData = new NetEventData(SysConstantDefine.remoteCall);
         RemoteCallData remoteCallData = new RemoteCallData();
         remoteCallData.setServiceName(cls.getName());
         remoteCallData.setMethodName(methodName);
         remoteCallData.setParams(params);
+        remoteCallData.setMethodSignature(methodSignature);
         netEventData.setParam(remoteCallData);
 
         Map<Integer,NetEventData> retData = netEventService.broadcastNetEventSyn(netEventData,false);

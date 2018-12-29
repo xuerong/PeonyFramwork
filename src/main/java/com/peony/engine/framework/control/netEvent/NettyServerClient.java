@@ -176,6 +176,7 @@ public class NettyServerClient extends AbServerClient {
             }
 
             eventService.fireEventSyn(NettyServerClient.this,SysConstantDefine.Event_NettyServerClient_Disconnect);
+            eventService.fireEvent(NettyServerClient.this,SysConstantDefine.Event_ConnectNewServerAsy);
             super.channelInactive(ctx);
         }
 

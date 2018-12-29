@@ -12,6 +12,7 @@ public class RemoteExceptionQueue implements Serializable{
     // int serverId, Class serviceClass, String methodName, Object[] params, RuntimeException
     private String serviceClass;
     private String methodName;
+    private String methodSignature;
     private byte[] params;
 
     public String getId() {
@@ -45,6 +46,15 @@ public class RemoteExceptionQueue implements Serializable{
     public void setMethodName(String methodName) {
         this.methodName = methodName;
     }
+    public String getMethodSignature() {
+        return methodSignature;
+    }
+
+    public void setMethodSignature(String methodSignature) {
+        this.methodSignature = methodSignature;
+    }
+
+
 
     public byte[] getParams() {
         return params;

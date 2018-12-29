@@ -31,8 +31,4 @@ public @interface Service {
      */
     String destroy() default "";
     int destroyPriority() default 10; // 销毁的优先级,越小越先销毁,
-    /**
-     *
-     */
-    boolean runOnEveryServer() default true; // TODO 这个需要去掉，或者换成配置在哪个服务器运行，要根据这个编写service配置文件的实现
 }

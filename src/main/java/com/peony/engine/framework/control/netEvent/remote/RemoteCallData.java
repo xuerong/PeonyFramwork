@@ -10,6 +10,8 @@ public class RemoteCallData implements Serializable{
     private String methodName;
     private Object[] params;
 //    private String key; 如果需要可以在传给服务器之前调用buildMethodKey给它赋值,来提高singleServiceServer效率
+    private String methodSignature;
+
 
     public String buildMethodKey(){
 //        if(key != null){
@@ -49,4 +51,11 @@ public class RemoteCallData implements Serializable{
         this.params = params;
     }
 
+    public String getMethodSignature() {
+        return methodSignature;
+    }
+
+    public void setMethodSignature(String methodSignature) {
+        this.methodSignature = methodSignature;
+    }
 }
