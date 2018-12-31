@@ -12,8 +12,12 @@ import com.peony.engine.framework.data.entity.account.AccountSysService;
 import com.peony.engine.framework.data.entity.account.LogoutEventData;
 import com.peony.engine.framework.data.entity.account.MessageSender;
 import com.peony.engine.framework.data.entity.session.Session;
+import com.peony.engine.framework.data.tx.AbListDataTxLifeDepend;
+import com.peony.engine.framework.data.tx.ITxLifeDepend;
 import com.peony.engine.framework.data.tx.LockerService;
+import com.peony.engine.framework.data.tx.TxCacheService;
 import com.peony.engine.framework.server.SysConstantDefine;
+import com.sun.org.apache.bcel.internal.generic.PUSH;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,20 +42,18 @@ import java.util.concurrent.Executors;
 public class SendMessageService {
     private static final Logger log = LoggerFactory.getLogger(SendMessageService.class);
 
-    private ExecutorService executorService = Executors.newCachedThreadPool();
     /**
      * 用于推送消息的推送器
      * 需要根据使用的协议、传输方式,在创建session的时候设置
      */
     private ConcurrentHashMap<String,MessageSender> messageSenderMap = new ConcurrentHashMap<>();
+    private PushTxLifeDepend pushTxLifeDepend = new PushTxLifeDepend();
 
-    private AccountSysService accountSysService;
-    private RemoteCallService remoteCallService;
-    private LockerService lockerService;
     private RequestService requestService;
+    private TxCacheService txCacheService;
 
     public void init(){
-
+        txCacheService.registerTxLifeDepend(pushTxLifeDepend);
     }
     @EventListener(event = SysConstantDefine.Event_AccountLogin)
     public void login(List loginEventData){
@@ -68,27 +70,10 @@ public class SendMessageService {
         }
     }
 
-    public void broadcastMessage(int opcode,byte[] data){
+    public void broadcastMessage(int opcode,Object data){
         for(Map.Entry<String,MessageSender> entry : messageSenderMap.entrySet()){
             doSendMessage(entry.getKey(),entry.getValue(),opcode,data);
         }
-    }
-
-
-    // TODO 这个产生大量的远程调用，却很少是需要的，可以有个地方获取在线玩家，只给在线玩家推送
-    public void sendMessageRemotable(Collection<String> uids, int opcode, JSONObject data){
-        if(uids == null || uids.size() == 0){
-            return;
-        }
-        executorService.execute(()->{
-            for(String uid : uids){
-                sendMessageRemotable(uid,opcode,data);
-            }
-        });
-    }
-    @Remotable(route = RouteType.UID)
-    public void sendMessageRemotable(String uid,int opcode,JSONObject data){
-        doSendMessage(uid,null,opcode,data);
     }
 
     /**
@@ -98,7 +83,14 @@ public class SendMessageService {
      * @param data 消息体
      */
     public void sendMessage(String uid,int opcode,Object data){
-        doSendMessage(uid,null,opcode,data);
+        MessageSender messageSender = messageSenderMap.get(uid);
+        if(messageSender == null){
+            return ;
+        }
+        if(pushTxLifeDepend.checkAndPut(uid, opcode, data)){
+            return ;
+        }
+        doSendMessage(uid,messageSender,opcode,data);
     }
 
     private void doSendMessage(String uid,MessageSender messageSender,int opcode,Object data){
@@ -110,12 +102,33 @@ public class SendMessageService {
                 messageSender.sendMessage(opcode, data);
                 log.info("user:{} push msg:(msgid:{}[{}]),{}", uid, requestService.getOpName(opcode),opcode, data.toString() );
             }else{
-//                log.info("account not login,accountId="+accountId);
+//                log.info("account not login,accountId="+uid);
             }
         }catch (Throwable e){
             log.error("broadcast message fail ,opcode = " + opcode+",e = "+e.getMessage()+",accountId+"+uid);
         }
     }
 
+
+    class PushTxLifeDepend extends AbListDataTxLifeDepend{
+        class PushData{
+            String uid;
+            int opcode;
+            Object data;
+        }
+        boolean checkAndPut(String uid,int opcode,Object data){
+            PushData pushData = new PushData();
+            pushData.uid = uid;
+            pushData.opcode = opcode;
+            pushData.data = data;
+            return checkAndPut(pushData);
+        }
+
+        @Override
+        protected void executeTxCommit(Object object) {
+            PushData pushData = (PushData)object;
+            sendMessage(pushData.uid,pushData.opcode,pushData.data);
+        }
+    }
 
 }

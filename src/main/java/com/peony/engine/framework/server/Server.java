@@ -31,6 +31,8 @@ public final class Server {
     private static EngineConfigure configure;
     private static Integer serverId;
 
+    public static volatile boolean running = false;
+
     public static Integer getServerId() {
         return serverId;
     }
@@ -132,6 +134,8 @@ public final class Server {
         });
 
         printStartMsg();
+
+        running = true;
     }
 
     public static void printStartMsg(){

@@ -20,7 +20,7 @@ public final class EngineConfigure {
     private static final Logger log = LoggerFactory.getLogger(EngineConfigure.class);
     private Map<Class<?>,Class<?>> configureBeans=new HashMap<Class<?>,Class<?>>();
     private String defaultRequestController;
-    private int syncUpdateCycle = 1000;
+//    private int syncUpdateCycle = 1000;
 
     // 系统开启的网络入口
     private final Map<String,EntranceConfigure> entranceClassMap = new HashMap<>();
@@ -50,7 +50,7 @@ public final class EngineConfigure {
         // session.cycle
 //        sessionUpdateCycle = Integer.parseInt(getString("session.cycle"));
         // syncUpdate.cycle
-        syncUpdateCycle = Integer.parseInt(getString("syncUpdate.cycle"));
+//        syncUpdateCycle = Integer.parseInt(getString("syncUpdate.cycle"));
     }
 
     public void changeEntrancePort(String portStr){
@@ -144,9 +144,6 @@ public final class EngineConfigure {
         return defaultRequestController;
     }
 
-    public int getSyncUpdateCycle() {
-        return syncUpdateCycle;
-    }
     public String getString(String key){
         return ConfigHelper.getString(key);
     }

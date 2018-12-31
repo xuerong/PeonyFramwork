@@ -1,11 +1,10 @@
 package com.peony.engine.framework.control.event;
 
 import com.peony.engine.framework.control.ServiceHelper;
-import com.peony.engine.framework.control.annotation.NetEventListener;
 import com.peony.engine.framework.control.annotation.Service;
-import com.peony.engine.framework.control.netEvent.NetEventData;
+import com.peony.engine.framework.data.tx.AbListDataTxLifeDepend;
+import com.peony.engine.framework.data.tx.ITxLifeDepend;
 import com.peony.engine.framework.data.tx.TxCacheService;
-import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
@@ -26,12 +25,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 2、事件队列有最大值，超过最大值，抛出服务器异常：可在某个比较大的值抛出警告
  */
 @Service(init = "init",initPriority = 1)
-public class EventService {
+public class EventService{
     private static final Logger log = LoggerFactory.getLogger(EventService.class);
     private static final int poolWarningSize=20;
     private static final int queueWarningSize=1000;
 
     private ThreadLocal<List<EventData>> cacheDatas = new ThreadLocal<>();
+    EventTxLifeDepend eventTxLifeDepend = new EventTxLifeDepend();
 
     private final ThreadPoolExecutor executor = new ThreadPoolExecutor(
             10,100,3000, TimeUnit.MILLISECONDS,new LinkedBlockingDeque<Runnable>(),
@@ -76,6 +76,8 @@ public class EventService {
                 return true;
             }
         });
+        //
+        txCacheService.registerTxLifeDepend(eventTxLifeDepend);
     }
 
     // 最后用一个系统的检测服务update进行系统所有的监测任务
@@ -88,39 +90,19 @@ public class EventService {
         return "ok";
     }
 
-    public void txCommitFinish(boolean success){
-        List<EventData> list = cacheDatas.get();
-        if(list == null){
-            return;
-        }
-        cacheDatas.remove();
-        if(!success){
-            return;
-        }
-        for(EventData eventData:list){
-            if(eventData == null){
-                continue;
-            }
+    class EventTxLifeDepend extends AbListDataTxLifeDepend{
+        @Override
+        protected void executeTxCommit(Object object) {
+            EventData eventData = (EventData)object;
             doASyncEvent(eventData.getEvent(),eventData.getData());
         }
     }
 
-    AtomicInteger test = new AtomicInteger();
     // 事件事务只存在于异步事件中，同步事件执行原来就在事务中，
     private boolean checkAndAddTx(int event,Object data){
-        if(txCacheService.isInTx()){
-            test.getAndIncrement();
-            List<EventData> list = cacheDatas.get();
-            if(list == null){
-                list = new ArrayList<>();
-                cacheDatas.set(list);
-            }
-            EventData eventData = new EventData(event);
-            eventData.setData(data);
-            list.add(eventData);
-            return true;
-        }
-        return false;
+        EventData eventData = new EventData(event);
+        eventData.setData(data);
+        return eventTxLifeDepend.checkAndPut(eventData);
     }
 
 

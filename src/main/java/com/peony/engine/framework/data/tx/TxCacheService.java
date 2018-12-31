@@ -6,8 +6,8 @@ import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.OperType;
 import com.peony.engine.framework.data.cache.CacheEntity;
 import com.peony.engine.framework.data.cache.KeyParser;
-import com.peony.engine.framework.data.entity.account.Account;
 import com.peony.engine.framework.security.exception.MMException;
+import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.tool.helper.BeanHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +20,7 @@ import java.util.*;
  * 方案如下：
  * insert：
  */
-@Service(init = "init")
+@Service
 public class TxCacheService {
     private static final Logger log = LoggerFactory.getLogger(TxCacheService.class);
 
@@ -49,16 +49,20 @@ public class TxCacheService {
             return 0;
         }
     };
+    private List<ITxLifeDepend> txLifeDependList = new ArrayList<>();
+
+
 
     private LockerService lockerService;
     private DataService dataService;
     private AsyncService asyncService;
     private EventService eventService;
 
-    public void init(){
-        lockerService = BeanHelper.getServiceBean(LockerService.class);
-        dataService = BeanHelper.getServiceBean(DataService.class);
-        asyncService = BeanHelper.getServiceBean(AsyncService.class);
+    public void registerTxLifeDepend(ITxLifeDepend txLifeDepend){
+        if(Server.running){
+            throw new MMException("can not register txLifeDepend while server running,please register on init method or before");
+        }
+        txLifeDependList.add(txLifeDepend);
     }
 
     //    @Gm(id="测试tx-----------------")
@@ -122,7 +126,13 @@ public class TxCacheService {
         if(!isTx){
             return;
         }
-        txHierarchy.set(txHierarchy.get()+1); // 嵌套事务
+        int txHi = txHierarchy.get();
+        txHierarchy.set(txHi+1); // 嵌套事务
+        if(txHi == 0){
+            for(ITxLifeDepend txLifeDepend : txLifeDependList){
+                txLifeDepend.txBegin();
+            }
+        }
         setTXState(TxState.In);
         if(!isLock){
             return;
@@ -157,6 +167,7 @@ public class TxCacheService {
         if(hierarchy < 0){
             log.error("------------------------------------not impossble happen");
         }
+
         setTXState(TxState.Committing);
         boolean result = commit();
         setTXState(TxState.None);
@@ -172,7 +183,6 @@ public class TxCacheService {
             classSet.clear();
         }
         dataService.clearCacheEntitys();
-        eventService.txCommitFinish(result);
         return result;
     }
 
@@ -180,6 +190,9 @@ public class TxCacheService {
         txHierarchy.set(txHierarchy.get()-1);
         int hierarchy = txHierarchy.get();
         if(hierarchy <=0){
+            for (ITxLifeDepend txLifeDepend : txLifeDependList) {
+                txLifeDepend.txExceptionFail();
+            }
             setTXState(TxState.None);
             Map<String, PrepareCachedData> map = cacheDatas.get();
             if(map != null){
@@ -190,7 +203,6 @@ public class TxCacheService {
                 classSet.clear();
             }
             dataService.clearCacheEntitys();
-            eventService.txCommitFinish(false);
             if(hierarchy < 0){
                 log.error("------------------------------------not impossble happen");
             }
@@ -203,6 +215,7 @@ public class TxCacheService {
      * 将对象的key和对应的casUnique都提交给main服,其进行加锁和验证,
      */
     public boolean commit(){
+        boolean success = true;
         Map<String, PrepareCachedData> map = cacheDatas.get();
         if(map == null){
             return true;
@@ -233,6 +246,7 @@ public class TxCacheService {
             if(lockerDataList!=null && lockerDataList.size()>0){
                 boolean result = lockerService.lockAndCheckKeys(lockerDataList.toArray(new LockerService.LockerData[lockerDataList.size()]));
                 if(!result){ // 加锁校验失败,提交也就失败
+                    success = false;
                     return false;
                 }
             }
@@ -275,6 +289,16 @@ public class TxCacheService {
                 asyncService.asyncData(asyncDataList);
             }
         }finally {
+            //
+            if(success) {
+                for (ITxLifeDepend txLifeDepend : txLifeDependList) {
+                    txLifeDepend.txCommitSuccess();
+                }
+            }else {
+                for (ITxLifeDepend txLifeDepend : txLifeDependList) {
+                    txLifeDepend.txExceptionFail();
+                }
+            }
             // -- 解锁
             if(lockerDataList!=null){
                 int size = lockerDataList.size();

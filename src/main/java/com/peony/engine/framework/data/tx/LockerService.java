@@ -141,7 +141,7 @@ public class LockerService {
             if(cacheEntity!= null && cacheEntity.getState() != CacheEntity.CacheEntityState.Normal){
                 return false;
             }
-            if(cacheEntity.getCasUnique() != casUnique){ // 没有更新过 todo 这里没有考虑casUnique为-1的情况
+            if(cacheEntity.getCasUnique() != casUnique && casUnique!=-1){ // 没有更新过 这里没有考虑casUnique为-1的情况
                 return false;
             }
         }else if(operType == OperType.Insert){

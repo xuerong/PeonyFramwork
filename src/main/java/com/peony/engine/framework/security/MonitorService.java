@@ -90,7 +90,7 @@ public class MonitorService {
     }
 
 
-    @Updatable(isAsynchronous = true,cycle = 6000)
+    @Updatable(cycle = 6000)
     public void monitorUpdate(int interval){
 //        log.info("monitorUpdate:"+interval);
         String state = eventService.getMonitorData();
@@ -106,7 +106,7 @@ public class MonitorService {
         }
     }
     // 5分钟输出一下
-    @Updatable(isAsynchronous = true,cycle = 300000)
+    @Updatable(cycle = 300000)
     public void monitorLog(int interval){
         // 缓存数据
         setMonitorNum(MonitorNumType.CacheNum,cacheService.size());
@@ -158,7 +158,7 @@ public class MonitorService {
 
 
     // 定时访问一下数据库
-    @Updatable(isAsynchronous = true,cycle = 300000)
+    @Updatable(cycle = 300000)
     public void monitorDataBase(int interval){
         dataService.selectListBySql(Account.class,"select * from account limit 1");
     }

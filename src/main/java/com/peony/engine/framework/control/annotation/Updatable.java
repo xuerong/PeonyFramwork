@@ -25,23 +25,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Updatable {
-
-    /**
-     * 同步还是异步
-     * 同步：将按照系统设置的更新周期更新，并且同步更新的最好不要有较多花费时间的操作
-     * 异步：异步将用下面interval设置的更新频率更新，每个更新都是异步执行，不相关系链
-     *
-     * 默认是异步的，只需设置interval即可，如果不设置，将按照系统更新周期更新
-     * 如果需要同步的，只需要设置isAsynchronous为false即可
-     * */
-    boolean isAsynchronous() default true;
-    /**
-     * 是否在所有服务器上运行，即考虑
-     * 多个服务器运行是否会出问题，重复执行某个操作什么的
-     *
-     * TODO 分配原则：随机分配到某个服务器？？由mainServer加载，
-     */
-    boolean runEveryServer() default true;
     /**
      * interval,更新周期，毫秒计
      * 异步更新时有效
@@ -57,7 +40,5 @@ public @interface Updatable {
      * cronExpression 表达式，这个标志着cycle和isAsynchronous都不再使用
      */
     String cronExpression() default "";
-
-
 
 }

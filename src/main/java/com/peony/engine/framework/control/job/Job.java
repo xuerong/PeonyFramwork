@@ -1,6 +1,9 @@
 package com.peony.engine.framework.control.job;
 
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
+import com.peony.engine.framework.tool.util.SerializeUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
@@ -10,6 +13,8 @@ import java.sql.Timestamp;
  */
 @DBEntity(tableName = "job",pks = {"id"})
 public class Job implements Serializable {
+    private static final Logger logger = LoggerFactory.getLogger(Job.class);
+
     private long id;
     private int serverId; // 哪个服务器上的job
     //
@@ -17,7 +22,10 @@ public class Job implements Serializable {
 
     private String method;
     private String serviceClass;
-    private Object[] params; // 参数要能够序列化
+
+
+
+    private byte[] params; // 参数要能够序列化
 
     public Job(){}
 
@@ -61,11 +69,28 @@ public class Job implements Serializable {
         this.serviceClass = serviceClass;
     }
 
-    public Object[] getParams() {
+    public byte[] getParams() {
         return params;
     }
 
-    public void setParams(Object[] params) {
+    public void setParams(byte[] params) {
         this.params = params;
+    }
+
+    public Object[] getParamsObjectArray() {
+        try {
+            return (Object[])SerializeUtil.deserialize(getParams(), Object[].class);
+        }catch (Exception e){
+            logger.error("getParamsObjectArray error! id={}",id,e);
+            return null;
+        }
+    }
+
+    public void setParamsObjectArray(Object[] params) {
+        try {
+            this.params = SerializeUtil.serialize(params);
+        }catch (Exception e){
+            logger.error("setParamsObjectArray error!id={}",id,e);
+        }
     }
 }

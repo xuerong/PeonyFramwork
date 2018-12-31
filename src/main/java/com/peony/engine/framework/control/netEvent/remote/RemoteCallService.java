@@ -60,7 +60,7 @@ public class RemoteCallService {
                 return netEventData;
             }
 //            Method method = serviceBean.getClass().getMethod(remoteCallData.getMethodName(),
-//                        ReflectionUtil.getParamsTypes(remoteCallData.getParams()));
+//                        ReflectionUtil.getParamsTypes(remoteCallData.getParamsObjectArray()));
             Method method = this.remoteMethodIndex.get(remoteCallData.getMethodSignature());
 
             if(method == null){

@@ -35,7 +35,7 @@ public class HeartService {
     }
 
 
-    @Updatable(isAsynchronous = true,cycle = 300000)
+    @Updatable(cycle = 300000)
     public void monitorDataBase(int interval){
         Iterator<Map.Entry<String,Long>> it = lastTime.entrySet().iterator();
         long now = System.currentTimeMillis();

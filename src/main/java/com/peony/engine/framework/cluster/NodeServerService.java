@@ -1,14 +1,17 @@
 package com.peony.engine.framework.cluster;
 
+import com.alibaba.fastjson.JSONObject;
 import com.myFruit.game.userBase.UserBase;
 import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.event.EventService;
 import com.peony.engine.framework.control.gm.Gm;
+import com.peony.engine.framework.control.job.JobService;
 import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.control.rpc.Remotable;
 import com.peony.engine.framework.control.rpc.RouteType;
 import com.peony.engine.framework.data.DataService;
+import com.peony.engine.framework.data.entity.account.sendMessage.SendMessageService;
 import com.peony.engine.framework.data.persistence.orm.EntityHelper;
 import com.peony.engine.framework.data.tx.Tx;
 import com.peony.engine.framework.security.MonitorService;
@@ -16,6 +19,7 @@ import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
 
+import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +35,8 @@ public class NodeServerService {
     private MonitorService monitorService;
     private NetEventService netEventService;
     private DataService dataService;
+    private SendMessageService sendMessageService;
+    private JobService jobService;
 
     public void init(){
         Map<String, String> mainServerMap = ConfigHelper.getMap("mainServer");
@@ -59,6 +65,7 @@ public class NodeServerService {
 
     private EventService eventService;
 
+    @Tx
     @Gm(id="test remotable tx")
     public void testGm() throws Exception{
 //        Object serviceBean = BeanHelper.getServiceBean(NodeServerService.class.getName());
@@ -67,6 +74,7 @@ public class NodeServerService {
 //        aaa(1);
 //        eventService.fireEvent(null,12122);
 //        adadad(4);
+//        sendMessageService.sendMessage("sdf",92929,new JSONObject());
 
 //        UserBase userBase = new UserBase();
 //        userBase.setIcon("sdfsdfsdf");
@@ -74,20 +82,32 @@ public class NodeServerService {
 //        userBase.setLevel(10);
 //        Map<String,Object> map = EntityHelper.getEntityParser(UserBase.class).toMap(userBase);
 //        System.out.println(map);
-        UserBase userBase = dataService.selectObject(UserBase.class,"uid=?","zyz02");
-        userBase.setLevel(123);
-        dataService.update(userBase);
 
-        UserBase userBase1 = new UserBase();
-        userBase1.setUid("testnewEntity");
-        userBase1.setGold(100);
-        dataService.insert(userBase1);
+//        UserBase userBase = dataService.selectObject(UserBase.class,"uid=?","zyz02");
+//        userBase.setLevel(123);
+//        dataService.update(userBase);
+//
+//        UserBase userBase1 = new UserBase();
+//        userBase1.setUid("testnewEntity");
+//        userBase1.setGold(100);
+//        dataService.insert(userBase1);
+
+        jobService.startJob(5000,NodeServerService.class,"adadad","sdfsdfs");
     }
-    class A{
+    class A implements Serializable{
         int a = 10;
+
+        public int getA() {
+            return a;
+        }
+
+        public void setA(int a) {
+            this.a = a;
+        }
     }
+    @Tx
     @EventListener(event = 12122)
-    public void adadad(A a){
+    public void adadad(String a){
         System.out.println(a);
     }
 }

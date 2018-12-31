@@ -88,19 +88,17 @@ public class SerializeUtil {
         GenericObjectPoolConfig config = new GenericObjectPoolConfig<Kryo>();
         config.setMaxTotal(200);
         kryo_pool = new GenericObjectPool<Kryo>(new KryoPool(),config);
-        System.out.println("这个啥时执行");
+//        System.out.println("这个啥时执行");
     }
     static class KryoPool extends BasePooledObjectFactory{
         AtomicInteger i=new AtomicInteger();
         @Override
         public Object create() throws Exception {
-            System.out.println("create:"+i.getAndIncrement());
             return new Kryo();
         }
 
         @Override
         public PooledObject wrap(Object obj) {
-            System.out.println("wrap:"+i.get());
             return new DefaultPooledObject<Kryo>((Kryo)obj);
         }
     }

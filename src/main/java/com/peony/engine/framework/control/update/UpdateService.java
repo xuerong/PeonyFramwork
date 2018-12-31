@@ -31,10 +31,9 @@ import java.util.concurrent.*;
  */
 @Service(init = "init",destroy = "destroy")
 public class UpdateService {
-    private static int syncUpdateInterval;
 
     private List<UpdatableBean> asyncUpdatableList=new ArrayList<>();
-    private List<UpdatableBean> syncUpdatableList=new ArrayList<>();
+//    private List<UpdatableBean> syncUpdatableList=new ArrayList<>();
 
     // 线程数量可以是处理器数量*2+1：Runtime.getRuntime().availableProcessors()
     // 线程池这里最好也重写，给线程命名标记
@@ -49,7 +48,7 @@ public class UpdateService {
             // 执行后处理，注意异常的处理
         }
     };
-    private ScheduledExecutorService syncExecutor=Executors.newSingleThreadScheduledExecutor();
+//    private ScheduledExecutorService syncExecutor=Executors.newSingleThreadScheduledExecutor();
 
     public void init(){
         Map<Class<?>,List<Method>> updatableClassMap= ServiceHelper.getUpdatableClassMap();
@@ -59,18 +58,16 @@ public class UpdateService {
             for(Method method : methodList){
                 method.setAccessible(true);//TODO 取消 Java 语言访问检查   看看其他地方能否用到
                 Updatable updatable=method.getAnnotation(Updatable.class);// 前面ServiceHelper已经进行了校验此处不用重复校验
-                UpdatableBean updatableBean=new UpdatableBean(service,method,updatable.isAsynchronous(),updatable.cycle(),
-                        updatable.runEveryServer(),updatable.cronExpression(),updatable.doOnStart());
-                if(updatable.isAsynchronous()){
-                    asyncUpdatableList.add(updatableBean);
-                }else {
-                    syncUpdatableList.add(updatableBean);
-                }
+                UpdatableBean updatableBean=new UpdatableBean(service,method,updatable.cycle(),
+                        updatable.cronExpression(),updatable.doOnStart());
+                asyncUpdatableList.add(updatableBean);
+//                if(updatable.isAsynchronous()){
+//                    asyncUpdatableList.add(updatableBean);
+//                }else {
+//                    syncUpdatableList.add(updatableBean);
+//                }
             }
         }
-        // 从配置文件取出同步更新时间间隔
-        syncUpdateInterval= Server.getEngineConfigure().getSyncUpdateCycle();
-
     }
 
     @EventListener(event = SysConstantDefine.Event_ServerStartAsync)
@@ -83,36 +80,33 @@ public class UpdateService {
     }
 
     public void stop(){
-        syncExecutor.shutdown();
+//        syncExecutor.shutdown();
         asyncExecutor.shutdown();
     }
 
     public void start(){
         // 启动同步更新器
-        for(UpdatableBean updatableBean : syncUpdatableList){
-            updatableBean.lastUpdateTime=System.nanoTime();
-        }
+//        for(UpdatableBean updatableBean : syncUpdatableList){
+//            updatableBean.lastUpdateTime=System.nanoTime();
+//        }
         for(UpdatableBean updatableBean : asyncUpdatableList){
             updatableBean.lastUpdateTime=System.nanoTime();
         }
 
-        syncExecutor.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                //lastUpdateTime.
-                for(UpdatableBean updatableBean : syncUpdatableList){
-                    if(!updatableBean.runEveryServer && !ServerType.isMainServer()){ // TODO 后面改成分发给nodeServer
-                        continue;
-                    }
-                    updatableBean.execute();
-                }
-            }
-        },syncUpdateInterval,syncUpdateInterval,TimeUnit.MILLISECONDS);
+//        syncExecutor.scheduleAtFixedRate(new Runnable() {
+//            @Override
+//            public void run() {
+//                //lastUpdateTime.
+//                for(UpdatableBean updatableBean : syncUpdatableList){
+//                    if(!updatableBean.runEveryServer && !ServerType.isMainServer()){ // TODO 后面改成分发给nodeServer
+//                        continue;
+//                    }
+//                    updatableBean.execute();
+//                }
+//            }
+//        },syncUpdateInterval,syncUpdateInterval,TimeUnit.MILLISECONDS);
         // 启动异步更新器
         for(final UpdatableBean updatableBean : asyncUpdatableList){
-            if(!updatableBean.runEveryServer && !ServerType.isMainServer()){
-                continue;
-            }
             if(updatableBean.getCronExpression()==null) { // 纯周期运行
                 asyncExecutor.scheduleAtFixedRate(new Runnable() {
                     @Override
@@ -141,10 +135,10 @@ public class UpdateService {
     }
 
     private class UpdatableBean{
-        private boolean isAsynchronous;
+//        private boolean isAsynchronous;
         private int interval;
         private long lastUpdateTime;
-        private boolean runEveryServer;
+//        private boolean runEveryServer;
 
         private Object service;
         private Method method;
@@ -152,13 +146,13 @@ public class UpdateService {
         private CronExpression cronExpression;
         private boolean doOnStart;
 
-        private UpdatableBean(Object service,Method method,boolean isAsynchronous,int interval,
-                              boolean runEveryServer,String cronExpression,boolean doOnStart){
+        private UpdatableBean(Object service,Method method,int interval,
+                             String cronExpression,boolean doOnStart){
             this.service=service;
             this.method=method;
-            this.isAsynchronous=isAsynchronous;
+//            this.isAsynchronous=isAsynchronous;
             this.interval=interval;
-            this.runEveryServer = runEveryServer;
+//            this.runEveryServer = runEveryServer;
             this.doOnStart = doOnStart;
             if(cronExpression != null && cronExpression.length()>0) {
                 try {
@@ -181,9 +175,9 @@ public class UpdateService {
             }
         }
 
-        public boolean isAsynchronous() {
-            return isAsynchronous;
-        }
+//        public boolean isAsynchronous() {
+//            return isAsynchronous;
+//        }
 
         public int getInterval() {
             return interval;
@@ -199,10 +193,6 @@ public class UpdateService {
 
         public long getLastUpdateTime() {
             return lastUpdateTime;
-        }
-
-        public boolean isRunEveryServer() {
-            return runEveryServer;
         }
 
         public CronExpression getCronExpression() {
