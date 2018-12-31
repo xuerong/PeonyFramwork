@@ -10,6 +10,7 @@ import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.IdService;
 import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +31,7 @@ import java.util.concurrent.*;
 public class JobService {
     private static final Logger log = LoggerFactory.getLogger(JobService.class);
     // 执行job的调度器,这个线程数不用处理器的个数,因为有些job会有数据库操作
-    private ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(100);
+    private ScheduledThreadPoolExecutor executor = ThreadPoolHelper.newScheduledThreadPoolExecutor("Job",16);
     private ConcurrentHashMap<Long,JobExecutor> jobExecutorMap = new ConcurrentHashMap<>();
     private JobTxLifeDepend<Job> jobTxLifeDepend = new JobTxLifeDepend<>();
 

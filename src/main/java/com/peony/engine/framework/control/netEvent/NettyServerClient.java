@@ -7,6 +7,7 @@ import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.ServerType;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -34,7 +35,8 @@ public class NettyServerClient extends AbServerClient {
     static {
         int threads = Runtime.getRuntime().availableProcessors();
         eventLoopGroup = new NioEventLoopGroup(threads, new ThreadFactoryBuilder().setNameFormat("EventWorker-%d").build());
-        connectHolder = new ScheduledThreadPoolExecutor(3, new ThreadFactoryBuilder().setNameFormat("ConnectHolder-%d").build());
+        connectHolder = ThreadPoolHelper.newScheduledThreadPoolExecutor("ConnectHolder",3);//
+//        new ScheduledThreadPoolExecutor(3, new ThreadFactoryBuilder().setNameFormat("ConnectHolder-%d").build());
     }
 
     private int serverId;

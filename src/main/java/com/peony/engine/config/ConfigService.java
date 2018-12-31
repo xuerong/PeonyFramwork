@@ -15,6 +15,7 @@ import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.tool.helper.ClassUtil0;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
+import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
 import com.peony.engine.framework.tool.util.Util;
 import com.opencsv.CSVReader;
 import org.apache.commons.io.FileUtils;
@@ -243,7 +244,7 @@ public class ConfigService {
             }
         });
 
-        updater = new ScheduledThreadPoolExecutor(1, (task) -> new Thread(task, "Config Timer"));
+        updater = ThreadPoolHelper.newScheduledThreadPoolExecutor("Config Timer",1);
         // 每30S检查更新
         updater.scheduleAtFixedRate(new TimerTask() {
 

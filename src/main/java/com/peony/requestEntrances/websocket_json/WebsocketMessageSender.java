@@ -3,6 +3,7 @@ package com.peony.requestEntrances.websocket_json;
 import com.peony.engine.framework.control.request.RequestService;
 import com.peony.engine.framework.data.entity.account.MessageSender;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import com.alibaba.fastjson.JSONObject;
@@ -19,17 +20,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  */
 public class WebsocketMessageSender implements MessageSender{
     private static final Logger log = LoggerFactory.getLogger(WebsocketMessageSender.class);
-    private static final ScheduledExecutorService asyncExecutor = new ScheduledThreadPoolExecutor(100, new RejectedExecutionHandler() {
-        @Override
-        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-            // 拒绝执行处理
-
-        }
-    }){
-        protected void afterExecute(Runnable r, Throwable t) {
-            // 执行后处理，注意异常的处理
-        }
-    };
+    private static final ScheduledExecutorService asyncExecutor = ThreadPoolHelper.newScheduledThreadPoolExecutor("WebsocketMessageSender",32);
     private Channel channel;
     private String accountId;
     private RequestService requestService;

@@ -10,6 +10,7 @@ import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.SysConstantDefine;
+import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
 import com.peony.engine.framework.tool.util.Util;
 import com.peony.platform.deploy.util.FileProgressMonitor;
 import jdk.nashorn.internal.runtime.regexp.RegExp;
@@ -650,8 +651,7 @@ public class DeployService {
         String sql = "select * from deployserver where projectId=? and id in ("+sb.toString()+")";
         List<DeployServer> deployServers = dataService.selectListBySql(DeployServer.class,sql,projectId);
 
-        ExecutorService executorService =Executors.newFixedThreadPool(deployServers.size()<32?deployServers.size():32);
-
+        ExecutorService executorService = ThreadPoolHelper.newThreadPoolExecutor("Deploy",32,32,1024);
         //
         JSONArray array = new JSONArray();
         CountDownLatch latch = new CountDownLatch(deployServers.size());

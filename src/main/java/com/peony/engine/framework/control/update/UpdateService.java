@@ -11,6 +11,7 @@ import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.ServerType;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -37,18 +38,7 @@ public class UpdateService {
 
     // 线程数量可以是处理器数量*2+1：Runtime.getRuntime().availableProcessors()
     // 线程池这里最好也重写，给线程命名标记
-    private ScheduledExecutorService asyncExecutor = new ScheduledThreadPoolExecutor(6, new RejectedExecutionHandler() {
-        @Override
-        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-            // 拒绝执行处理
-
-        }
-    }){
-        protected void afterExecute(Runnable r, Throwable t) {
-            // 执行后处理，注意异常的处理
-        }
-    };
-//    private ScheduledExecutorService syncExecutor=Executors.newSingleThreadScheduledExecutor();
+    private ScheduledExecutorService asyncExecutor = ThreadPoolHelper.newScheduledThreadPoolExecutor("Update",16);
 
     public void init(){
         Map<Class<?>,List<Method>> updatableClassMap= ServiceHelper.getUpdatableClassMap();

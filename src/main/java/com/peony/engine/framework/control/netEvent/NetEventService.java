@@ -13,6 +13,7 @@ import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.server.ServerType;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
 import com.peony.engine.framework.tool.util.Util;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import org.slf4j.Logger;
@@ -44,14 +45,7 @@ public class NetEventService {
 
     private Map<Integer, NetEventListenerHandler> handlerMap = null;
     // 最多平均每个线程有10个请求等待处理
-    private final ThreadPoolExecutor executor = new ThreadPoolExecutor(
-            processors * 5, processors * 10, 5, TimeUnit.MINUTES, new LinkedBlockingDeque<>(processors * 100),
-            (r, executor) -> {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("NetEventService is busy {}", executor.toString());
-                }
-                logger.warn("NetEventService is busy drop task");
-            });
+    private final ThreadPoolExecutor executor = ThreadPoolHelper.newThreadPoolExecutor("PpeonyNetEvent",64,1024,65536);
 
     // 所有的serverClient 不包括自己 TODO 一个server可能既是这个server又是那个server
     private Map<Integer, ServerClient> serverClients = new ConcurrentHashMap<>();

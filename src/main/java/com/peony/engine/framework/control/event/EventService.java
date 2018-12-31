@@ -6,6 +6,7 @@ import com.peony.engine.framework.data.tx.AbListDataTxLifeDepend;
 import com.peony.engine.framework.data.tx.ITxLifeDepend;
 import com.peony.engine.framework.data.tx.TxCacheService;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
 import org.slf4j.Logger;
@@ -33,14 +34,7 @@ public class EventService{
     private ThreadLocal<List<EventData>> cacheDatas = new ThreadLocal<>();
     EventTxLifeDepend eventTxLifeDepend = new EventTxLifeDepend();
 
-    private final ThreadPoolExecutor executor = new ThreadPoolExecutor(
-            10,100,3000, TimeUnit.MILLISECONDS,new LinkedBlockingDeque<Runnable>(),
-            new RejectedExecutionHandler(){
-        @Override
-        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-            // 拒绝执行
-        }
-    });
+    private final ThreadPoolExecutor executor = ThreadPoolHelper.newThreadPoolExecutor("PpeonyEvent",16,1024,1024);
 
 
     private final TIntObjectHashMap<Set<EventListenerHandler>> handlerMap=new TIntObjectHashMap<>();

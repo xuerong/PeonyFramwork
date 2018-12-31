@@ -13,6 +13,7 @@ import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.SysConstantDefine;
 import com.peony.engine.framework.tool.helper.BeanHelper;
+import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
 import com.peony.engine.framework.tool.util.ReflectionUtil;
 import com.peony.engine.framework.tool.util.Util;
 import com.peony.engine.framework.tool.utils.DateUtils;
@@ -25,6 +26,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Created by apple on 16-9-15.
@@ -35,7 +37,7 @@ public class RemoteCallService {
     private static final Logger logger = LoggerFactory.getLogger(RemoteCallService.class);
     private NetEventService netEventService;
     private MonitorService monitorService;
-    private ExecutorService executorService = Executors.newFixedThreadPool(8);
+    private ExecutorService executorService = ThreadPoolHelper.newThreadPoolExecutor("PpeonyRemoteCall",64,1024,65536);
     ConcurrentLinkedDeque<Integer> timeQueue = new ConcurrentLinkedDeque<>();
     private Map<String,Method> remoteMethodIndex;
 
