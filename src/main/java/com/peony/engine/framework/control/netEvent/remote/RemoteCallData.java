@@ -13,20 +13,6 @@ public class RemoteCallData implements Serializable{
     private String methodSignature;
 
 
-    public String buildMethodKey(){
-//        if(key != null){
-//            return key;
-//        }
-        StringBuilder sb = new StringBuilder(serviceName);
-        sb.append("#"+methodName);
-        if(params != null && params.length>0){
-            for(Object param : params){
-                sb.append("#"+param.getClass().getName());
-            }
-        }
-        return sb.toString();
-    }
-
     public String getServiceName() {
         return serviceName;
     }

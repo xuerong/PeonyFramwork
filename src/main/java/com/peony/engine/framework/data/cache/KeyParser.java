@@ -34,7 +34,7 @@ public class KeyParser {
 
         try {
             for(Method method : pkMethodMap.values()){
-                sb.append("_"+parseParamToString(method.invoke(entity)));
+                sb.append(SEPARATOR+parseParamToString(method.invoke(entity)));
             }
         } catch (IllegalAccessException e) {
             e.printStackTrace();
@@ -60,9 +60,11 @@ public class KeyParser {
         }
 
         Set<String> pks = pkMethodMap.keySet(); // 注意这里面的排序
-        String resultCondition = parseParamsToString(condition,params);
-        String[] conditions = resultCondition.split("and");
+//        String resultCondition = parseParamsToString(condition,params);
+        String resultCondition = condition;
+        String[] conditions = resultCondition.split("\\s{1,}and\\s{1,}");
         Map<String,String> pksInConditions = new HashMap<>();
+        int paramsIndex = 0;
         for (String conditionStr:conditions) {
             conditionStr = conditionStr.trim();
             if(conditionStr.length() > 0){
@@ -70,7 +72,10 @@ public class KeyParser {
                 if(pk.length!=2){
                     throw new MMException("condition 参数错误,resultCondition = "+resultCondition);
                 }
-                pksInConditions.put(pk[0].trim(),pk[1].trim());
+                String value = pk[1].trim();
+                value = checkAndReplaceMark(value,paramsIndex,params);
+                paramsIndex++;
+                pksInConditions.put(pk[0].trim(),value);
             }
         }
         if(pks.size() > pksInConditions.size()){
@@ -83,15 +88,11 @@ public class KeyParser {
             if(pkStr == null){
                 throw new MMException("condition 参数错误,缺少主键["+pk+"]，resultCondition = "+resultCondition+",class = "+entityClass.getName());
             }
-            sb.append("_"+pksInConditions.get(pk));
+            sb.append(SEPARATOR+pksInConditions.get(pk));
         }
-
         return sb.toString();
     }
-    // 从listKey中获取对应的class的名字
-    public static String getClassNameFromListKey(String listKey){
-        return listKey.split("#")[0];
-    }
+
     // 判断一个对象是否属于一个list
     public static <T> boolean isObjectBelongToList(Object object,String listKey){
         if(!listKey.startsWith(object.getClass().getName())){ // 是否是同一中类
@@ -147,12 +148,14 @@ public class KeyParser {
         if(condition == null || condition.length()==0){
             return entityClass.getName()+"#list";
         }
-        String resultCondition = parseParamsToString(condition,params);
-        String[] conditions = resultCondition.split("and");
+//        String resultCondition = parseParamsToString(condition,params);
+        String resultCondition = condition;
+        String[] conditions = resultCondition.split("\\s{1,}and\\s{1,}");
         //拼接key
         StringBuilder sb = new StringBuilder(entityClass.getName()+"#list");
         StringBuilder conditionNames = null,conditionValues = null;
-        Map<String,String> pksInConditions = new HashMap<>();
+//        Map<String,String> pksInConditions = new HashMap<>();
+        int paramsIndex = 0;
         for (String conditionStr:conditions) {
             conditionStr = conditionStr.trim();
             if(conditionStr.length() > 0){
@@ -161,14 +164,17 @@ public class KeyParser {
                     throw new MMException("condition 参数错误,resultCondition = "+resultCondition);
                 }
                 if(conditionNames == null){
-                    conditionNames = new StringBuilder("#"+pk[0].trim());
+                    conditionNames = new StringBuilder(LISTSEPARATOR+pk[0].trim());
                 }else{
-                    conditionNames.append("_"+(pk[0].trim()));
+                    conditionNames.append(SEPARATOR+(pk[0].trim()));
                 }
+                String value = pk[1].trim();
+                value = checkAndReplaceMark(value,paramsIndex,params);
+                paramsIndex++;
                 if(conditionValues == null){
-                    conditionValues = new StringBuilder("#"+pk[1].trim());
+                    conditionValues = new StringBuilder(LISTSEPARATOR+value);
                 }else{
-                    conditionValues.append("_"+(pk[1].trim()));
+                    conditionValues.append(SEPARATOR+value);
                 }
             }
         }
@@ -179,6 +185,19 @@ public class KeyParser {
         return sb.toString();
     }
     ///////---------------------------工具----------------------
+    //
+    private static String checkAndReplaceMark(String value,int paramsIndex,Object... params){
+        if(value.equals("?")){
+            if(params.length < paramsIndex+1){
+                throw new MMException("params 参数错误，参数太少");
+            }
+            value = parseParamToString(params[paramsIndex]);
+        }else {
+            throw new MMException("condition 错误，请把参数值放在params中，condition中用?替代");
+        }
+        return value;
+    }
+    //
     private static String parseParamsToString(String condition, Object... params){
         if(params.length == 0 || condition.indexOf('?') == -1){
             return condition;
