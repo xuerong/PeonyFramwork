@@ -837,9 +837,11 @@
 
 //            var dataObj = eval("("+data+")");//这里要加上加好括号和双引号的原因我也不知道，就当是json语法，只能死记硬背了
             refreshProjects(sltObj,dataObj);
-            // 选中第一个
-            sltObj.selectedIndex=0;
-            projectSelect(sltObj)
+            if(dataObj.length>0) {
+                // 选中第一个
+                sltObj.selectedIndex = 0;
+                projectSelect(sltObj)
+            }
         });
 
     }

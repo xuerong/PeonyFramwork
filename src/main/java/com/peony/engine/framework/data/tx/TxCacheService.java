@@ -3,12 +3,12 @@ package com.peony.engine.framework.data.tx;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.event.EventService;
 import com.peony.engine.framework.data.DataService;
+import com.peony.engine.framework.data.TxDataInnerService;
 import com.peony.engine.framework.data.OperType;
 import com.peony.engine.framework.data.cache.CacheEntity;
 import com.peony.engine.framework.data.cache.KeyParser;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.Server;
-import com.peony.engine.framework.tool.helper.BeanHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +55,7 @@ public class TxCacheService {
 
     private LockerService lockerService;
     private DataService dataService;
+    private TxDataInnerService txDataInnerService;
     private AsyncService asyncService;
     private EventService eventService;
 
@@ -182,7 +183,7 @@ public class TxCacheService {
         if(classSet != null){
             classSet.clear();
         }
-        dataService.clearCacheEntitys();
+        txDataInnerService.clearCacheEntitys();
         return result;
     }
 
@@ -202,7 +203,7 @@ public class TxCacheService {
             if(classSet != null){
                 classSet.clear();
             }
-            dataService.clearCacheEntitys();
+            txDataInnerService.clearCacheEntitys();
             if(hierarchy < 0){
                 log.error("------------------------------------not impossble happen");
             }
@@ -232,7 +233,7 @@ public class TxCacheService {
                     lockerData.setKey(data.getKey());
                     lockerData.setOperType(data.getOperType());
                     long casUnique = -1;
-                    CacheEntity older = dataService.getCacheEntity(data.getKey());
+                    CacheEntity older = txDataInnerService.getCacheEntity(data.getKey());
                     if(older != null){
                         casUnique = older.getCasUnique();
                     }
@@ -259,13 +260,13 @@ public class TxCacheService {
                 Object old = null;
                 switch (data.getOperType()){
                     case Insert:
-                        dataService.insert(data.getData(),false); // 这个地方用这种方式提交,如果有需要,可以换方式
+                        txDataInnerService.insert(data.getData(),false); // 这个地方用这种方式提交,如果有需要,可以换方式
                         break;
                     case Update:
-                        old = dataService.update(data.getData(),false);
+                        old = txDataInnerService.update(data.getData(),false);
                         break;
                     case Delete:
-                        dataService.delete(data.getData(),false);
+                        txDataInnerService.delete(data.getData(),false);
                         break;
                 }
                 if(data.getOperType() == OperType.Insert || data.getOperType() == OperType.Update ||

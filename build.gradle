@@ -90,8 +90,8 @@ dependencies {
 
     compile 'com.zaxxer:HikariCP:2.6.3'
 
-    compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '5.0.0-RC1'
-
+//    compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '5.0.0-RC1' // 这个版本打包失败
+    compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '2.24.0'
 
 }
 
