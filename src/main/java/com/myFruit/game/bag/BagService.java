@@ -35,6 +35,17 @@ public class BagService {
         return ret;
     }
 
+    @Gm(id="testnew ###")
+    public void testnew(int itemId){
+        String uid = "sdf#tt";
+        addItem(uid,itemId,1);
+        List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",uid);
+        for(BagItem bagItem:bagItemList) {
+            System.out.println(bagItem.toJson());
+        }
+        System.out.println(new String(new char[]{'a',(char)-2,(char)255,'t'}));
+    }
+
     @Tx
     public int addItem(String uid,int itemId,int num){
         BagItem bagItem =  dataService.selectObject(BagItem.class,"uid=? and itemId=?",uid,itemId);

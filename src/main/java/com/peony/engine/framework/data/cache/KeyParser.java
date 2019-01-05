@@ -17,7 +17,7 @@ import java.util.*;
 public class KeyParser {
     private static final Logger log = LoggerFactory.getLogger(KeyParser.class);
     public static final String LISTSEPARATOR ="#";
-    public static final String SEPARATOR ="_";
+    public static final String SEPARATOR = "_"; // new String(new char[]{255});//
 
 //    private static Map<Class<?>,List<String>> pkMap = new HashMap<>();
     static {
@@ -98,7 +98,7 @@ public class KeyParser {
         if(!listKey.startsWith(object.getClass().getName())){ // 是否是同一中类
             return false;
         }
-        String[] listKeyStrs = listKey.split(LISTSEPARATOR);
+        String[] listKeyStrs = listKey.split(KeyParser.LISTSEPARATOR,4); // 类，list，field，value
         if(listKeyStrs.length == 2){ // 说明是整个表的list
             return true;
         }
@@ -233,5 +233,58 @@ public class KeyParser {
             throw new MMException("select params contain null");
         }
         return param.toString();
+    }
+
+    /**
+     * 对sp进行转义后连接
+     * @param strs
+     * @param sp
+     * @return
+     */
+    public static String concat(String[] strs,char sp){
+        StringBuilder sb = new StringBuilder();
+        int index = 0;
+        for(String str:strs){
+            if(index++>0){
+                sb.append(sp);
+            }
+            for(char ch : str.toCharArray()){
+                if(ch == sp || ch == '\\'){
+                    sb.append('\\');
+                }
+                sb.append(ch);
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 切割考虑对sp的转义
+     * @param str
+     * @param sp
+     * @return
+     */
+    public static List<String> split(String str ,char sp){
+        List<String> list = new ArrayList<>();
+        char[] chars = str.toCharArray();
+        StringBuilder sb = new StringBuilder();
+        for(int i=0,len=chars.length;i<len;i++){
+            if(chars[i] == '\\'){
+                if(chars[i+1] == '\\'){
+                    sb.append('\\');
+                    i++;
+                }else if(chars[i+1] == sp){
+                    sb.append(sp);
+                    i++;
+                }
+            }else if(chars[i] == sp){
+                list.add(sb.toString());
+                sb = new StringBuilder();
+            }else{
+                sb.append(chars[i]);
+            }
+        }
+        list.add(sb.toString());
+        return list;
     }
 }

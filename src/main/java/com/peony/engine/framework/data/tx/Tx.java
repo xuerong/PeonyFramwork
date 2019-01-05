@@ -1,6 +1,8 @@
 package com.peony.engine.framework.data.tx;
 
 
+import com.peony.engine.framework.control.annotation.Service;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -9,6 +11,9 @@ import java.lang.annotation.Target;
 /**
  * Created by Administrator on 2015/11/16.
  * 所有的服务方法注解继承自它，
+ * <strong>该注解对应方法由系统加载，必须在{@link Service}中声明</strong>
+ *
+ * @see Service
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

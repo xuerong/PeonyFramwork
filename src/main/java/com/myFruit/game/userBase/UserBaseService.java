@@ -38,6 +38,7 @@ public class UserBaseService {
 //        userBase.setIcon("测试汉字");
 //        userBase.setName("测试汉字😁");
 //        dataService.insert(userBase);
+
     }
 
     @Request(opcode = Cmd.UserInit)

@@ -1,6 +1,8 @@
 package com.peony.engine.framework.control.statistics;
 
 
+import com.peony.engine.framework.control.annotation.Service;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -9,6 +11,9 @@ import java.lang.annotation.Target;
 /**
  * Created by a on 2016/9/28.
  * Statistics 方法的返回值，StatisticsData
+ * <strong>该注解对应方法由系统加载，必须在{@link Service}中声明</strong>
+ *
+ * @see Service
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

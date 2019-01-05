@@ -182,7 +182,7 @@ public class AsyncService {
         String classKey = entityClass.getName();
 
         Map<String,Map<String,String>> fieldMap = listKeyIndex.get(entityClass);
-        String[] listKeyStrs = listKey.split(KeyParser.LISTSEPARATOR); // 类，list，field，value
+        String[] listKeyStrs = listKey.split(KeyParser.LISTSEPARATOR,4); // 类，list，field，value
         if(listKeyStrs.length<4 && listKeyStrs.length != 2){
             log.error("listKey is Illegal : listKey = "+listKey);
         }else {
