@@ -156,9 +156,7 @@ public class TxDataInnerService {
             }
             try {
                 // TODO 这里从异步数据获取满足条件(listKey)的数据，并在查询数据库之后放进对应的list中
-                System.err.println("getAsyncDataBelongListKey:"+listKey);
-                List<AsyncService.AsyncData> asyncDataList = asyncService.getAsyncDataBelongListKey(entityClass,listKey);
-//                System.err.println("asyncDataList.size()"+(asyncDataList==null?0:asyncDataList.size()));
+                Map<String,AsyncService.AsyncData> asyncDataList = asyncService.getAsyncDataBelongListKey(entityClass,listKey);
                 objectList = DataSet.selectListWithCondition(entityClass, condition, params);
 //                System.err.println("objectList.size():"+objectList.size());
                 monitorService.addMonitorNum(MonitorNumType.SelectSqlNum,1);
@@ -170,7 +168,7 @@ public class TxDataInnerService {
                         // 放入objcetList
                         Set<String> deleteObjecKeys = null;
                         Set<String> objectListKeys = null;
-                        for (AsyncService.AsyncData asyncData : asyncDataList) {
+                        for (AsyncService.AsyncData asyncData : asyncDataList.values()) {
                             if (asyncData.getOperType() == OperType.Insert) {
                                 // TODO 为了防止重复数据，这样去除效率有点低，能通过其它方法提高吗，尽管发生的概率比较小，下面删除能否利用上?
                                 if (objectListKeys == null) {
@@ -207,10 +205,18 @@ public class TxDataInnerService {
                     // 缓存两步,一步缓存keys,一步缓存内容
                     LinkedHashSet<String> keys = new LinkedHashSet<>();
                     Map<String, CacheEntity> cacheEntityMap = new HashMap<>();
-                    for (T t : objectList) {
+                    for (int i=0,len = objectList.size();i<len;i++) {
+                        T t = objectList.get(i);
                         String key = KeyParser.parseKey(t);
-                        CacheEntity cacheEntity = new CacheEntity(t);
-                        cacheEntityMap.put(key, cacheEntity);
+                        AsyncService.AsyncData asyncData = asyncDataList==null?null:asyncDataList.get(key);
+                        if(asyncData == null){
+                            CacheEntity cacheEntity = new CacheEntity(t);
+                            cacheEntityMap.put(key, cacheEntity);
+                        }else{
+                            objectList.set(i,(T)asyncData.getObject());
+                            CacheEntity cacheEntity = new CacheEntity(asyncData.getObject());
+                            cacheEntityMap.put(key, cacheEntity);
+                        }
                         keys.add(key);
                     }
                     // 缓存keys

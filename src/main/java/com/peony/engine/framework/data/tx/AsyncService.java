@@ -2,6 +2,7 @@ package com.peony.engine.framework.data.tx;
 
 import com.myFruit.TestDbEntity;
 import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.control.annotation.Updatable;
 import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.data.DataService;
@@ -159,7 +160,7 @@ public class AsyncService {
      * 当从数据库中获取list之后，需要从异步服务器中获取满足该list且还没有更新到数据库中的对象，主要是插入和删除的
      * 同时将对应的listKey记录到异步服务器中，以便新数据插入时更新对应的list
      */
-    public List<AsyncData> getAsyncDataBelongListKey(Class<?> entityClass,String listKey){
+    public Map<String,AsyncData> getAsyncDataBelongListKey(Class<?> entityClass,String listKey){
         return receiveRefreshDBList(entityClass,listKey);
     }
     /// 上面的四个函数，处理其他服务器发送过来的异步数据库请求
@@ -176,7 +177,7 @@ public class AsyncService {
     }
 
     // 其他服务器发送来的，异步服务器有的对应list的对象和更新状态
-    public List<AsyncData> receiveRefreshDBList(Class<?> entityClass,String listKey){
+    public Map<String,AsyncData> receiveRefreshDBList(Class<?> entityClass,String listKey){
         // 查看并插入listKeys插入
 //        String classKey = KeyParser.getClassNameFromListKey(listKey);
 
@@ -238,7 +239,7 @@ public class AsyncService {
 //        }
 //        listKeys.add(listKey);// 注意这里一定要先插入，再获取再插入，而不能创建-插入-放入listKeysMap，多线程下回出错
         // 从异步列表中获取相应的对象
-        List<AsyncData> result = null;
+        Map<String,AsyncData> result = null;
         Map<AsyncData,AsyncData> asyncDataList = asyncDataMap.get(classKey);
         if(asyncDataList != null){
             Iterator<AsyncData> iterator = asyncDataList.values().iterator();
@@ -246,13 +247,20 @@ public class AsyncService {
                 AsyncData asyncData = iterator.next();
                 if(KeyParser.isObjectBelongToList(asyncData.getObject(),listKey)){
                     if(result == null){
-                        result = new ArrayList<>();
+                        result = new HashMap<>();
                     }
-                    result.add(asyncData);
+                    result.put(asyncData.key,asyncData);
                 }
             }
         }
         return result;
+    }
+    List<String> data = new ArrayList<>();
+    @Updatable(cycle = 10000)
+    public void aaaa(int a){
+        for(String d:data){
+            System.err.println(d);
+        }
     }
     /**
      * 返回是否移除该listkey
@@ -293,17 +301,23 @@ public class AsyncService {
     }
 
     private void doReceiveAsyncData(AsyncData asyncData){
-        if(asyncData.getOperType() == OperType.Insert || asyncData.getOperType() == OperType.Delete) {
+        if(asyncData.getOperType() != OperType.Select){
             Map<AsyncData,AsyncData> asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
             if (asyncDataList == null) {
-                // TODO 这里用这个list怎么样呢，有没有更好的选择？因为后面有删除需求，这个删除在多线程会不会效率太低
+                //  这里用这个list怎么样呢，有没有更好的选择？因为后面有删除需求，这个删除在多线程会不会效率太低
                 asyncDataList = new ConcurrentHashMap<>();//Collections.synchronizedList(new LinkedList<AsyncData>());
                 asyncDataMap.putIfAbsent(asyncData.getObject().getClass().getName(), asyncDataList);
                 asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
             }
             asyncDataList.put(asyncData,asyncData);
-//            System.out.println("put in:"+asyncData);
+        }else{
+            log.error("asyncData.getOperType()={},but exec {}",asyncData.getOperType(),"doReceiveAsyncData");
         }
+//        if(asyncData.getOperType() == OperType.Insert || asyncData.getOperType() == OperType.Delete
+//                || asyncData.getOperType() == OperType.Update) {
+//
+////            System.out.println("put in:"+asyncData);
+//        }
         Worker worker = workerMap.get(asyncData.getThreadNum());
         boolean success = worker.addAsyncData(asyncData);
         // 插入可能存在的listKey，修改非主键的listkey
@@ -628,7 +642,6 @@ public class AsyncService {
                                 Map<AsyncData,AsyncData> asyncDataList = asyncDataMap.get(asyncData.getObject().getClass().getName());
                                 if(asyncDataList != null) {
                                     asyncDataList.remove(asyncData);
-//                                    System.out.println("remove:"+asyncData);
                                 }
                             }
                         }catch (Throwable e){
