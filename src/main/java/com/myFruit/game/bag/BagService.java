@@ -37,13 +37,13 @@ public class BagService {
 
     @Gm(id="testnew ###")
     public void testnew(int itemId){
-        String uid = "sdf#tt";
+        String uid = "sdfttdd";
         addItem(uid,itemId,1);
         List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",uid);
         for(BagItem bagItem:bagItemList) {
             System.out.println(bagItem.toJson());
         }
-        System.out.println(new String(new char[]{'a',(char)-2,(char)255,'t'}));
+//        System.out.println(new String(new char[]{'a',(char)-2,(char)255,'t'}));
     }
 
     @Tx

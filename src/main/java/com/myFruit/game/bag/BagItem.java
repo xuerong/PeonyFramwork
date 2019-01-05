@@ -13,6 +13,7 @@ public class BagItem implements Serializable {
 
     public JSONObject toJson(){
         JSONObject ret = new JSONObject();
+        ret.put("uid",uid);
         ret.put("itemId",itemId);
         ret.put("num",num);
         return ret;

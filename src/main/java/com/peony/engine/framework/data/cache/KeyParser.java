@@ -17,7 +17,8 @@ import java.util.*;
 public class KeyParser {
     private static final Logger log = LoggerFactory.getLogger(KeyParser.class);
     public static final String LISTSEPARATOR ="#";
-    public static final String SEPARATOR = "_"; // new String(new char[]{255});//
+//    public static final String SEPARATOR = "_"; // new String(new char[]{255});//
+    public static final char SEPARATOR = '_';
 
 //    private static Map<Class<?>,List<String>> pkMap = new HashMap<>();
     static {
@@ -34,8 +35,9 @@ public class KeyParser {
 
         try {
             for(Method method : pkMethodMap.values()){
-                sb.append(SEPARATOR+parseParamToString(method.invoke(entity)));
+                appendWithTrans(sb,parseParamToString(method.invoke(entity)),SEPARATOR);
             }
+
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         } catch (InvocationTargetException e) {
@@ -88,7 +90,8 @@ public class KeyParser {
             if(pkStr == null){
                 throw new MMException("condition 参数错误,缺少主键["+pk+"]，resultCondition = "+resultCondition+",class = "+entityClass.getName());
             }
-            sb.append(SEPARATOR+pksInConditions.get(pk));
+            appendWithTrans(sb,pksInConditions.get(pk),SEPARATOR);
+//            sb.append(SEPARATOR+pksInConditions.get(pk));
         }
         return sb.toString();
     }
@@ -106,9 +109,11 @@ public class KeyParser {
             log.warn("listKey is Illegal : listKey = "+listKey);
             return false;
         }
-        String[] fieldNames = listKeyStrs[2].split(SEPARATOR);
-        String[] fieldValues = listKeyStrs[3].split(SEPARATOR);
-        if(fieldNames.length !=fieldValues.length){
+//        String[] fieldNames = listKeyStrs[2].split(SEPARATOR);
+        List<String> fieldNames = split(listKeyStrs[2],SEPARATOR);
+//        String[] fieldValues = listKeyStrs[3].split(SEPARATOR);
+        List<String> fieldValues = split(listKeyStrs[3],SEPARATOR);
+        if(fieldNames.size() !=fieldValues.size()){
             log.warn("listKey is Illegal : listKey = "+listKey);
             return false;
         }
@@ -122,7 +127,7 @@ public class KeyParser {
                     return false;
                 }
                 Object ret = method.invoke(object);
-                if(!parseParamToString(ret).equals(fieldValues[i])){
+                if(!parseParamToString(ret).equals(fieldValues.get(i))){
                     return false;
                 }
                 i++;
@@ -164,17 +169,21 @@ public class KeyParser {
                     throw new MMException("condition 参数错误,resultCondition = "+resultCondition);
                 }
                 if(conditionNames == null){
-                    conditionNames = new StringBuilder(LISTSEPARATOR+pk[0].trim());
+                    conditionNames = new StringBuilder(LISTSEPARATOR);
+                    appendWithTransWithoutAppendSp(conditionNames,pk[0].trim(),SEPARATOR);
                 }else{
-                    conditionNames.append(SEPARATOR+(pk[0].trim()));
+                    appendWithTrans(conditionNames,pk[0].trim(),SEPARATOR);
+//                    conditionNames.append(SEPARATOR+(pk[0].trim()));
                 }
                 String value = pk[1].trim();
                 value = checkAndReplaceMark(value,paramsIndex,params);
                 paramsIndex++;
                 if(conditionValues == null){
-                    conditionValues = new StringBuilder(LISTSEPARATOR+value);
+                    conditionValues = new StringBuilder(LISTSEPARATOR);
+                    appendWithTransWithoutAppendSp(conditionValues,value,SEPARATOR);
                 }else{
-                    conditionValues.append(SEPARATOR+value);
+                    appendWithTrans(conditionValues,value,SEPARATOR);
+//                    conditionValues.append(SEPARATOR+value);
                 }
             }
         }
@@ -248,14 +257,23 @@ public class KeyParser {
             if(index++>0){
                 sb.append(sp);
             }
-            for(char ch : str.toCharArray()){
-                if(ch == sp || ch == '\\'){
-                    sb.append('\\');
-                }
-                sb.append(ch);
-            }
+            appendWithTransWithoutAppendSp(sb,str,sp);
         }
         return sb.toString();
+    }
+
+    public static void appendWithTransWithoutAppendSp(StringBuilder sb,String str,char sp){
+        for(char ch : str.toCharArray()){
+            if(ch == sp || ch == '\\'){
+                sb.append('\\');
+            }
+            sb.append(ch);
+        }
+    }
+
+    public static void appendWithTrans(StringBuilder sb,String str,char sp){
+        sb.append(sp);
+        appendWithTransWithoutAppendSp(sb, str, sp);
     }
 
     /**

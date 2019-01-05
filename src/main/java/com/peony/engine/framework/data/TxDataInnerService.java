@@ -156,6 +156,7 @@ public class TxDataInnerService {
             }
             try {
                 // TODO 这里从异步数据获取满足条件(listKey)的数据，并在查询数据库之后放进对应的list中
+                System.err.println("getAsyncDataBelongListKey:"+listKey);
                 List<AsyncService.AsyncData> asyncDataList = asyncService.getAsyncDataBelongListKey(entityClass,listKey);
 //                System.err.println("asyncDataList.size()"+(asyncDataList==null?0:asyncDataList.size()));
                 objectList = DataSet.selectListWithCondition(entityClass, condition, params);

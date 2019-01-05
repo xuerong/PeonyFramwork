@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.security.Key;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -203,7 +204,8 @@ public class AsyncService {
                 }else{
                     if(!fieldKey.equals("")){
                         // 如果是非主键的list，则标记起来
-                        String[] fieldNames = fieldKey.split(KeyParser.SEPARATOR);
+//                        String[] fieldNames = fieldKey.split(KeyParser.SEPARATOR);
+                        List<String> fieldNames = KeyParser.split(fieldKey,KeyParser.SEPARATOR);
                         Map<String,Method> pkGetMethodMap = EntityHelper.getPkGetMethodMap(entityClass);
                         for(String fieldName : fieldNames){
                             if(!pkGetMethodMap.containsKey(fieldName)){
@@ -319,7 +321,8 @@ public class AsyncService {
                     }
                 } else {
                     if(asyncData.getOperType() == OperType.Insert || asyncData.getOperType() == OperType.Delete) {
-                        String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
+                        List<String> fieldNames = KeyParser.split(entry.getKey(),KeyParser.SEPARATOR);
+//                        String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
                         if(getMethodMap == null){
                             getMethodMap = EntityHelper.getGetMethodMap(asyncData.getObject().getClass());
                         }
@@ -340,7 +343,8 @@ public class AsyncService {
                         if(!set.contains(entry.getKey())){
                             continue;
                         }
-                        String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
+                        List<String> fieldNames = KeyParser.split(entry.getKey(),KeyParser.SEPARATOR);
+//                        String[] fieldNames = entry.getKey().split(KeyParser.SEPARATOR);
                         // 如果old的listkey和新的不一致，则需要修改
                         if(asyncData.getOld() != null) {
                             if (getMethodMap == null) {
@@ -448,7 +452,7 @@ public class AsyncService {
 //        }
     }
 
-    private String getValueKey(String[] fieldNames,Map<String,Method> getMethodMap,Object object){
+    private String getValueKey(List<String> fieldNames,Map<String,Method> getMethodMap,Object object){
         StringBuilder valueSb = new StringBuilder();
         try {
             for (String fieldName : fieldNames) {
@@ -459,7 +463,10 @@ public class AsyncService {
                 if(valueSb.length()>0){
                     valueSb.append(KeyParser.SEPARATOR);
                 }
-                valueSb.append(KeyParser.parseParamToString(method.invoke(object)));
+
+                KeyParser.appendWithTransWithoutAppendSp(valueSb,KeyParser.parseParamToString(method.invoke(object)),KeyParser.SEPARATOR);
+
+//                valueSb.append(KeyParser.parseParamToString(method.invoke(object)));
             }
         } catch (IllegalAccessException |InvocationTargetException e) {
             log.error("listKey is Illegal while invoke getMethodMap,entityClass={}",object.getClass(),e);
