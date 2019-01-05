@@ -209,7 +209,7 @@ public class TxDataInnerService {
                         T t = objectList.get(i);
                         String key = KeyParser.parseKey(t);
                         AsyncService.AsyncData asyncData = asyncDataList==null?null:asyncDataList.get(key);
-                        if(asyncData == null){
+                        if(asyncData == null || asyncData.getOperType() != OperType.Update){
                             CacheEntity cacheEntity = new CacheEntity(t);
                             cacheEntityMap.put(key, cacheEntity);
                         }else{
