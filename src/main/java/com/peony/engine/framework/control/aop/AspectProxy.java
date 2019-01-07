@@ -7,21 +7,30 @@ import com.peony.engine.framework.control.aop.annotation.AspectMark;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
 /**
- * Created by Administrator on 2015/11/17.
+ * 用于实现AOP系统的切面类父类。
+ *
+ * @author zhengyuzhen
+ * @see Proxy
+ * @see Aspect
+ * @see AopHelper
+ * @since 1.0
  */
 public abstract class AspectProxy implements Proxy {
-    // 要代理的对象
+    // 要代理的对象-标识（mark）列表
     private List<String> markList=null;
+    // 要代理的对象-注解（annotation）列表
     private List<Class<? extends Annotation>> annotationList=null;
+    // 要代理的对象-包（pkg）列表
     private List<String> pkgList=null;
-    // 执行检查，因为代理类未必执行当前执行的方法
+    // 该代理对应的所有方法（Service原生类的方法），执行检查用
     private Set<Method> executeMethod=null;
+    // 是否对切点类所有的方法执行代理
     private boolean isExecuteAllMethod=false;
+
 
     public AspectProxy(){
         // 初始化要代理的对象
@@ -33,6 +42,14 @@ public abstract class AspectProxy implements Proxy {
         }
     }
 
+    /**
+     * 该方法是否满足执行的条件。
+     * <p>
+     * 通过对切点方法的缓存来提高判断效率。
+     *
+     * @param method 被代理的方法
+     * @return
+     */
     @Override
     public boolean executeMethod(Method method) {
         if(isExecuteAllMethod){
@@ -45,9 +62,13 @@ public abstract class AspectProxy implements Proxy {
         return false;
     }
 
-    // 这个函数在该代理对象被创建时调用，持有该对象所代理的目标类，
-    // 并用来判断是否全类代理以及要代理的方法，这里判断出
-    // 这样将方法的赛选在初始化的时候完成，减少执行期间的计算
+    /**
+     * 这个函数在该代理对象被创建时调用，持有该对象所代理的目标类，
+     * 并用来判断是否全类代理以及要代理的方法，这里判断出
+     * 这样将方法的赛选在初始化的时候完成，减少执行期间的计算
+     *
+     * @param targetClass 目标类
+     */
     @Override
     public void setTargetClass(Class<?> targetClass) {
         if(AopUtil.isExecuteByPkg(targetClass, pkgList)){
