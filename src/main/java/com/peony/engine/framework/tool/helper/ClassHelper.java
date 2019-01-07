@@ -91,6 +91,8 @@ public class ClassHelper {
 
     /**
      * 获取基础包名中指定父类或接口的相关类
+     * @param superClass
+     * @return
      */
     public static List<Class<?>> getClassListBySuper(Class<?> superClass) {
         List<Class<?>> result=new SupperClassTemplate(basePackage, superClass) {

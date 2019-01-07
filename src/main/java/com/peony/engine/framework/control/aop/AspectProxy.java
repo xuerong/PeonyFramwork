@@ -6,8 +6,10 @@ import com.peony.engine.framework.control.aop.annotation.AspectMark;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by Administrator on 2015/11/17.
@@ -18,7 +20,7 @@ public abstract class AspectProxy implements Proxy {
     private List<Class<? extends Annotation>> annotationList=null;
     private List<String> pkgList=null;
     // 执行检查，因为代理类未必执行当前执行的方法
-    private List<Method> executeMethod=null;
+    private Set<Method> executeMethod=null;
     private boolean isExecuteAllMethod=false;
 
     public AspectProxy(){
@@ -63,7 +65,7 @@ public abstract class AspectProxy implements Proxy {
             return;
         }
         // 如果上述类切面识别没有成功，那么就是方法切面，需要通过annotation和mark识别
-        executeMethod=new LinkedList<>();
+        executeMethod=new HashSet<>();
         Method[] methods = targetClass.getMethods();
 
 //        nextMethod:

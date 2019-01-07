@@ -27,14 +27,17 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Updatable {
+
     /**
      * 启动是否执行一次，在<tt>cycle</tt>生效时生效
      */
     boolean doOnStart() default false;
+
     /**
      * 更新周期，毫秒计。该参数与<tt>cronExpression</tt>至少要设置一个
      */
     int cycle() default -1;
+
     /**
      * cronExpression表达式。
      * 该参数与<tt>cycle</tt>至少要设置一个。如果设置了该参数，<tt>cycle</tt>不再生效，

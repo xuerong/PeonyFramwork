@@ -1,6 +1,5 @@
 package com.peony.engine.framework.control.aop;
 
-import com.peony.engine.framework.control.ServiceHelper;
 import com.peony.engine.framework.control.aop.annotation.Aspect;
 import com.peony.engine.framework.control.aop.annotation.AspectOrder;
 import com.peony.engine.framework.security.exception.MMException;
@@ -14,34 +13,45 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 /**
- * Created by Administrator on 2015/11/17.
- * 初始化时，将所有的类变成其对应的代理类
+ * 实现peony中AOP功能的主类。通过cglib的代理类技术来对需要的Service类添加代理类
+ * 来实现AOP功能。
+ *
+ * @author zhengyuzhen
+ * @see AspectProxy
+ * @see Aspect
+ * @see AspectOrder
+ * @since 1.0
+ *
  */
 public final class AopHelper {
     private static final Logger log = LoggerFactory.getLogger(AopHelper.class);
 
+    /**
+     * 切点类-切面类列表
+     */
     private static Map<Class<?>,List<Proxy>> targetMap;
     static{
         try {
-            //将所有的类变成其对应的代理类
-            //获取所有类-方法及其代理关系
-
-            // 创建 Proxy Map（用于 存放代理类 与 目标类列表 的映射关系）
+            // 创建 Proxy Map（用于 存放切面类 与 切点类列表 的映射关系）
             Map<Class<?>, List<Class<?>>> proxyMap = createProxyMap();
-            // 创建 Target Map（用于 存放目标类 与 代理类列表 的映射关系）
+            // 创建 Target Map（用于 存放切点类 与 切面类列表 的映射关系）
             targetMap=createTargetMap(proxyMap);
-
         } catch (Exception e) {
-
             throw new RuntimeException("初始化 AopHelper 出错！", e);
         }
     }
+
     /**
-     * 传入一个类，返回其对应的代理对象
-     *
+     * 传入一个类，返回其对应的代理对象。
+     * <p>
      * 由于初始化AopHelper的时候，是根据实际已经拥有的类——在相应包下的——进行对代理判断的
      * 如果某个类在此之外被代理，那么就要对被代理之后的心类添加aop，并实例化之
-     * **/
+     *
+     * @param keyCls 需要被代理的类的原类
+     * @param newCls 之前被代理过的类
+     * @param <T> 被代理的类的实例
+     * @return 代理之后的类
+     */
     public static <T> T getProxyObject(Class<?> keyCls,Class<T> newCls){
         List<Proxy> proxyList = targetMap.get(keyCls);
         if(proxyList != null){
@@ -49,6 +59,14 @@ public final class AopHelper {
         }
         return ReflectionUtil.newInstance(newCls);
     }
+
+    /**
+     * 传入一个类，返回其对应的代理对象。
+     *
+     * @param cls 需要被代理的类
+     * @param <T> 被代理的类的实例
+     * @return 代理之后的类的实例
+     */
     public static <T> T getProxyObject(Class<T> cls){
         List<Proxy> proxyList = targetMap.get(cls);
         if(proxyList != null){
@@ -56,12 +74,15 @@ public final class AopHelper {
         }
         return ReflectionUtil.newInstance(cls);
     }
+
     /**
-     * 给一个cls添加对应的代理列表，并实例化之
-     * proxyList：
-     *  这里面存储的是该类的代理类，每个代理类并不一定是对所有的方法进行代理
-     * 在前面赛选目标类和对应的代理类的时候，就要将对应的代理类是否代理该目标类中的所有方法标识出来，用来赛选方法
-     * */
+     * 给一个代类添加对应的代理列表，并实例化之。
+     *
+     * @param target 被代理的类
+     * @param proxyList 该类的代理类，每个代理类并不一定是对所有的方法进行代理
+     * @param <T> 被代理的类的实例
+     * @return 代理之后的类
+     */
     private static <T> T createProxyObject(final Class<?> target,final List<Proxy> proxyList){
         Enhancer enhancer=new Enhancer();
         enhancer.setSuperclass(target);
@@ -70,6 +91,7 @@ public final class AopHelper {
             public Object intercept(Object targetObject, Method method, Object[] methodParams, MethodProxy methodProxy) throws Throwable {
                 int txTimes = 0;
                 while(true){
+                    // 执行所有切面的before方法
                     for (Proxy proxy :proxyList) {
                         if(proxy.executeMethod(method)){
                             try {
@@ -81,6 +103,7 @@ public final class AopHelper {
                     }
                     int size=proxyList.size();
 
+                    // 执行切点方法
                     Object result = null;
                     try {
                         result = methodProxy.invokeSuper(targetObject, methodParams);
@@ -92,13 +115,13 @@ public final class AopHelper {
                                 try {
                                     proxy.exceptionCatch(e);
                                 } catch (Throwable e2) {
-                                    e2.printStackTrace();
+                                    log.error("代理类异常处理异常",e2);
                                 }
                             }
                         }
                         throw e;
                     }
-                    // 执行after方法
+                    // 执行所有切面的after方法
                     MMException txException=null;
                     for (int i = size - 1; i >= 0; i--) {
                         Proxy proxy = proxyList.get(i);
@@ -109,13 +132,16 @@ public final class AopHelper {
                                 if(e instanceof MMException){
                                     MMException exception = (MMException)e;
                                     if(exception.getExceptionType() == MMException.ExceptionType.TxCommitFail){
-//                                    throw e;
                                         txException = exception;
                                     }
                                 }
                             }
                         }
                     }
+                    /**
+                     * 如果是事务提交异常，将给予重试机会，直到达到限定次数。
+                     * 这可以提高在高并发情况下，加锁校验实现的事务的一致性在校验失败时事务最终执行成功的概率。
+                     */
                     if(txException != null){
                         if(++txTimes>=5) {
                             log.error("tx fail times {} ,fail!",txTimes);
@@ -132,9 +158,14 @@ public final class AopHelper {
         return (T)enhancer.create();
     }
 
-    private static Map<Class<?>, List<Class<?>>> createProxyMap() throws Exception {
-        Map<Class<?>, List<Class<?>>> proxyMap = new LinkedHashMap<Class<?>, List<Class<?>>>();
-        // 获取切面类（所有继承于 BaseAspect 的类）
+    /**
+     * 获取切面类和切点类的对应关系。
+     *
+     * @return 切面类-切点类列表
+     */
+    private static Map<Class<?>, List<Class<?>>> createProxyMap() {
+        Map<Class<?>, List<Class<?>>> proxyMap = new LinkedHashMap<>();
+        // 获取切面类（所有继承于 AspectProxy 的类）
         List<Class<?>> aspectProxyClassList = ClassHelper.getClassListBySuper(AspectProxy.class);
         // 排序切面类
         sortAspectProxyClassList(aspectProxyClassList);
@@ -152,19 +183,16 @@ public final class AopHelper {
         }
         return proxyMap;
     }
-    private static boolean isCross(String[] strs1,String[] strs2){
-        for (String str1 :strs1) {
-            for (String str2 :strs2) {
-                if(str1.equals(str2)){
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-    private static List<Class<?>> createTargetClassList(Aspect aspect) throws Exception {
-        List<Class<?>> targetClassList = new ArrayList<Class<?>>();
 
+    /**
+     * 根据切面类获取对应的切点类列表。
+     *
+     * @param aspect 切面类
+     * @return 切点类列表
+     */
+    private static List<Class<?>> createTargetClassList(Aspect aspect) {
+        List<Class<?>> targetClassList = new ArrayList<Class<?>>();
+        // 获取属于peony的所有类
         List<Class<?>> allClass=ClassHelper.getClassList();
         for (Class<?> cls : allClass) {
             // 是否是定义的包中的
@@ -174,7 +202,15 @@ public final class AopHelper {
         }
         return targetClassList;
     }
-    // 排序代理类
+
+    /**
+     * 根据{@link AspectOrder}对切面类排序。
+     *
+     * 排序规则：1、没有AspectOrder注解的顺序值按照0计算，他们之间的排序按照按字母顺序升序排列；
+     * 2、对于AspectOrder中顺序值相同的，不确定先后顺序
+     *
+     * @param proxyClassList 切面类列表
+     */
     private static void sortAspectProxyClassList(List<Class<?>> proxyClassList) {
         // 排序代理类列表
         Collections.sort(proxyClassList, new Comparator<Class<?>>() {
@@ -198,6 +234,14 @@ public final class AopHelper {
             }
         });
     }
+
+    /**
+     * 根据切面类-切点类列表，获取切点类-切面类列表。
+     *
+     * @param proxyMap 切面类-切点类列表
+     * @return 切点类-切面类列表
+     * @throws Exception
+     */
     private static Map<Class<?>, List<Proxy>> createTargetMap(Map<Class<?>, List<Class<?>>> proxyMap) throws Exception {
         Map<Class<?>, List<Proxy>> targetMap = new HashMap<Class<?>, List<Proxy>>();
         // 遍历 Proxy Map
