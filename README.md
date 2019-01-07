@@ -124,7 +124,7 @@ Session中有玩家基本信息，包括玩家账号`session.getAccountId()`
 #### 四. 前端调用
 * 本地启动服务器
 * 打开websocket在线工具：http://www.blue-zero.com/WebSocket/
-* 在地址输入框中输入：ws://localhost:8002/websocket，点击连接。如果出现"连接已建立，正在等待数据..."，说明websocket连接成功
+* 在地址输入框中输入：ws://localhost:9002/websocket，点击连接。如果出现"连接已建立，正在等待数据..."，说明websocket连接成功
 * 在发送消息框中输入登录消息如下：
 ```$xslt
 {
