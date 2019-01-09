@@ -239,14 +239,6 @@ public class DeployService {
         return ret;
     }
 
-    public void deleteServer(int id){
-        ServerInfo serverInfo = dataService.selectObject(ServerInfo.class,"id=?",id);
-        if(serverInfo == null){
-            throw new ToClientException(SysConstantDefine.InvalidParam,"server id is not exist! id={}",id);
-        }
-        dataService.delete(serverInfo);
-    }
-
 
     public JSONObject addDeployServer(String projectId, int id, String name, String sshIp, String sshUser, String sshPassword, String path,Map<String,String> configMap){
 
@@ -386,23 +378,6 @@ public class DeployService {
             sb.append(" -P " + entry.getKey() + "=" + entry.getValue());
         }
         return sb.toString();
-    }
-
-
-    public JSONObject getServerList(){
-        return getServerList(Integer.MIN_VALUE,Integer.MAX_VALUE);
-    }
-    public JSONObject getServerList(int start,int end){
-
-        List<ServerInfo> serverInfos = dataService.selectListBySql(ServerInfo.class,"select * from serverinfo where id>=? and id<=?",start,end);
-
-        JSONObject ret = new JSONObject();
-        JSONArray array = new JSONArray();
-        for(ServerInfo serverInfo : serverInfos){
-            array.add(serverInfo.toJson());
-        }
-        ret.put("serverInfos",array);
-        return ret;
     }
 
     private void checkParams(String... params){

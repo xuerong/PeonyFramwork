@@ -4,6 +4,7 @@ import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.tx.Tx;
+import com.peony.engine.framework.server.Server;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
 import org.apache.commons.lang3.StringUtils;
 
@@ -28,6 +29,10 @@ public class MainServerService {
     public void init(){
         Map<String, String> mainServerMap = ConfigHelper.getMap("mainServer");
         if(!mainServerMap.get("mainServer.use").trim().equals("true")){
+            return;
+        }
+        ServerInfo mainServerInfo = Server.getEngineConfigure().getMainServerInfo();
+        if(Server.getServerId() != mainServerInfo.getId()){ // 非主节点
             return;
         }
         List<ServerInfo> serverInfoList = dataService.selectList(ServerInfo.class,"");

@@ -44,6 +44,9 @@ public class NodeServerService {
             return;
         }
         ServerInfo mainServerInfo = Server.getEngineConfigure().getMainServerInfo();
+        if(Server.getServerId() == mainServerInfo.getId()){ // 主节点
+            return;
+        }
         netEventService.registerServerSyn(mainServerInfo.getId(),mainServerInfo.getHost(),mainServerInfo.getNetEventPort());
         List<ServerInfo> serverInfoList = getServerInfoList(mainServerInfo.getId());
         for(ServerInfo serverInfo : serverInfoList){

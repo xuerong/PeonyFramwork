@@ -1,7 +1,7 @@
 # 内存
--Xmx512m
--Xms512m
--Xmn256m
+-Xmx256m
+-Xms256m
+-Xmn64m
 -Dfile.encoding=UTF-8
 # 排序
 -Djava.util.Arrays.useLegacyMergeSort=ture

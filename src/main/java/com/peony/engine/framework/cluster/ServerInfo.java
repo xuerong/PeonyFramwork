@@ -11,24 +11,17 @@ import java.io.Serializable;
  */
 @DBEntity(tableName = "serverinfo",pks = {"id"})
 public class ServerInfo implements Serializable {
-    private int id;
-    private String name;
-    private String innerHost;
-    private String publicHost;
-    private int netEventPort;
-    private int requestPort;
-    private int type;
+    private int id; // 服id，对应配置文件的serverId
+    private String name; // 服名称
+    private String innerHost; // 内网地址
+    private String publicHost; // 外网地址
+    private int netEventPort; // 网络事件端口
+    private int requestPort; // 前端请求端口
+    private int type; // 服务器类型，可以自定义
 
-    private int accountCount;
+    private int accountCount; // 账号数量
     private int hot; // 火爆程度，根据最近的登陆情况计算
     private int state; // 状态 0不能用，1能用
-
-
-    // ssh连接的时候的参数
-    private String sshIp;
-    private String sshUser;
-    private String sshPassword;
-
 
 
 
@@ -157,27 +150,4 @@ public class ServerInfo implements Serializable {
         this.state = state;
     }
 
-    public String getSshIp() {
-        return sshIp;
-    }
-
-    public void setSshIp(String sshIp) {
-        this.sshIp = sshIp;
-    }
-
-    public String getSshUser() {
-        return sshUser;
-    }
-
-    public void setSshUser(String sshUser) {
-        this.sshUser = sshUser;
-    }
-
-    public String getSshPassword() {
-        return sshPassword;
-    }
-
-    public void setSshPassword(String sshPassword) {
-        this.sshPassword = sshPassword;
-    }
 }
