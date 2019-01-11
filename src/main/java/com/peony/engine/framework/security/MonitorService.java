@@ -92,13 +92,6 @@ public class MonitorService {
 
     @Updatable(cycle = 6000)
     public void monitorUpdate(int interval){
-//        log.info("monitorUpdate:"+interval);
-        String state = eventService.getMonitorData();
-        if(!state.equals("ok")){
-            log.error(state);
-        }else{
-//            log.info("server is ok!");
-        }
         if(conditions.size()>0){
             for(Map.Entry<String,String> entry : conditions.entrySet()){
                 log.warn(entry.getKey()+":"+entry.getValue());

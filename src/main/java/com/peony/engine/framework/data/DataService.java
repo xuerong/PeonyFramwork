@@ -1,12 +1,9 @@
 package com.peony.engine.framework.data;
 
 import com.peony.engine.framework.control.annotation.Service;
-import com.peony.engine.framework.data.cache.CacheService;
 import com.peony.engine.framework.data.persistence.dao.DatabaseHelper;
 import com.peony.engine.framework.data.persistence.orm.DataSet;
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
-import com.peony.engine.framework.data.tx.AsyncService;
-import com.peony.engine.framework.data.tx.LockerService;
 import com.peony.engine.framework.data.tx.Tx;
 import com.peony.engine.framework.security.MonitorNumType;
 import com.peony.engine.framework.security.MonitorService;
@@ -19,53 +16,81 @@ import java.io.Serializable;
 import java.util.*;
 
 /**
- * Created by a on 2016/8/10.
- * 这个是操作数据的对外接口
- * 对于对对象的增删该查，都是对缓存和数据库的操作
+ * 数据服务。
+ * <p>
+ * <strong>这个是操作数据的对外接口，也是唯一接口。提供了对数据的增删改查等功能，针对的
+ * 对象是DBEntity对象，不要该数据服务之外的工具进行数据操作，除非你对数据操作服务有充分
+ * 的了解</strong>
+ * <p>
+ * DataService对数据的操作主要包括两种类型：一种是对数据的基本操作，无需自己写sql语句；
+ * 另一种是通过自定义sql来完成操作(方法名以BySql结尾)。除此之外还有一些辅助类型的查询，
+ * 是第一种查询的扩展。
+ * <p>
+ * 第一种包括：
+ * <table>
+ *     <tr><td>selectObject</td><td>查询单条数据，并转化为java对象</td></tr>
+ *     <tr><td>selectList</td><td>查询多条数据，并转化为java对象</td></tr>
+ *     <tr><td>insert</td><td>插入一条数据（java对象）</td></tr>
+ *     <tr><td>update</td><td>修改一条数据（java对象）</td></tr>
+ *     <tr><td>delete</td><td>删除一条数据（java对象）</td></tr>
+ * </table>
+ * 第二种包括：
+ * <table>
+ *     <tr><td>selectObjectBySql</td><td>查询单条数据，并转化为java对象</td></tr>
+ *     <tr><td>selectListBySql</td><td>查询多条数据，并转化为java对象</td></tr>
+ *     <tr><td>selectObjectListBySql</td><td>查询多条数据，可根据需要返回相应字段</td></tr>
+ *     <tr><td>executeBySql</td><td>执行更新语句</td></tr>
+ * </table>
+ * <p>
+ * 第一种操作简单方便，并且自动使用框架提供的事务、缓存、并发一致性、异步存储等问题，属于
+ * 主要数据操作；第二种将用自定义sql直接操作数据库，主要用于复杂的sql操作，这种操作需要
+ * 使用者自己确保并发一致性，缓存等问题，属于辅助数据操作。
+ * <p>
+ * 需要注意的是：对于第二种操作中的查询相关的操作，由于数据库的更新是异步进行的，所以得到
+ * 的数据可能是过期了的；而对于更新相关的操作，由于直接更新数据库不会更新缓存，所以要确保
+ * 相关数据没有被第一种操作方式操作。所以，如非必要，请使用第一种操作，否则，尽量避免使用
+ * 第二种操作中的更新操作！
  *
- * 注意：这里面锁操作的对象都必须注解：DBEntity
- * 如果仅对缓存进行操作，请用CacheCenter
- *
- * 这里仅提供这些方法
- *
- * 过程：
- * 如果处理的数据在事务进行中，则将数据交给事务线程缓存处理，
- * 否则，对缓存进行处理，对于get操作，缓存不存在要穿透到数据库进行查询，而flush操作则仅更新缓存，和异步数据库
- *
- *
- * 这里面的数据可以考虑不用返回(flush)而是出现错误抛出异常
- *
- * // 数据模块考虑
- * DataService
- * ThreadLocalCache
- * CacheCenter
- * DataSet
- * LockerServer
- * AsyncServer
- *
- * 关于异步insert(和delete)和list之间的处理:
- * 1、getList的缓存作一个标记,insert的时候查询标记来修改对应的缓存list(解决insert和和缓存list之间的问题)
- * 2、---数据库中getList,从异步中加载相应的多出的对象,放进缓存(解决异步insert和getList之间的为题)
+ * @author zhengyuzhen
+ * @see TxDataInnerService
+ * @see DBEntity
+ * @since 1.0
  */
 @Service(init = "init", initPriority = 2)
 public class DataService {
     private static Logger logger = LoggerFactory.getLogger(DataService.class);
-    private CacheService cacheService;
-    private AsyncService asyncService;
-    private LockerService lockerService;
+
     private MonitorService monitorService;
+    /**
+     * 支持事务的数据服务
+     */
     private TxDataInnerService txDataInnerService;
 
 
+    /**
+     * 初始化的时候，检查DBEntity是否
+     */
     public void init() {
         List<Class<?>> entities = ClassHelper.getClassListByAnnotation(DBEntity.class);
         for (Class<?> enty : entities) {
             if (!Serializable.class.isAssignableFrom(enty)) {
-                throw new MMException("DBEntity 类型必须实现 Serializable 接口! " + enty.getSimpleName());
+                throw new MMException(MMException.ExceptionType.StartUpFail,"DBEntity 类型必须实现 Serializable 接口! " + enty.getSimpleName());
             }
         }
     }
 
+    /**
+     * 查询，如果没有则创建。
+     * <p>
+     * <strong>查询条件中，字段的限定只支持 "=" ，多字段的组合只支持 "and"</strong>
+     *
+     * @param entityClass 查询对象的类型，必须为DBEntity对象
+     * @param entityCreator 初始化工具，用于初始化对象数据
+     * @param condition 查询条件
+     * @param params 条件参数
+     * @param <T> 对象类型
+     * @return
+     */
     public <T> T selectCreateIfAbsent(Class<T> entityClass,EntityCreator entityCreator, String condition, Object... params){
         T result = selectObject(entityClass,condition,params);
         if(result == null){
@@ -87,72 +112,139 @@ public class DataService {
         }
         return result;
     }
+
     /**
-     * 查询一个对象，condition必须是主键，否则请用selectList
+     * 查询一个对象，并转化为对象返回。condition中必须是主键，否则会认为是不止一个对象，
+     * 请用selectList
+     * <p>
+     * <strong>查询条件中，字段的限定只支持 "=" ，多字段的组合只支持 "and"</strong>
      *
-     * 这里需要保存一下获取数据的版本，其实就是保存一下CacheEntity的引用，这样可以在update的时候cas用
+     * @param entityClass 对象类型，必须为DBEntity对象
+     * @param condition 查询条件
+     * @param params 条件参数
+     * @param <T> 对象的类型
+     * @return 返回查询到的对象，如果没有，则为null
      */
     public <T> T selectObject(Class<T> entityClass, String condition, Object... params){
         return txDataInnerService.selectObject(entityClass, condition, params);
     }
+
     /**
-     * 查询一个列表
-     * 这里先不做事务的缓存,我觉得还是有必要加的，不过要先想好怎么加，否则会影响效率(和缓存中一样,会有点鸡肋，要不上面的也不缓存)
+     * 查询一个数据列表，并转化为对象列表返回。
+     * <p>
+     * <strong>查询条件中，字段的限定只支持 "=" ，多字段的组合只支持 "and"</strong>
+     *
+     * @param entityClass 对象类型，必须为DBEntity对象
+     * @param condition 查询条件
+     * @param params 条件参数
+     * @param <T> 对象的类型
+     * @return 返回查询到的对象列表，如果没有，则为空的List
      */
     public <T> List<T> selectList(Class<T> entityClass, String condition, Object... params) {
         return txDataInnerService.selectList(entityClass, condition, params);
     }
 
     /**
-     * 插入一个对象，
+     * 插入一个对象。
+     *
+     * @param object 插入的对象，必须为DBEntity对象
      */
     public void insert(Object object){
         txDataInnerService.insert(object,true);
     }
+
     /**
-     * 更新一个对象，
-     * 分为两种情况:需要cas和不需要cas
-     * 加锁更新的就用cas,否则就不用cas
+     * 更新一个对象。
+     *
+     * @param object 更新的对象，必须为DBEntity对象
+     * @return 旧的对象
      */
     public Object update(Object object){
         return txDataInnerService.update(object,true);
     }
+
     /**
-     * 删除一个实体
-     * 由于要异步删除，缓存中设置删除标志位,所以，在缓存中是update
+     * 删除一个对象。
+     *
+     * @param object 删除的对象，必须为DBEntity对象
      */
     public void delete(Object object){
         txDataInnerService.delete(object,true);
     }
 
-    // TODO 按照条件删除对象，可以优化
+    /**
+     * 按照条件删除对象。TODO 可以优化
+     *
+     * @param entityClass 对象类型，必须为DBEntity对象
+     * @param condition 查询条件
+     * @param params 条件参数
+     * @param <T> 对象的类型
+     */
     public <T> void delete(Class<T> entityClass, String condition, Object... params){
         T t = selectObject(entityClass,condition,params);
         if(t != null){
             delete(t);
         }
-//        return true;
     }
 
+    /****************************************************************************************************
+     *                       下面是直接操作数据库的，不支持事务机制，不能确保数据是最新的                        *
+     ****************************************************************************************************/
 
-    ///////////////-------------------下面是直接操作数据库的-----------------------
-
+    /**
+     * 查询数量。
+     *
+     * @param entityClass 对象类型，必须为DBEntity对象
+     * @param condition 查询条件
+     * @param params 条件参数
+     * @return 数量
+     */
     public long selectCount(Class<?> entityClass, String condition, Object... params){
         monitorService.addMonitorNum(MonitorNumType.ExecuteSelectSqlNum,1);
         return DataSet.selectCount(entityClass,condition,params);
     }
+
+    /**
+     * 自定义sql查询数量，其中数量字段必须为"count(*)"
+     *
+     * @param sql 查询用的sql
+     * @param params sql中的参数
+     * @return 数量
+     */
     public long selectCountBySql(String sql, Object... params){
         monitorService.addMonitorNum(MonitorNumType.ExecuteSelectSqlNum,1);
         return DatabaseHelper.queryCount(sql, params);
     }
 
-    //
+    /**
+     * 自定义sql查询数据列表，并转化为对象列表。
+     * <p>
+     * <strong>不支持事务机制，不能确保数据是最新的</strong>
+     *
+     * @param entityClass 对象类型，必须为DBEntity对象
+     * @param sql 查询的sql
+     * @param params sql中的参数
+     * @param <T> 对象的类型
+     * @return 对象列表
+     */
     public <T> List<T> selectListBySql(Class<T> entityClass, String sql, Object... params) {
         monitorService.addMonitorNum(MonitorNumType.ExecuteSelectSqlNum,1);
         List<T> objectList = null;
         objectList = DatabaseHelper.queryEntityList(entityClass, sql, params);
         return objectList;
     }
+
+    /**
+     * 自定义sql查询数据，并转化为对象。
+     * <p>
+     * <strong>不支持事务机制，不能确保数据是最新的</strong>
+     *
+     * @param entityClass 对象类型，必须为DBEntity对象
+     * @param sql 查询的sql
+     * @param params sql中的参数
+     * @param <T> 对象的类型
+     * @return 返回的对象
+     */
     public <T> T selectObjectBySql(Class<T> entityClass, String sql, Object... params) {
         monitorService.addMonitorNum(MonitorNumType.ExecuteSelectSqlNum,1);
         return DatabaseHelper.queryEntity(entityClass,sql,params);
@@ -160,12 +252,26 @@ public class DataService {
 
     /**
      * 执行更新语句（包括：update、insert、delete）
+     * <p>
+     * <strong>不支持事务机制，不能确保数据是最新的</strong>
+     *
+     * @param sql 执行的sql
+     * @param params sql中的参数
      */
     public void executeBySql(String sql, Object... params){
         monitorService.addMonitorNum(MonitorNumType.ExecuteSqlNum,1);
         DatabaseHelper.updateForCloseConn(sql, params);
     }
 
+    /**
+     * 查询多条数据，可根据需要返回相应字段
+     * <p>
+     * <strong>不能确保数据是最新的</strong>
+     *
+     * @param sql 执行的sql
+     * @param params sql中的参数
+     * @return 返回查询的结果列表
+     */
     public List<Object[]> selectObjectListBySql(String sql, Object... params) {
         monitorService.addMonitorNum(MonitorNumType.ExecuteSelectSqlNum, 1);
         return DatabaseHelper.queryArrayList(sql, params);

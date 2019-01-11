@@ -39,8 +39,8 @@ public class AsyncService {
 //    private static LinkedBlockingQueue<AsyncData> asyncDataQueue = new LinkedBlockingQueue<AsyncData>();
     // 另一个队列，key为对象的类的名字,只存储增加和删除，根据异步对象的类型进行存储，在REFRESHDBLIST中起作用：
     // 1防止漏掉数据：插入数据库之后才删它，而asyncDataQueue在插入数据库之前就会被删掉了，2提高查询效率
-    private ConcurrentHashMap<String,Map<AsyncData,AsyncData>> asyncDataMap = new ConcurrentHashMap<>();
-    private final int threadCount = 10;//Runtime.getRuntime().availableProcessors()+1;
+    private ConcurrentHashMap<String,Map<AsyncData,AsyncData>> asyncDataMap = new ConcurrentHashMap<>(); // TODO 这个是否需要放在这里
+    private final int threadCount = 10;
     private Random threadRand = new Random();
 //    private ThreadLocal<Integer> threadNum = new ThreadLocal<>();
     private Map<Integer,Worker> workerMap = new HashMap<>();
@@ -122,13 +122,7 @@ public class AsyncService {
         asyncData.setOperType(operType);
         asyncData.setKey(key);
         asyncData.setObject(object);
-        // 这个同一个服务线程的threadNum必须一样
-        // TODO 这个线程num应该根据对象的key的hascode来决定吧
-//        Integer t = threadNum.get();
-//        if(t == null){
-//            t = threadRand.nextInt(threadCount);
-//            threadNum.set(t);
-//        }
+        // 这个线程num应该根据对象的key的hascode来决定
         asyncData.setThreadNum(getThreadNum(key));
         receiveAsyncData(asyncData);
     }
@@ -364,6 +358,7 @@ public class AsyncService {
                             if (getMethodMap == null) {
                                 getMethodMap = EntityHelper.getGetMethodMap(asyncData.getObject().getClass());
                             }
+                            // TODO 这个是用的反射的方式获取的，是可以改进的
                             String oldValueKey = getValueKey(fieldNames, getMethodMap, asyncData.getOld());
                             String valueKey = getValueKey(fieldNames, getMethodMap, asyncData.getObject());
                             if (!oldValueKey.equals(valueKey)) {

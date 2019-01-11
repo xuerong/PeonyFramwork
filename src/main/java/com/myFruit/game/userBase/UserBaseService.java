@@ -91,8 +91,8 @@ public class UserBaseService {
             levelUpEventData.setFromLevel(oriLv);
             levelUpEventData.setToLevel(base.getLevel());
             levelUpEventData.setSend2Client(new JSONObject());
-            eventService.fireEvent(levelUpEventData, EventType.UpLevel);
-            eventService.fireEventSyn(levelUpEventData, EventType.UpLevelSyn);
+            eventService.fireEvent(EventType.UpLevel,levelUpEventData);
+            eventService.fireEventSyn(EventType.UpLevelSyn,levelUpEventData);
             friendService.changeFriendInfo(base);
         }
         return base.getExp();

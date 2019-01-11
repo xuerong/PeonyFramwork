@@ -23,7 +23,7 @@ public class EntranceProxy extends AspectProxy {
     @Override
     public void after(Object object,Class<?> cls, Method method, Object[] params, Object result) {
         EventService eventService = BeanHelper.getServiceBean(EventService.class);
-        eventService.fireEvent(object,SysConstantDefine.Event_EntranceStart);
+        eventService.fireEvent(SysConstantDefine.Event_EntranceStart,object);
     }
 
     @Override

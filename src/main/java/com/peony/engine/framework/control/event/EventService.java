@@ -1,9 +1,9 @@
 package com.peony.engine.framework.control.event;
 
 import com.peony.engine.framework.control.ServiceHelper;
+import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.data.tx.AbListDataTxLifeDepend;
-import com.peony.engine.framework.data.tx.ITxLifeDepend;
 import com.peony.engine.framework.data.tx.TxCacheService;
 import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.thread.ThreadPoolHelper;
@@ -12,32 +12,57 @@ import gnu.trove.procedure.TIntObjectProcedure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Created by Administrator on 2015/11/20.
+ * 事件服务。
+ * <p>
+ * 通过事件服务抛出事件，通过{@link EventListener}监听事件。事件分为同步事件和异步事件。
+ * 同步事件是指，事件监听函数的执行由抛出时同步执行，异步事件是事件监听函数在抛出之后，异步
+ * 执行。
+ * <p>
+ * 事件的同步和异步，有两个地方可以设置，分别是事件同步/异步监听和事件同步/普通抛出：
+ * <table>
+ *     <tr><td></td><td>&nbsp;同步监听&nbsp;</td><td>&nbsp;异步监听&nbsp;</td></tr>
+ *     <tr><td>同步抛出</td><td>&nbsp;同步执行</td><td>&nbsp;同步执行</td></tr>
+ *     <tr><td>普通抛出</td><td>&nbsp;同步执行</td><td>&nbsp;异步执行</td></tr>
+ * </table>
  *
- * 事件分为同步执行和异步执行，
- * 同步执行的：事件监听者完成处理才返回：需要监控
- * 一步执行的：通过线程池分配线程执行触发各个事件，确保两点：
- * 1、事件线程有最大值，超过最大值，事件要排队
- * 2、事件队列有最大值，超过最大值，抛出服务器异常：可在某个比较大的值抛出警告
+ * @author zhengyuzhen
+ * @see EventListener
+ * @see EventListenerHandler
+ * @since 1.0
  */
 @Service(init = "init",initPriority = 1)
 public class EventService{
     private static final Logger log = LoggerFactory.getLogger(EventService.class);
+
+    /**
+     * 线程池的大小提醒限制
+     */
     private static final int poolWarningSize=20;
+    /**
+     * 队列大小的提醒限制
+     */
     private static final int queueWarningSize=1000;
-
-    private ThreadLocal<List<EventData>> cacheDatas = new ThreadLocal<>();
+    /**
+     * 事务周期依赖，用于实现事件的事务依赖
+     */
     EventTxLifeDepend eventTxLifeDepend = new EventTxLifeDepend();
-
+    /**
+     * 执行异步事件的线程池
+     */
     private final ThreadPoolExecutor executor = ThreadPoolHelper.newThreadPoolExecutor("PpeonyEvent",16,1024,1024);
 
-
+    /**
+     * 普通事件处理器的缓存
+     */
     private final TIntObjectHashMap<Set<EventListenerHandler>> handlerMap=new TIntObjectHashMap<>();
+    /**
+     * 同步事件处理器的缓存
+     */
     private final TIntObjectHashMap<Set<EventListenerHandler>> synHandlerMap=new TIntObjectHashMap<>();
 
     private TxCacheService txCacheService;
@@ -70,20 +95,13 @@ public class EventService{
                 return true;
             }
         });
-        //
+        // 注册事务周期依赖
         txCacheService.registerTxLifeDepend(eventTxLifeDepend);
     }
 
-    // 最后用一个系统的检测服务update进行系统所有的监测任务
-    public String getMonitorData(){
-        BlockingQueue<Runnable> queue = executor.getQueue();
-        int poolSize=executor.getPoolSize();
-        if(poolSize>poolWarningSize || queue.size()>queueWarningSize){
-            return "event thread executor pool is too big poolSize:"+poolSize +",queueSize:"+queue.size();
-        }
-        return "ok";
-    }
-
+    /**
+     * 事件的事务周期依赖，用于在事件抛出时，对于异步的事件，需要在事务提交成功之后才能执行
+     */
     class EventTxLifeDepend extends AbListDataTxLifeDepend{
         @Override
         protected void executeTxCommit(Object object) {
@@ -92,7 +110,13 @@ public class EventService{
         }
     }
 
-    // 事件事务只存在于异步事件中，同步事件执行原来就在事务中，
+    /**
+     * 如果在事务中，则放入事务缓存
+     *
+     * @param event 事件类型
+     * @param data 事件数据
+     * @return 是否放入事务缓存成功
+     */
     private boolean checkAndAddTx(int event,Object data){
         EventData eventData = new EventData(event);
         eventData.setData(data);
@@ -100,7 +124,12 @@ public class EventService{
     }
 
 
-
+    /**
+     * 触发同步事件监听器
+     *
+     * @param event 事件类型
+     * @param data 事件数据
+     */
     private void doSyncEvent(int event,Object data){
         Set<EventListenerHandler> synHandlerSet = synHandlerMap.get(event);
         if(synHandlerSet != null && synHandlerSet.size() > 0){
@@ -113,6 +142,13 @@ public class EventService{
             }
         }
     }
+
+    /**
+     * 触发异步事件监听器
+     *
+     * @param event 事件类型
+     * @param data 事件数据
+     */
     private void doASyncEvent(int event,Object data){
         final Set<EventListenerHandler> handlerSet = handlerMap.get(event);
         if(handlerSet != null && handlerSet.size() > 0) {
@@ -131,17 +167,13 @@ public class EventService{
         }
     }
 
-
     /**
-     * 事件是异步的
-     * 发出事件改为两种:同步|异步
-     * @param data 事件参数
+     * 普通的抛出事件，事件同步还是异步执行，将根据监听器的设置决定
+     *
      * @param event 事件id
+     * @param data 事件参数
      */
-    public void fireEvent(Object data, int event){
-//        EventData eventData = new EventData(event);
-//        eventData.setData(data);
-
+    public void fireEvent(int event,Object data){
         // 同步的
         doSyncEvent(event, data);
         // 异步的
@@ -149,19 +181,18 @@ public class EventService{
     }
 
     /**
-     * 同步触发事件，即事件完成方可返回，不管事件本身设置了同步还是异步
-     * */
-    public void fireEventSyn(Object data,int event){
-
+     * 同步的抛出事件，事件按照同步方式执行，忽略监听器的设定
+     *
+     * @param event 事件id
+     * @param data 事件参数
+     */
+    public void fireEventSyn(int event,Object data){
         Set<EventListenerHandler> handlerSet1 = handlerMap.get((short) event);
         Set<EventListenerHandler> handlerSet2 = synHandlerMap.get((short)event);
 
         if(handlerSet1 == null && handlerSet2 == null){
             return;
         }
-//        EventData eventData = new EventData(event);
-//        eventData.setData(data);
-
         checkAndHandle(handlerSet1,event,data,false);
         checkAndHandle(handlerSet2,event,data,true);
     }

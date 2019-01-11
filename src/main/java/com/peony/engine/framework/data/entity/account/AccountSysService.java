@@ -104,7 +104,7 @@ public class AccountSysService {
             account.setCountry(loginInfo.getCountry());
             dataService.insert(account);
             List<Object> regEventData = Arrays.asList(account,loginInfo.getLoginParams());
-            eventService.fireEventSyn(regEventData,SysConstantDefine.Event_AccountRegister);
+            eventService.fireEventSyn(SysConstantDefine.Event_AccountRegister,regEventData);
 //            throw new MMException("account is not exist, id="+id);
             newUser = true;
             log.info("new user register,uid={}",account.getUid());
@@ -176,8 +176,8 @@ public class AccountSysService {
 
         session.setMessageSender(loginInfo.getMessageSender());
 
-        eventService.fireEventSyn(loginEventData,SysConstantDefine.Event_AccountLogin);
-        eventService.fireEvent(loginEventData,SysConstantDefine.Event_AccountLoginAsync);
+        eventService.fireEventSyn(SysConstantDefine.Event_AccountLogin,loginEventData);
+        eventService.fireEvent(SysConstantDefine.Event_AccountLoginAsync,loginEventData);
         return session;
     }
 
@@ -246,8 +246,8 @@ public class AccountSysService {
         LogoutEventData logoutEventData = new LogoutEventData();
         logoutEventData.setSession(session);
         logoutEventData.setLogoutReason(logoutReason);
-        eventService.fireEventSyn(logoutEventData,SysConstantDefine.Event_AccountLogout);
-        eventService.fireEvent(logoutEventData,SysConstantDefine.Event_AccountLogoutAsync);
+        eventService.fireEventSyn(SysConstantDefine.Event_AccountLogout,logoutEventData);
+        eventService.fireEvent(SysConstantDefine.Event_AccountLogoutAsync,logoutEventData);
         //强制掉线
         session.setAvailable(false);
         session.closeConnect(logoutReason);

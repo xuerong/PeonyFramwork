@@ -160,7 +160,7 @@ public class NettyServerClient extends AbServerClient {
             System.err.println("connect server success " + channel);
             logger.info("connect server {} {}", ServerType.getServerTypeName(serverType), address);
 
-            eventService.fireEventSyn(NettyServerClient.this,SysConstantDefine.Event_ConnectNewServer);
+            eventService.fireEventSyn(SysConstantDefine.Event_ConnectNewServer,NettyServerClient.this);
 
             super.channelActive(ctx);
         }
@@ -177,8 +177,8 @@ public class NettyServerClient extends AbServerClient {
                 _tryConnect(5);
             }
 
-            eventService.fireEventSyn(NettyServerClient.this,SysConstantDefine.Event_NettyServerClient_Disconnect);
-            eventService.fireEvent(NettyServerClient.this,SysConstantDefine.Event_ConnectNewServerAsy);
+            eventService.fireEventSyn(SysConstantDefine.Event_NettyServerClient_Disconnect,NettyServerClient.this);
+            eventService.fireEvent(SysConstantDefine.Event_ConnectNewServerAsy,NettyServerClient.this);
             super.channelInactive(ctx);
         }
 

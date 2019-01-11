@@ -91,7 +91,7 @@ public class EntityHelper {
                 initEntity(entityClass);
             }
         }catch (Throwable e){
-            e.printStackTrace();
+            log.error("",e);
         }
     }
 

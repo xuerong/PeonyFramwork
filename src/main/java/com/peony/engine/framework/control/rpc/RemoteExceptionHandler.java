@@ -12,12 +12,12 @@ public enum RemoteExceptionHandler implements IRemoteExceptionHandler {
         public Object handle(int serverId, Class serviceClass, String methodName,String methodSignature, Object[] params, RuntimeException e) {
             log.info("RemoteExceptionHandler default",e);
             throw  e;
-//            return "";
         }
     },
     Null(){
         @Override
-        public Object handle(int serverId, Class serviceClass, String methodName,String methodSignature, Object[] params, RuntimeException e) {            log.info("RemoteExceptionHandler Null",e);
+        public Object handle(int serverId, Class serviceClass, String methodName,String methodSignature, Object[] params, RuntimeException e) {
+            log.info("RemoteExceptionHandler Null",e);
             return null;
         }
     },

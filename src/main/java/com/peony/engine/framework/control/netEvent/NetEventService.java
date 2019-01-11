@@ -303,7 +303,8 @@ public class NetEventService {
         if (serverClient != null && serverClient.isConnected()) {
             return sendNetEvent(serverClient, netEvent);
         }
-        throw new MMException(MMException.ExceptionType.SendNetEventFail,"serverClient is null");
+        // 如果是超时, 上面就会抛异常
+        throw new MMException(MMException.ExceptionType.RemoteFail,"服务器尚未建立连接 ,address={}," ,serverClient==null?null:serverClient.getAddress());
     }
 
     public NetEventData sendNetEvent(ServerClient serverClient, NetEventData netEvent) {

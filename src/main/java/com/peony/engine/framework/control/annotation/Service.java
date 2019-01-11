@@ -6,6 +6,7 @@ import com.peony.engine.framework.control.netEvent.remote.BroadcastRPC;
 import com.peony.engine.framework.control.rpc.Remotable;
 import com.peony.engine.framework.control.statistics.Statistics;
 import com.peony.engine.framework.data.tx.Tx;
+import com.peony.engine.framework.security.Monitor;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -29,6 +30,7 @@ import java.lang.annotation.Target;
  *     <li>{@link Gm}</li>
  *     <li>{@link Statistics}</li>
  *     <li>{@link AspectMark}</li>
+ *     <li>{@link Monitor}</li>
  * </ul>
  * <p>
  *

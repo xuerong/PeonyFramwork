@@ -91,10 +91,18 @@ public final class Server {
                 try {
                     methodEntry.getValue().invoke(object);
                     log.info("init service {} finish", methodEntry.getKey());
-                } catch (IllegalAccessException | InvocationTargetException e) {
+                } catch (IllegalAccessException e) {
                     log.error("init service " + methodEntry.getKey() + " fail ", e);
-                } finally { // 报异常，这里是停服务器还是继续？
-                    continue;
+                } catch (InvocationTargetException e){
+                    if(e.getCause() instanceof MMException){
+                        MMException mmException = (MMException)e.getCause();
+                        if(mmException.getExceptionType() == MMException.ExceptionType.StartUpFail){
+                            throw mmException;
+                        }
+                    }
+                    log.error("init service " + methodEntry.getKey() + " fail ", e);
+                }finally { // 报异常，这里是停服务器还是继续？
+//                    continue;
                 }
             }
         }
@@ -122,8 +130,8 @@ public final class Server {
         monitorService.startWait();
         // 服务器启动完成
         EventService eventService = BeanHelper.getServiceBean(EventService.class);
-        eventService.fireEventSyn(null,SysConstantDefine.Event_ServerStart);
-        eventService.fireEvent(null,SysConstantDefine.Event_ServerStartAsync);
+        eventService.fireEventSyn(SysConstantDefine.Event_ServerStart,null);
+        eventService.fireEvent(SysConstantDefine.Event_ServerStartAsync,null);
         // 关闭钩子
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
@@ -239,8 +247,8 @@ public final class Server {
             Server.start();
 //            log.info(DeployService.started);
         }catch (Throwable e){
-            log.error("start error!");
-            log.error(DeployService.startError);
+            log.error("start error!",e);
+//            log.error(DeployService.startError);
             System.exit(1);
         }
 
