@@ -66,7 +66,7 @@ public class BagService {
      */
     @Request(opcode = 20011)
     public JSONObject BagInfo(JSONObject req, Session session) {
-        List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",session.getAccountId());
+        List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",session.getUid());
         JSONObject ret = new JSONObject();
         JSONArray array = new JSONArray();
         for(BagItem bagItem : bagItemList){
@@ -119,7 +119,7 @@ public class BagService {
 引用其他服务类时，声明即可使用，系统启动时会进行依赖注入
 * @Request声明一个方法为处理客户端协议的方法，其中opcode为协议号(整型)，因为使用的是json协议，
 参数类型必须为JSONObject和Session，返回值类型为JSONObject。其中参数JSONObject为客户端发送过来的消息
-Session中有玩家基本信息，包括玩家账号`session.getAccountId()`
+Session中有玩家基本信息，包括玩家账号`session.getUid()`
 * 注解@Tx可以确保整个方法的执行在服务层事务中，确保业务失败的数据回滚和并发情况下的数据一致问题
 #### 四. 前端调用
 * 本地启动服务器
