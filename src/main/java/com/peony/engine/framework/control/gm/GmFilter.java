@@ -11,7 +11,15 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 
 /**
- * Created by a on 2016/9/29.
+ * GM工具请求的过滤器，用于进行登录校验和登录处理。
+ *
+ * @author zhengyuzhen
+ * @see GmService
+ * @see Gm
+ * @see GmAdmin
+ * @see GmServlet
+ * @see GmSegment
+ * @since 1.0
  */
 public class GmFilter implements Filter {
 

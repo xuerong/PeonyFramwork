@@ -4,7 +4,6 @@ import com.peony.engine.framework.control.ServiceHelper;
 import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.annotation.Updatable;
-import com.peony.engine.framework.control.event.EventData;
 import com.peony.engine.framework.control.event.EventService;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.cache.CacheService;

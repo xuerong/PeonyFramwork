@@ -5,14 +5,12 @@ import com.peony.engine.framework.control.annotation.NetEventListener;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.annotation.Updatable;
-import com.peony.engine.framework.control.event.EventData;
 import com.peony.engine.framework.control.event.EventListenerHandler;
 import com.peony.engine.framework.control.gm.Gm;
 import com.peony.engine.framework.control.netEvent.NetEventData;
 import com.peony.engine.framework.control.netEvent.NetEventListenerHandler;
 import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
 import com.peony.engine.framework.control.request.RequestHandler;
-import com.peony.engine.framework.control.request.RequestService;
 import com.peony.engine.framework.control.rpc.IRoute;
 import com.peony.engine.framework.control.rpc.Remotable;
 import com.peony.engine.framework.control.rpc.RemoteExceptionHandler;
@@ -22,24 +20,15 @@ import com.peony.engine.framework.control.statistics.StatisticsData;
 import com.peony.engine.framework.data.entity.session.Session;
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
 import com.peony.engine.framework.data.tx.Tx;
-import com.peony.engine.framework.net.packet.RetPacket;
 import com.peony.engine.framework.security.Monitor;
 import com.peony.engine.framework.security.exception.MMException;
-import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.server.Server;
-import com.peony.engine.framework.server.ServerType;
 import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.helper.ClassHelper;
 import com.peony.engine.framework.tool.util.ClassUtil;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import gnu.trove.map.hash.TIntObjectHashMap;
-import gnu.trove.map.hash.TShortObjectHashMap;
 import javassist.*;
 import javassist.bytecode.AnnotationsAttribute;
-import javassist.bytecode.AttributeInfo;
-import javassist.bytecode.MethodInfo;
-import com.alibaba.fastjson.JSONObject;
-import javassist.bytecode.SignatureAttribute;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +47,31 @@ import com.peony.engine.framework.control.annotation.EventListener;
  * EventListener-EventListenerHandler-EventService
  * NetEventListener-NetEventListenerHandler-NetEventService
  * Updatable-
+ *
+ *
+ *
+ $0, $1, $2, ...
+ this and 方法的参数
+ $args
+ 方法参数数组.它的类型为 Object[]
+ $$
+ 所有实参。例如, m($$) 等价于 m($1,$2,...)
+ $cflow(...)
+ cflow 变量
+ $r
+ 返回结果的类型，用于强制类型转换
+ $w
+ 包装器类型，用于强制类型转换
+ $_
+ 返回值
+ $sig
+ 类型为 java.lang.Class 的参数类型数组
+ $type
+ 一个 java.lang.Class 对象，表示返回值类型
+ $class
+ 一个 java.lang.Class 对象，表示当前正在修改的类
+
+ 链接：https://www.jianshu.com/p/b9b3ff0e1bf8
  */
 public final class ServiceHelper {
     private static final Logger log = LoggerFactory.getLogger(ServiceHelper.class);

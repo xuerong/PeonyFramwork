@@ -3,7 +3,17 @@ package com.peony.engine.framework.control.gm;
 import java.lang.reflect.Method;
 
 /**
- * Created by a on 2016/9/29.
+ * GM方法缓存对象。
+ * <p>
+ * GM方法的执行是通过反射完成的。
+ *
+ * @author zhengyuzhen
+ * @see GmService
+ * @see Gm
+ * @see GmAdmin
+ * @see GmServlet
+ * @see GmFilter
+ * @since 1.0
  */
 public class GmSegment {
     private String id;

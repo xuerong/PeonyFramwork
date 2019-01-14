@@ -15,7 +15,15 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Created by a on 2016/9/29.
+ * 接受GM请求的Servlet类。
+ *
+ * @author zhengyuzhen
+ * @see GmSegment
+ * @see Gm
+ * @see GmAdmin
+ * @see GmService
+ * @see GmFilter
+ * @since 1.0
  */
 public class GmServlet extends HttpServlet {
     private static final Logger log = LoggerFactory.getLogger(GmServlet.class);
@@ -34,7 +42,7 @@ public class GmServlet extends HttpServlet {
                 return o1.getId().compareTo(o2.getId());
             }
         });
-        //
+        // 缓存GM的json值
         for(GmSegment gmSegment : gmSegmentList){
             JSONObject item = new JSONObject();
             item.put("id",gmSegment.getId());
@@ -57,6 +65,13 @@ public class GmServlet extends HttpServlet {
         log.info("init gmServlet finish");
     }
 
+    /**
+     * gm http消息入口
+     * @param req
+     * @param resp
+     * @throws ServletException
+     * @throws IOException
+     */
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
@@ -69,15 +84,22 @@ public class GmServlet extends HttpServlet {
         }
     }
 
+    /**
+     * gm消息的处理
+     *
+     * @param req
+     * @param resp
+     * @throws Throwable
+     */
     private void doGm(HttpServletRequest req, HttpServletResponse resp) throws Throwable{
         String oper = req.getParameter("oper");
         if(oper==null){
             throw new MMException("oper==null");
         }
-        if(oper.equals("begin")){
+        if(oper.equals("begin")){ // 获取gm界面信息
             resp.getWriter().write(gmJsonStr);
-        }else if(oper.equals("gmSubmit")){
-            String gm = req.getParameter("gm");
+        }else if(oper.equals("gmSubmit")){ // gm访问消息
+            String gm = req.getParameter("gm"); // gmId
             GmSegment gmSegment = gmService.getGmSegments().get(gm);
             if(gmSegment == null){
                 throw new MMException("gmSegment is not exist,gm = "+gm);
@@ -109,6 +131,12 @@ public class GmServlet extends HttpServlet {
         }
     }
 
+    /**
+     * String数据转化为java对象：基本类型或String
+     * @param str
+     * @param cls
+     * @return
+     */
     public Object stringToObject(String str,Class cls){
         if(str.length()==0 && cls != String.class){
             if(cls == boolean.class || cls == Boolean.class){

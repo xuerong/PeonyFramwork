@@ -2,7 +2,6 @@ package com.peony.engine.framework.control.gm;
 
 import com.peony.engine.framework.control.ServiceHelper;
 import com.peony.engine.framework.control.annotation.Service;
-import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.security.exception.ToClientException;
 import com.peony.engine.framework.tool.helper.BeanHelper;
@@ -14,14 +13,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by a on 2016/9/28.
- * gm
+ * gm的服务类。
+ * <p>
+ * 在系统启动的时候进行GM方法的校验和预处理，缓存。在GM请求来时通过反射调用相应的GM方法。
+ *
+ * @author zhengyuzhen
+ * @see GmSegment
+ * @see Gm
+ * @see GmAdmin
+ * @see GmServlet
+ * @see GmFilter
+ * @since 1.0
  */
 @Service(init = "init")
 public class GmService {
     private static final Logger log = LoggerFactory.getLogger(GmService.class);
-    private RemoteCallService remoteCallService;
+    /**
+     * gm反射调用缓存
+     */
     private Map<String,GmSegment> gmSegments;
+
     public void init(){
         gmSegments = new HashMap<>();
         // 取出gm的所有方法的参数
@@ -29,13 +40,14 @@ public class GmService {
         for(Map.Entry<String,Method> entry : gmMethods.entrySet()){
             Method method = entry.getValue();
             Class returnType = method.getReturnType();
+            // 校验返回值
             if(returnType != Void.class && returnType!=Map.class && returnType!=String.class&& returnType!=void.class){
                 throw new MMException("gm method returnType error,id="+entry.getKey()+",returnType="+returnType);
             }
             GmSegment gmSegment = new GmSegment();
             gmSegment.setReturnType(returnType);
             Class[] paramsTypes = method.getParameterTypes();
-            // 校验一下：
+            // 校验参数：
             for(Class cls: paramsTypes){
                 if(!isGmPermitType(cls)){
                     throw new MMException("gm param error, just permit primitive and String!");
@@ -59,8 +71,9 @@ public class GmService {
 
     /**
      * 处理gm，注意这里传过来的参数全是引用数据类型，不是基本类型
-     * @param id
-     * @param params
+     *
+     * @param id gm的id
+     * @param params 参数值
      */
     public Object handle(String id,Object... params){
         GmSegment gmSegment = gmSegments.get(id);
@@ -96,6 +109,7 @@ public class GmService {
 
     /**
      * 如果是原始类型，转换成封装类型
+     *
      * @param cls
      */
     private Class castPrimitiveClass(Class cls){
@@ -112,6 +126,12 @@ public class GmService {
         return cls;
     }
 
+    /**
+     * 校验参数，基本类型或者String
+     *
+     * @param cls
+     * @return
+     */
     private boolean isGmPermitType(Class cls){
         if(cls.isPrimitive()){
             return true;

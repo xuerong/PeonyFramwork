@@ -213,4 +213,32 @@ public class EventService{
             }
         }
     }
+
+    /**
+     * 事件数据
+     */
+    public class EventData {
+        private int event; // 事件类型
+        private Object data; // 事件值
+
+        public EventData(int event){
+            this.event= event;
+        }
+
+        public int getEvent() {
+            return event;
+        }
+
+        public void setEvent(int event) {
+            this.event = event;
+        }
+
+        public Object getData() {
+            return data;
+        }
+
+        public void setData(Object data) {
+            this.data = data;
+        }
+    }
 }

@@ -5,7 +5,6 @@ import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
 import com.peony.engine.framework.control.annotation.Updatable;
-import com.peony.engine.framework.control.event.EventData;
 import com.peony.engine.framework.data.entity.account.AccountSysService;
 import com.peony.engine.framework.data.entity.account.LogoutEventData;
 import com.peony.engine.framework.data.entity.account.LogoutReason;

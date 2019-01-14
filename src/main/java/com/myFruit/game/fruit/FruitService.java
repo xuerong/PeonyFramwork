@@ -15,7 +15,6 @@ import com.myFruit.game.userBase.UserBaseService;
 import com.peony.engine.framework.control.annotation.EventListener;
 import com.peony.engine.framework.control.annotation.Request;
 import com.peony.engine.framework.control.annotation.Service;
-import com.peony.engine.framework.control.event.EventData;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.entity.account.sendMessage.SendMessageService;
 import com.peony.engine.framework.data.entity.session.Session;
