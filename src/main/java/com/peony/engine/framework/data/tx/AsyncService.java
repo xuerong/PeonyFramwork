@@ -402,27 +402,27 @@ public class AsyncService {
     public void testUpdateForList(String uid){
         int testKey1 = 10,testKey2=11;
         DataService dataService = BeanHelper.getServiceBean(DataService.class);
-//        Random random = new Random();
-//        for(int i = 0;i<1000;i++){
-//            TestDbEntity testDbEntity = new TestDbEntity();
-//            testDbEntity.setUid("testDbEntity"+i);
-//            testDbEntity.setAaa(random.nextInt(50)+"");
-//            testDbEntity.setBbb(random.nextInt(300)+"");
-//            dataService.insert(testDbEntity);
-//        }
+        Random random = new Random();
+        for(int i = 0;i<1000;i++){
+            TestDbEntity testDbEntity = new TestDbEntity();
+            testDbEntity.setUid("testDbEntity"+i);
+            testDbEntity.setAaa(random.nextInt(50)+"");
+            testDbEntity.setCcc(random.nextInt(300)+"");
+            dataService.insert(testDbEntity);
+        }
         List<TestDbEntity> testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",testKey2+"");
         System.out.println(testKey2+":"+testDbEntities.size()+"    "+testDbEntities);
         testDbEntities = dataService.selectList(TestDbEntity.class,"aaa=?",testKey1+"");
         System.out.println(testKey1+":"+testDbEntities.size()+"    "+testDbEntities);
-        if(testDbEntities.size()>5){
-            TestDbEntity testDbEntity = testDbEntities.get(4);
-            testDbEntity.setAaa(testKey2+"");
-            System.out.println("change testDbEntity:"+testDbEntity);
+        if(testDbEntities.size()>0){
+            TestDbEntity testDbEntity = testDbEntities.get(0);
+            testDbEntity.setAaa("sdfsdfs");
+//            System.out.println("change testDbEntity:"+testDbEntity);
             dataService.update(testDbEntity);
-            testDbEntity = testDbEntities.get(6);
-            testDbEntity.setAaa(testKey2+"");
-            System.out.println("change testDbEntity:"+testDbEntity);
-            dataService.update(testDbEntity);
+//            testDbEntity = testDbEntities.get(6);
+//            testDbEntity.setAaa(testKey2+"");
+//            System.out.println("change testDbEntity:"+testDbEntity);
+//            dataService.update(testDbEntity);
 //            testDbEntity = testDbEntities.get(8);
 //            testDbEntity.setAaa(testKey2+"");
 //            dataService.update(testDbEntity);

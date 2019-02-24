@@ -1,7 +1,6 @@
 package com.peony.engine.framework.control.job;
 
 import com.peony.engine.framework.control.annotation.Service;
-import com.peony.engine.framework.control.netEvent.NetEventService;
 import com.peony.engine.framework.data.DataService;
 import com.peony.engine.framework.data.tx.AbListDataTxLifeDepend;
 import com.peony.engine.framework.data.tx.Tx;
@@ -17,41 +16,49 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Timestamp;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.*;
 
 /**
- * Created by apple on 16-9-4.
- *
+ * Job服务。Job指过一段时间后执行某个方法。
+ * <p>
+ * Job使用的是{@code ScheduledThreadPoolExecutor}实现。同时Job会保存在数据库中，确保
+ * Job不会因为服务器关闭而被清除。
+ * <p>
  * TODO 目前先用ScheduledThreadPoolExecutor实现，后面可以考虑使用quartz实现
- * TODO 还没有考虑job的事务，即事务提交之后才能提交相应job...主要是加在jobExecutorMap中的如果事务失败要删除掉
+ *
+ * @author zhengyuzhen
+ * @see Job
+ * @since 1.0
  */
 @Service(init = "init",initPriority = 4)
 public class JobService {
     private static final Logger log = LoggerFactory.getLogger(JobService.class);
-    // 执行job的调度器,这个线程数不用处理器的个数,因为有些job会有数据库操作
+    // 执行job的调度器
     private ScheduledThreadPoolExecutor executor = ThreadPoolHelper.newScheduledThreadPoolExecutor("Job",16);
+    // 未执行的job
     private ConcurrentHashMap<Long,JobExecutor> jobExecutorMap = new ConcurrentHashMap<>();
+    // 事务依赖处理器
     private JobTxLifeDepend<Job> jobTxLifeDepend = new JobTxLifeDepend<>();
 
-    private NetEventService netEventService;
     private DataService dataService;
     private IdService idService;
     private TxCacheService txCacheService;
 
 
     public void init(){
+        // 系统初始化时，从数据库中取出之前的Job，并启动
         List<Job> jobList = dataService.selectList(Job.class,"serverId=?",Server.getServerId());
         for (Job job : jobList){
             startJob(job,false);
         }
-        //
+        // 注册事务依赖处理器
         txCacheService.registerTxLifeDepend(jobTxLifeDepend);
     }
 
     /**
      * 启动一个Job
+     *
      * @param delay 延时时间
      * @param service Service类，必须是@Service
      * @param method 方法名
@@ -72,13 +79,12 @@ public class JobService {
     }
 
     private void startJob(Job job){
+        // 如果在事务中，先放入事务
         if(jobTxLifeDepend.checkAndPut(job)){
             return;
         }
         startJob(job,true);
     }
-
-
 
     private void startJob(Job job,boolean isDb){
         JobExecutor jobExecutor = createJobExecutor(job);
@@ -101,20 +107,46 @@ public class JobService {
         }
     }
 
+    /**
+     * 事务依赖器，事务提交时才启动事务
+     *
+     * @param <T>
+     */
     class JobTxLifeDepend<T> extends AbListDataTxLifeDepend<T> {
         @Override
         protected void executeTxCommit(T object) {
             startJob((Job) object);
         }
+
+        public boolean checkAndDelete(long id){
+            if(txCacheService.isInTx()){
+                List<T> jobList = jobThreadLocal.get();
+                if(jobList != null){
+                    for(T t : jobList){
+                        Job job = (Job)t;
+                        if(job.getId() == id){
+                            jobList.remove(t);
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
     }
 
 
     /**
-     * 删除一个任务
+     * 删除一个Job
+     *
      * @param id job的id
      */
     @Tx
     public void deleteJob(long id){
+        // 如果在事务中，先尝试从事务中删除
+        if(jobTxLifeDepend.checkAndDelete(id)){
+            return;
+        }
         deleteJob(id,false);
     }
 
@@ -131,6 +163,12 @@ public class JobService {
         }
     }
 
+    /**
+     * 创建Job执行器
+     *
+     * @param job
+     * @return
+     */
     private JobExecutor createJobExecutor(Job job){
         JobExecutor jobExecutor = new JobExecutor();
         jobExecutor.id = job.getId();
@@ -201,13 +239,12 @@ public class JobService {
 
         @Override
         public void run() {
-            Date now = new Date();
             try {
                 method.invoke(object,para);
             } catch (IllegalAccessException e) {
-                e.printStackTrace();
+                log.error("job execute error!",e);
             } catch (InvocationTargetException e) {
-                e.printStackTrace();
+                log.error("job execute error!",e);
             }finally {
                 deleteJob(id,true);
             }

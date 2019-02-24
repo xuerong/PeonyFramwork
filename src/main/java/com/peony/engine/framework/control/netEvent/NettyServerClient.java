@@ -273,4 +273,13 @@ public class NettyServerClient extends AbServerClient {
             }
         }
     }
+
+    public void shutdown(){
+        autoReconnect = false;
+        try{
+            channel.close();
+        }catch (Exception e){
+            logger.error("",e);
+        }
+    }
 }

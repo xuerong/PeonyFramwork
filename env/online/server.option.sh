@@ -10,6 +10,8 @@
 -XX:CMSInitiatingOccupancyFraction=70
 -Xloggc:logs/gc.log
 -XX:+PrintGCDetails
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=logs/
 
 # 远程调试
 # -Xrunjdwp:transport=dt_socket,address=5088,server=y,suspend=n

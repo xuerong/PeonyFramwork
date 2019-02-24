@@ -29,4 +29,6 @@ public interface ServerClient {
     void push(Object msg);
 
     public InetSocketAddress getAddress();
+
+    void shutdown();
 }

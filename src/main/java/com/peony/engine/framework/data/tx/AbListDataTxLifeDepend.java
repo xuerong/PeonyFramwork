@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class AbListDataTxLifeDepend <T> implements ITxLifeDepend{
-    ThreadLocal<List<T>> jobThreadLocal = new ThreadLocal<>();
+    protected ThreadLocal<List<T>> jobThreadLocal = new ThreadLocal<>();
     public boolean checkAndPut(T object){
         if(TxCacheServiceHolder.txCacheService.isInTx()){
             List<T> jobList = jobThreadLocal.get();

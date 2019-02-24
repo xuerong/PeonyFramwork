@@ -36,7 +36,7 @@ import java.util.concurrent.*;
  * TODO 调用的方法命名有点混乱
  * TODO remove方法
  */
-@Service(init = "init",initPriority = 1)
+@Service(init = "init",initPriority = 1,destroy = "destroy")
 public class NetEventService {
     private static final Logger logger = LoggerFactory.getLogger(NetEventService.class);
 
@@ -345,6 +345,10 @@ public class NetEventService {
         throw new MMException(MMException.ExceptionType.RemoteFail,"服务器尚未建立连接 " + address);
     }
 
-
+    public void destroy(){
+        for(ServerClient serverClient: serverClients.values()){
+            serverClient.shutdown();
+        }
+    }
 
 }

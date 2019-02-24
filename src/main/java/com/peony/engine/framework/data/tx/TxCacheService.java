@@ -496,6 +496,7 @@ public class TxCacheService {
 
     public static class PrepareCachedData {
         private OperType operType;
+        // TODO 这个key，如果更新可以的话，是更新之后的数据的key，而不是，更新之前的key，在校验时会有问题，更新缓存的地方也要看下！要改成更新之前的key！！！！
         private String key;
         private Object data;
 

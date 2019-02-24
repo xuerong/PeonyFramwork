@@ -140,7 +140,6 @@ public class HttpService {
         HttpPost post = new HttpPost(url);
         String str = "";
         try {
-
             StringEntity strEn = new StringEntity(body, contentType);
             post.setEntity(strEn);
 

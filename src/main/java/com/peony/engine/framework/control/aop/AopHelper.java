@@ -134,6 +134,8 @@ public final class AopHelper {
                                     if(exception.getExceptionType() == MMException.ExceptionType.TxCommitFail){
                                         txException = exception;
                                     }
+                                }else{
+                                    log.error("aop execute after error!",e);
                                 }
                             }
                         }

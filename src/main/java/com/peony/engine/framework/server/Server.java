@@ -215,6 +215,8 @@ public final class Server {
                 log.info("stop entrance {} finish use {}", entrance.getName(), System.currentTimeMillis() - start);
             }
         }
+        // TODO 关闭出口，注意：出口会重连，要关闭schedule
+        // ServerClient
 
         // 等待关闭条件完成
         MonitorService monitorService = BeanHelper.getServiceBean(MonitorService.class);

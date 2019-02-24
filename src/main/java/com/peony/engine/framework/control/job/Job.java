@@ -9,7 +9,15 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 /**
- * Created by apple on 16-10-2.
+ * Job对象。
+ * <p>
+ * Job指过一段时间后执行某个方法。Job对象有两个作用：1、保存一段时间后执行的一个Job，在执行
+ * 时间点到了之后取出来执行，2、当Job启动时保存在数据库中，当服务器重启时会加载出来，确保Job
+ * 不会因为服务器关闭被清除。
+ *
+ * @author zhengyuzhen
+ * @see JobService
+ * @since 1.0
  */
 @DBEntity(tableName = "job",pks = {"id"})
 public class Job implements Serializable {
