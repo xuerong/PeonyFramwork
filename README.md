@@ -19,7 +19,7 @@ PeonyFramwork是一个优秀的java后端框架，上手简单，使用灵活方
 
 1、用idea，Open->选择根目录的build.gradle文件->把项目作为gradle项目打开 <br>
 2、找到src->main->resources->mmserver.properties文件，修改里面的数据库配置，包括数据库连接`jdbc.url`，用户名`jdbc.username`和密码`jdbc.password`。（不用创建表）<br>
-当MySQL的版本小于6时，需要修改`jdbc.driver=com.mysql.jdbc.Driver`，否则，使用`jdbc.driver=com.mysql.cj.jdbc.Driver`
+当MySQL的版本小于6时，需要修改`jdbc.driver=com.mysql.jdbc.Driver`，否则，使用`jdbc.driver=com.mysql.cj.jdbc.Driver`<br>
 3、找到启动类com.peony.engine.framework.server.Server，运行。<br>
 成功启动的标志为：
 ```$xslt
