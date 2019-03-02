@@ -138,6 +138,9 @@ task build_server(dependsOn: ['init_dependencies']) {
             into outDir
         }
     }
+    doLast{
+        delete buildDir.absolutePath + '/classes/main'
+    }
 }
 
 
@@ -183,4 +186,8 @@ task build_update_config() {
             }
         }
     }
+}
+this.project.afterEvaluate{
+    delete buildDir.absolutePath + '/classes/main'
+    //这里可以添加一些版本控制信息
 }
