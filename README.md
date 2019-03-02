@@ -37,6 +37,13 @@ PeonyFramwork是一个优秀的java后端框架，上手简单，使用灵活方
 3. 在com.myApp下面创建背包功能的包bag
 #### 二. 在bag包下面定义一个背包存储类"DBEntity"，如下：
 ```$xslt
+package com.myApp.bag;
+
+import com.alibaba.fastjson.JSONObject;
+import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
+
+import java.io.Serializable;
+
 @DBEntity(tableName = "bag",pks = {"uid","itemId"})
 public class BagItem implements Serializable {
     private String uid; // 玩家id
@@ -51,6 +58,30 @@ public class BagItem implements Serializable {
     }
 
     // get set 方法
+
+    public String getUid() {
+        return uid;
+    }
+
+    public void setUid(String uid) {
+        this.uid = uid;
+    }
+
+    public int getItemId() {
+        return itemId;
+    }
+
+    public void setItemId(int itemId) {
+        this.itemId = itemId;
+    }
+
+    public int getNum() {
+        return num;
+    }
+
+    public void setNum(int num) {
+        this.num = num;
+    }
 }
 ```
 * 注解@DBEntity声明一个类为背包类，对应数据库中一张表，其参数tableName对应表名，pks对应表的主键，可以为多个。
@@ -58,6 +89,20 @@ public class BagItem implements Serializable {
 * 表不用手动创建，系统启动时会自动在数据库中创建，大多数的修改也会进行同步，所以不要声明不需要存储数据库的字段
 #### 三. 在bag包下面定义一个背包处理服务类"Service"，如下：
 ```$xslt
+package com.myApp.bag;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.peony.engine.framework.control.annotation.Request;
+import com.peony.engine.framework.control.annotation.Service;
+import com.peony.engine.framework.data.DataService;
+import com.peony.engine.framework.data.entity.session.Session;
+import com.peony.engine.framework.data.tx.Tx;
+import com.peony.engine.framework.security.exception.ToClientException;
+import com.peony.engine.framework.server.SysConstantDefine;
+
+import java.util.List;
+
 @Service
 public class BagService {
 
@@ -114,6 +159,7 @@ public class BagService {
         return bagItem.getNum();
     }
 }
+
 ```
 * 注解@Service声明一个类为一个服务类
 * 声明了数据服务类DataService，该类中提供了对数据操作的所有接口。
