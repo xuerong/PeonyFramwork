@@ -401,12 +401,12 @@ public class EntityHelper {
                             String tableName = dbEntity.tableName()+"_"+i;
                             String sql = "alter table `" + tableName + "` add column " + createSqlDes(field.getType(), columnName, collation);
                             DatabaseHelper.updateForCloseConn(sql);
-                            log.warn("{} is not exist in table {},add it {}",columnName, tableName,sql);
+                            log.warn("{} is not exist in table {},add it: {}",columnName, tableName,sql);
                         }
                     }else {
                         String sql = "alter table `" + dbEntity.tableName() + "` add column " + createSqlDes(field.getType(), columnName, collation);
                         DatabaseHelper.updateForCloseConn(sql);
-                        log.warn("{} is not exist in table {},add it {}",columnName, dbEntity.tableName(),sql);
+                        log.warn("{} is not exist in table {},add it: {}",columnName, dbEntity.tableName(),sql);
                     }
                 }
                 // 修改
@@ -491,12 +491,12 @@ public class EntityHelper {
                     if(dbEntity.tableNum() > 1){
                         for(int i=0;i<dbEntity.tableNum();i++){
                             String tableName = dbEntity.tableName()+"_"+i;
-                            String sql = "alter table `" + tableName + "` drop column " + entry.getKey();
+                            String sql = "alter table `" + tableName + "` drop column `" + entry.getKey()+"`";
                             DatabaseHelper.updateForCloseConn(sql);
                             log.warn("{} do not need in table {},drop it {}",entry.getKey(), tableName,sql);
                         }
                     }else {
-                        String sql = "alter table `" + dbEntity.tableName() + "` drop column " + entry.getKey();
+                        String sql = "alter table `" + dbEntity.tableName() + "` drop column `" + entry.getKey()+"`";
                         DatabaseHelper.updateForCloseConn(sql);
                         log.warn("{} do not need in table {},drop it {}",entry.getKey(), dbEntity.tableName(),sql);
                     }

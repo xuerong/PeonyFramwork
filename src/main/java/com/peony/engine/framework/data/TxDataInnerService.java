@@ -149,7 +149,7 @@ public class TxDataInnerService {
         CacheEntity entity = (CacheEntity)cacheService.get(listKey);
         List<T> objectList = null;
         if(entity == null){
-            // TODO 加锁listKey:这里为什么要加锁？
+            //  加锁listKey:
             boolean lock = lockerService.lockKeys(listKey);
             if(!lock){
 //                ExceptionHelper.handle();

@@ -64,6 +64,8 @@ public class DeployService {
         //
 //        new DeployService().deployGit("myfruit","https://github.com/xuerong/PeonyFramwork.wiki.git",null,null,"master");
 
+        deployOneServer();
+
     }
 
     public JSONObject getCodeOriginList(String projectId){
@@ -570,41 +572,23 @@ public class DeployService {
         }
     }
 
+    private static void deployOneServer(){
+        // build，上传
+        System.out.print(System.getProperty("user.dir"));
+//        Runtime.getRuntime()
+//        doBuild();
+    }
+
     public void deployLocal(String projectId,DeployType deployType,String paramsStr,String projectUrl,String serverIds,DeployState deployState)throws Exception{
 
         deployState.stateInfo.put("state",2);
         // 本地编译
 //        String projectUrl = System.getProperty("user.dir");
 
-        StringBuilder cmd = new StringBuilder("cd "+projectUrl+" \n");
-        cmd.append("pwd \n");
-        cmd.append("echo build... \n");
-        cmd.append("gradle  "+deployType.getBuildTask()+paramsStr+" \n");
-        //tar -xzvf im_toby.tar.gz
-        cmd.append("cd "+projectUrl+"/build \n");
-        cmd.append("echo tar begin... \n");
-        cmd.append("tar -czvf "+projectUrl+"/build/target.tar.gz "+"./target \n"); // TODO 最后要删除
-        cmd.append("echo tar finish... \n");
-
-        System.out.println(cmd);
-
-        String[] cmds = {"/bin/sh","-c",cmd.toString()};
-
-        Process pro = Runtime.getRuntime().exec(cmds);
-//        pro.waitFor();
-        InputStream in = pro.getInputStream();
-        BufferedReader read = new BufferedReader(new InputStreamReader(in));
-        String line = null;
-        while((line = read.readLine())!=null){
-            System.out.println(line);
-            deployState.appendLog(line);
-        }
-        System.out.println("-------------------------------");
-        Thread.sleep(500);
+        doBuild(projectUrl,deployType.getBuildTask(),paramsStr,deployState);
         deployState.appendLog(endStr);
         // sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
         // sudo launchctl list | grep ssh
-
 
         deployState.stateInfo.put("state",3);
 
@@ -637,63 +621,10 @@ public class DeployService {
             array.add(object);
             executorService.execute(()->{
                 deployState.logPre.set(deployServer.getId()+"服\t\t");
-                Session session = null;
                 try{
-                    object.put("st","1"); // 开始连接
-                    // 连接
-//                    Session session  = this.connect("localhost","郑玉振elex",22,"zhengyuzhen");
-//                    Session session  = connect("47.93.249.150","root",22,"Zyz861180416");
-                    session  = connect(deployServer.getSshIp(),deployServer.getSshUser(),22,deployServer.getSshPassword());
-            //            Session session  = this.connect(deployServer.getSshIp(),deployServer.getSshUser(),22,deployServer.getSshPassword());
-                    System.out.println("isConnected:"+session!=null);
-
-                    // 创建目录
-                    object.put("st","2");// 正在上传
-
-                    StringBuilder uploadCmds = new StringBuilder();
-                    uploadCmds.append("mkdir -p "+deployServer.getPath().trim()+" \n");
-                    uploadCmds.append("cd "+deployServer.getPath().trim()+" \n");
-                    execCmd(session,uploadCmds.toString(),object,deployState);
-                    // 上传
-                    upload(session,deployServer.getPath().trim()+"/target.tar.gz",projectUrl+"/build/target.tar.gz",new DeployProgressSetter(deployState,deployServer.getId()));
-
-                    // 解压并执行
-                    object.put("st","3"); // 解压并执行
-                    StringBuilder execCmds = new StringBuilder();
-                    execCmds.append("cd "+deployServer.getPath().trim()+" \n");
-                    execCmds.append("tar -xzvf target.tar.gz --strip-components 2 ./target\n");
-//                    execCmds.append("cd target \n");
-                    // sed -r 's/^\s*serverId\s*=.*/serverId=3/g'
-//                    RegExp regExp = new RegExp("");
-                    // 修改参数
-                    if(StringUtils.isNotEmpty(deployServer.getConfig())){
-                        JSONObject configObject = JSONObject.parseObject(deployServer.getConfig());
-                        for(Map.Entry<String,Object> entry : configObject.entrySet()){
-                            // 这个sed命令在mac上有问题，需要在-i 后面加个空字符串参数：''
-                            String replaceCmd = "sed -i 's#^\\s*"+ Util.regReplace(entry.getKey())+"\\s*=.*#"+Util.regReplace(entry.getKey()+"="+entry.getValue())+"#g' config/mmserver.properties \n";
-                            execCmds.append(replaceCmd);
-                        }
-                    }
-                    boolean restart = deployType.getRestart()>0;
-                    if(restart){
-                        execCmds.append("echo begin start server \n");
-                        execCmds.append("sh start.sh \n");
-                    }else{
-                        execCmds.append("echo no need restart server \n");
-                    }
-                    execCmd(session,execCmds.toString(),restart,object,deployState);
-                    // 断开
-//                    session.disconnect();
-                    //
-                }catch (Throwable e){
-                    logger.error("deploy server error! server id={} ",deployServer.getId(),e);
-                    object.put("error",e.getMessage());
+                    doDeployToServer(object,projectUrl,deployServer,deployState,deployType.getRestart()>0);
                 }finally {
                     latch.countDown();
-                    if(session!= null){
-                        session.disconnect();
-                    }
-                    deployState.logPre.remove();
                 }
             });
         }
@@ -708,13 +639,102 @@ public class DeployService {
     }
 
 
+    private static void doBuild(String projectUrl,String buildTask,String paramsStr,DeployState deployState) throws IOException,InterruptedException{
+        StringBuilder cmd = new StringBuilder("cd "+projectUrl+" \n");
+        cmd.append("pwd \n");
+        cmd.append("echo build... \n");
+        cmd.append("gradle  "+buildTask+paramsStr+" \n");
+        //tar -xzvf im_toby.tar.gz
+        cmd.append("cd "+projectUrl+"/build \n");
+        cmd.append("echo tar begin... \n");
+        cmd.append("tar -czvf "+projectUrl+"/build/target.tar.gz "+"./target \n"); // TODO 最后要删除
+        cmd.append("echo tar finish... \n");
+
+        System.out.println(cmd);
+
+        String[] cmds = {"/bin/sh","-c",cmd.toString()};
+
+        Process pro = Runtime.getRuntime().exec(cmds);
+//        pro.waitFor();
+        InputStream in = pro.getInputStream();
+        BufferedReader read = new BufferedReader(new InputStreamReader(in));
+        String line = null;
+        while((line = read.readLine())!=null){
+            System.out.println(line);
+            if(deployState != null){
+                deployState.appendLog(line);
+            }
+        }
+        System.out.println("-------------------------------");
+        Thread.sleep(500);
+    }
+
+    private static void doDeployToServer(JSONObject object,String projectUrl,DeployServer deployServer,DeployState deployState,boolean restart){
+        Session session = null;
+        try{
+            object.put("st","1"); // 开始连接
+            // 连接
+//                    Session session  = this.connect("localhost","郑玉振elex",22,"zhengyuzhen");
+//                    Session session  = connect("47.93.249.150","root",22,"Zyz861180416");
+            session  = connect(deployServer.getSshIp(),deployServer.getSshUser(),22,deployServer.getSshPassword());
+            //            Session session  = this.connect(deployServer.getSshIp(),deployServer.getSshUser(),22,deployServer.getSshPassword());
+            System.out.println("isConnected:"+session!=null);
+
+            // 创建目录
+            object.put("st","2");// 正在上传
+
+            StringBuilder uploadCmds = new StringBuilder();
+            uploadCmds.append("mkdir -p "+deployServer.getPath().trim()+" \n");
+            uploadCmds.append("cd "+deployServer.getPath().trim()+" \n");
+            execCmd(session,uploadCmds.toString(),object,deployState);
+            // 上传
+            upload(session,deployServer.getPath().trim()+"/target.tar.gz",projectUrl+"/build/target.tar.gz",new DeployProgressSetter(deployState,deployServer.getId()));
+
+            // 解压并执行
+            object.put("st","3"); // 解压并执行
+            StringBuilder execCmds = new StringBuilder();
+            execCmds.append("cd "+deployServer.getPath().trim()+" \n");
+            execCmds.append("tar -xzvf target.tar.gz --strip-components 2 ./target\n");
+//                    execCmds.append("cd target \n");
+            // sed -r 's/^\s*serverId\s*=.*/serverId=3/g'
+//                    RegExp regExp = new RegExp("");
+            // 修改参数
+            if(StringUtils.isNotEmpty(deployServer.getConfig())){
+                JSONObject configObject = JSONObject.parseObject(deployServer.getConfig());
+                for(Map.Entry<String,Object> entry : configObject.entrySet()){
+                    // 这个sed命令在mac上有问题，需要在-i 后面加个空字符串参数：''
+                    String replaceCmd = "sed -i 's#^\\s*"+ Util.regReplace(entry.getKey())+"\\s*=.*#"+Util.regReplace(entry.getKey()+"="+entry.getValue())+"#g' config/mmserver.properties \n";
+                    execCmds.append(replaceCmd);
+                }
+            }
+//            boolean restart = deployType.getRestart()>0;
+            if(restart){
+                execCmds.append("echo begin start server \n");
+                execCmds.append("sh start.sh \n");
+            }else{
+                execCmds.append("echo no need restart server \n");
+            }
+            execCmd(session,execCmds.toString(),restart,object,deployState);
+            // 断开
+//                    session.disconnect();
+            //
+        }catch (Throwable e){
+            logger.error("deploy server error! server id={} ",deployServer.getId(),e);
+            object.put("error",e.getMessage());
+        }finally {
+            if(session!= null){
+                session.disconnect();
+            }
+            deployState.logPre.remove();
+        }
+    }
 
     /**
      * 连接到指定的服务器
      * @return
      * @throws JSchException
      */
-    public Session connect(String jschHost,String jschUserName,int jschPort,String jschPassWord) throws Throwable {
+    public static Session connect(String jschHost,String jschUserName,int jschPort,String jschPassWord) throws Throwable {
 
         JSch jsch = new JSch();// 创建JSch对象
 
@@ -770,7 +790,7 @@ public class DeployService {
      *                  ２、/opt/文件名，则是另起一个名字
      * @param uploadFile 要上传的文件 如/opt/xxx.txt
      */
-    public void upload(Session session,String directory, String uploadFile,DeployProgressSetter deployProgressSetter) throws Throwable{
+    public static void upload(Session session,String directory, String uploadFile,DeployProgressSetter deployProgressSetter) throws Throwable{
         ChannelSftp chSftp = null;
         Channel channel = null;
         try {
@@ -819,10 +839,10 @@ public class DeployService {
         }
     }
 
-    public void execCmd(Session session,String cmd,JSONObject object,DeployState deployState) throws Throwable{
+    public static void execCmd(Session session,String cmd,JSONObject object,DeployState deployState) throws Throwable{
         execCmd(session,cmd,false,object,deployState);
     }
-    public void execCmd(Session session,String cmd,boolean startUp,JSONObject object,DeployState deployState) throws Throwable{
+    public static void execCmd(Session session,String cmd,boolean startUp,JSONObject object,DeployState deployState) throws Throwable{
         ChannelShell channel = null;
         try{
             channel = (ChannelShell) session.openChannel("shell");
