@@ -101,4 +101,6 @@ public class Job implements Serializable {
             logger.error("setParamsObjectArray error!id={}",id,e);
         }
     }
+
+
 }

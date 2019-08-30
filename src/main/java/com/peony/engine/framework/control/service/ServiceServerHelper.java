@@ -1,8 +1,12 @@
 package com.peony.engine.framework.control.service;
 
 import com.peony.engine.framework.control.ServiceHelper;
+import com.peony.engine.framework.control.netEvent.remote.RemoteCallService;
+import com.peony.engine.framework.control.service.rule.RuleType;
+import com.peony.engine.framework.control.service.rule.ServiceCallRule;
 import com.peony.engine.framework.security.exception.MMException;
 import com.peony.engine.framework.server.Server;
+import com.peony.engine.framework.tool.helper.BeanHelper;
 import com.peony.engine.framework.tool.helper.ClassHelper;
 import com.peony.engine.framework.tool.helper.ConfigHelper;
 import com.peony.engine.framework.tool.util.Util;
@@ -44,116 +48,151 @@ public class ServiceServerHelper {
         }
     }
 
-    public static int getServerId(int serverId,Class<?> service,Object... params){
-        RunSegment runSegment = serviceServerIdMap.get(service);
-        if(runSegment.serverIdSet.contains(serverId) && !runSegment.selfUseRule){
-            return Server.getServerId();
-        }
-        switch (runSegment.ruleType){
-            case Order:
-                return runSegment.serverIds[(Integer)params[0]];
-            case Random:
-                return runSegment.serverIds[Util.randomInt(runSegment.serverIds.length)]; // TODO 这个是否考虑去掉之前随机但是失败过的？
-            case Modulus:
-                return runSegment.serverIds[serverId%runSegment.serverIds.length];
-            case SelfDefined:
-                return runSegment.serviceCallRule.getServerId(serverId); // TODO 是否也要考虑之前失败过的
-        }
-        throw new MMException("getServerId error!serverId={},service={},params={}",serverId,service,params);
-    }
-
-//    private static Object onceCall(RemoteCallService remoteCallService,int serverId,Class serviceClass, String methodName, Object[] params){
-//        try {
-//            // TODO 远程调用异常暂时使用null
-//            return remoteCallService.remoteCallSyn(serverId, serviceClass, methodName, params,null);
-//        }catch (Throwable e){
-//            if(e instanceof MMException){
-//                MMException mmException = (MMException)e;
-//                if(mmException.getExceptionType() == MMException.ExceptionType.SendNetEventFail){
-//                    // 远程调用失败，调用下一个
-//                    return null;
-//                }else{
-//                    throw e; // 远程服务器抛出的异常，直接抛出来
-//                }
-//            }
-//            throw e; // 远程服务器抛出的异常，直接抛出来
+//    public static int getServerId(int serverId,Class<?> service,Object... params){
+//        RunSegment runSegment = serviceServerIdMap.get(service);
+//        if(runSegment.serverIdSet.contains(serverId) && !runSegment.selfUseRule){
+//            return Server.getServerId();
 //        }
-//    }
-//
-//    public static Object remoteCall(Class serviceClass, String methodName, Object[] params){
-//        RunSegment runSegment = serviceServerIdMap.get(serviceClass);
-//        if(runSegment == null){
-//            throw new MMException("runSegment is not exist!");
-//        }
-//        RemoteCallService remoteCallService = BeanHelper.getServiceBean(RemoteCallService.class);
 //        switch (runSegment.ruleType){
 //            case Order:
-//                for(int serverId:runSegment.serverIds) {
-//                    Object onceCallRet = onceCall(remoteCallService,serverId, serviceClass, methodName, params);
-//                    if(onceCallRet != null){
-//                        return onceCallRet;
-//                    }
-//                }
-//                break;
+//                return runSegment.serverIds[(Integer)params[0]];
 //            case Random:
-//                int firstServerId = runSegment.serverIds[Util.randomInt(runSegment.serverIds.length)];// TODO 随机是否有效率上的问题，优化之
-//                Object onceCallRet = onceCall(remoteCallService,firstServerId, serviceClass, methodName, params);
-//                if(onceCallRet != null){
-//                    return onceCallRet;
-//                }
-//
-//                if(runSegment.serverIds.length > 1){
-//                    List<Integer> failServerIdList = new ArrayList<Integer>(runSegment.serverIds.length){{
-//                        for(int serverId:runSegment.serverIds) {
-//                            if(serverId != firstServerId) {
-//                                add(serverId);
-//                            }
-//                        }
-//                    }};
-//                    while(!failServerIdList.isEmpty()){
-//                        int serverId = failServerIdList.remove(Util.randomInt(failServerIdList.size()));
-//                        onceCallRet = onceCall(remoteCallService,serverId, serviceClass, methodName, params);
-//                        if(onceCallRet != null){
-//                            return onceCallRet;
-//                        }
-//                    }
-//                }
-//                break;
+//                return runSegment.serverIds[Util.randomInt(runSegment.serverIds.length)]; // TODO 这个是否考虑去掉之前随机但是失败过的？
 //            case Modulus:
-//                int serverId = runSegment.serverIds[Server.getServerId()%runSegment.serverIds.length];
-//                onceCallRet = onceCall(remoteCallService,serverId, serviceClass, methodName, params);
-//                if(onceCallRet != null){
-//                    return onceCallRet;
-//                }
-//                break;
+//                return runSegment.serverIds[serverId%runSegment.serverIds.length];
 //            case SelfDefined:
-//                firstServerId =runSegment.serviceCallRule.getServerId(Server.getServerId());
-//                onceCallRet = onceCall(remoteCallService,firstServerId, serviceClass, methodName, params);
-//                if(onceCallRet != null){
-//                    return onceCallRet;
-//                }
-//                serverId = runSegment.serviceCallRule.failGetNextServerId(Server.getServerId(), Arrays.asList(firstServerId));
-//                if (serverId > 0){
-//                    List<Integer> failIds = new LinkedList<>();
-//                    failIds.add(firstServerId);
-//                    while(serverId > 0) {
-//                        if(failIds.contains(serverId)){
-//                            log.error("serviceCallRule error!");
-//                            break;
-//                        }
-//                        onceCallRet = onceCall(remoteCallService, serverId, serviceClass, methodName, params);
-//                        if (onceCallRet != null) {
-//                            return onceCallRet;
-//                        }
-//                        failIds.add(serverId);
-//                        serverId = runSegment.serviceCallRule.failGetNextServerId(Server.getServerId(), failIds);
-//                    }
-//                }
-//
+//                return runSegment.serviceCallRule.getServerId(serverId); // TODO 是否也要考虑之前失败过的
 //        }
-//        log.error("remote call error!,all server has called,runSegment={}",runSegment.toString());
-//        throw new MMException("remoteCallError!");
+//        throw new MMException("getServerId error!serverId={},service={},params={}",serverId,service,params);
 //    }
+
+    private static Object onceCall(RemoteCallService remoteCallService, int serverId, Class serviceClass, String methodName,String methodSignature, Object[] params){
+        try {
+            // TODO 远程调用异常暂时使用null
+            return remoteCallService.remoteCallSyn(serverId, serviceClass, methodName,methodSignature, params,null);
+        }catch (Throwable e){
+            if(e instanceof MMException){
+                MMException mmException = (MMException)e;
+                if(mmException.getExceptionType() == MMException.ExceptionType.SendNetEventFail){
+                    // 远程调用失败，调用下一个
+                    return null;
+                }else{
+                    throw e; // 远程服务器抛出的异常，直接抛出来
+                }
+            }
+            throw e; // 远程服务器抛出的异常，直接抛出来
+        }
+    }
+
+//    public Object remoteCallOrder(RunSegment runSegment,Class serviceClass, String methodName,String methodSignature, Object[] params){
+//        RemoteCallService remoteCallService = BeanHelper.getServiceBean(RemoteCallService.class);
+//        try {
+//            // TODO 远程调用异常暂时使用null
+//            return remoteCallService.remoteCallSyn(serverId, serviceClass, methodName,methodSignature, params,null);
+//        }catch (MMException e){
+//            if(e.getExceptionType() == MMException.ExceptionType.SendNetEventFail){
+//                // 远程调用失败，调用下一个
+//                return null;
+//            }
+//            throw e;
+//        }
+//    }
+
+    public static Object remoteCall(Class serviceClass, String methodName,String methodSignature, Object[] params){
+        RunSegment runSegment = serviceServerIdMap.get(serviceClass);
+        if(runSegment == null){
+            throw new MMException("runSegment is not exist!");
+        }
+        RemoteCallService remoteCallService = BeanHelper.getServiceBean(RemoteCallService.class);
+
+
+        List<Integer> failIds = null;
+        int serverId = runSegment.serviceCallRule.failGetNextServerId(Server.getServerId(),failIds);
+//        while (true){
+//            try {
+//                // TODO 远程调用异常暂时使用null
+//                return remoteCallService.remoteCallSyn(serverId, serviceClass, methodName,methodSignature, params,null);
+//            }catch (MMException e){
+//                if(e.getExceptionType() == MMException.ExceptionType.SendNetEventFail){
+//                    // 远程调用失败，调用下一个
+//                    if(failIds == null){
+//                        failIds = new ArrayList<>();
+//                    }
+//                    serverId = runSegment.serviceCallRule.failGetNextServerId(Server.getServerId(),failIds);
+//                }
+//                throw e;
+//            }
+//        }
+
+
+        switch (runSegment.ruleType){
+            case Order:
+                for(int _serverId:runSegment.serverIds) {
+                    Object onceCallRet = onceCall(remoteCallService,_serverId, serviceClass, methodName, methodSignature,params);
+                    if(onceCallRet != null){
+                        return onceCallRet;
+                    }
+                }
+                break;
+            case Random:
+                int firstServerId = runSegment.serverIds[Util.randomInt(runSegment.serverIds.length)];// TODO 随机是否有效率上的问题，优化之
+                Object onceCallRet = onceCall(remoteCallService,firstServerId, serviceClass, methodName, methodSignature,params);
+                if(onceCallRet != null){
+                    return onceCallRet;
+                }
+
+                if(runSegment.serverIds.length > 1){
+                    List<Integer> failServerIdList = new ArrayList<Integer>(runSegment.serverIds.length){{
+                        for(int serverId:runSegment.serverIds) {
+                            if(serverId != firstServerId) {
+                                add(serverId);
+                            }
+                        }
+                    }};
+                    while(!failServerIdList.isEmpty()){
+                        int serverId2 = failServerIdList.remove(Util.randomInt(failServerIdList.size()));
+                        onceCallRet = onceCall(remoteCallService,serverId2, serviceClass, methodName,methodSignature, params);
+                        if(onceCallRet != null){
+                            return onceCallRet;
+                        }
+                    }
+                }
+                break;
+            case Modulus:
+                int serverId2 = runSegment.serverIds[Server.getServerId()%runSegment.serverIds.length];
+                onceCallRet = onceCall(remoteCallService,serverId2, serviceClass, methodName,methodSignature, params);
+                if(onceCallRet != null){
+                    return onceCallRet;
+                }
+                break;
+            case SelfDefined:
+                firstServerId =runSegment.serviceCallRule.failGetNextServerId(Server.getServerId(),failIds);
+                onceCallRet = onceCall(remoteCallService,firstServerId, serviceClass, methodName,methodSignature, params);
+                if(onceCallRet != null){
+                    return onceCallRet;
+                }
+                serverId = runSegment.serviceCallRule.failGetNextServerId(Server.getServerId(), Arrays.asList(firstServerId));
+                if (serverId > 0){
+//                    List<Integer> failIds = new LinkedList<>();
+                    failIds.add(firstServerId);
+                    while(serverId > 0) {
+                        if(failIds.contains(serverId)){
+                            log.error("serviceCallRule error!");
+                            break;
+                        }
+                        onceCallRet = onceCall(remoteCallService, serverId, serviceClass, methodName,methodSignature, params);
+                        if (onceCallRet != null) {
+                            return onceCallRet;
+                        }
+                        failIds.add(serverId);
+                        serverId = runSegment.serviceCallRule.failGetNextServerId(Server.getServerId(), failIds);
+                    }
+                }
+
+        }
+        log.error("remote call error!,all server has called,runSegment={}",runSegment.toString());
+        throw new MMException("remoteCallError!");
+    }
 
     public static Class<?> genService(Class<?> serviceClass){
         /**
@@ -202,7 +241,7 @@ public class ServiceServerHelper {
 
 # IdService：全局只能有一个IdService，确保id的唯一性
 service.IdService.server = 1
-service.IdService.callRule = order
+service.IdService.rule = order
 service.IdService.selfUseRule = false
                      */
 
@@ -210,7 +249,7 @@ service.IdService.selfUseRule = false
 
         String serverConfig = serviceConfig.get(prefix+".server");
         System.out.println(serverConfig);
-        String callRuleConfig = serviceConfig.get(prefix+".callRule");
+        String callRuleConfig = serviceConfig.get(prefix+".rule");
         System.out.println(callRuleConfig);
         String selfUseRuleConfig = serviceConfig.get(prefix+".selfUseRule");
         System.out.println(selfUseRuleConfig);
@@ -283,6 +322,8 @@ service.IdService.selfUseRule = false
      * 如果是第三种，方法外面就可以生成调用谁
      * 如果是第四种，则需要在方法本身中调用
      *
+     * // TODO for循环调用远程调用方法的话，效率很低
+     *
      *
      * @param pool
      * @param serviceClass
@@ -301,7 +342,7 @@ service.IdService.selfUseRule = false
         // 改写remote方法, 使用远程调用
         for(CtMethod ctMethod:ctClazz.getMethods()) {
             // 重写该方法
-            StringBuilder sb = new StringBuilder(ctMethod.getReturnType().getName() + " " + ctMethod.getName() + "(");
+            StringBuilder sb = new StringBuilder("public "+ctMethod.getReturnType().getName() + " " + ctMethod.getName() + "(");
             CtClass[] paramClasses = ctMethod.getParameterTypes();
             int i = 0;
             StringBuilder paramsStr = new StringBuilder();
@@ -339,6 +380,13 @@ service.IdService.selfUseRule = false
         return newServiceClass;
     }
 
+    /**
+     * 选择一种调用方式
+     */
+//    public static Object checkAndDoRemoteCall(String serviceName,String methodName,Object[] params){
+//
+//    }
+
 
 
     static class RunSegment{
@@ -358,41 +406,6 @@ service.IdService.selfUseRule = false
         }
     }
 
-    static enum RuleType{
-        /**
-         * 1）顺序调用【order】：先调用第一个，如果失败，则调用第二个，以此类推。容错
-         #       2）随机调用【random】：从配置的服务器中随机选出一个，调用，调用失败将重试。调用平均分布，负载平衡
-         #       3）取模调用【modulus】：根据自己服务器的id对配置该service的服务器个数取模i，调用第i个服务器。
-         #       4）自定义规则：继承自ServiceCallRule，根据id获取调用id
-         */
-        Order("order"),
-        Random("random"),
-        Modulus("modulus"),
-        SelfDefined(""),
-        ;
-        final String id;
-        RuleType(String id){
-            this.id = id;
-        }
 
-        public String getId() {
-            return id;
-        }
-
-        static RuleType getRuleTypeByConfig(String callRuleConfig){
-            switch (callRuleConfig){
-                case "order":
-                    return Order;
-                case "random":
-                    return Random;
-                case "modulus":
-                    return Modulus;
-            }
-            if(serviceCallRuleMap.containsKey(callRuleConfig)){
-                return SelfDefined;
-            }
-            throw new MMException("rule type error!,config="+callRuleConfig);
-        }
-    }
 
 }

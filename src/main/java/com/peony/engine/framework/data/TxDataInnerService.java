@@ -7,10 +7,7 @@ import com.peony.engine.framework.data.cache.KeyParser;
 import com.peony.engine.framework.data.persistence.dao.DatabaseHelper;
 import com.peony.engine.framework.data.persistence.orm.DataSet;
 import com.peony.engine.framework.data.persistence.orm.annotation.DBEntity;
-import com.peony.engine.framework.data.tx.AsyncService;
-import com.peony.engine.framework.data.tx.LockerService;
-import com.peony.engine.framework.data.tx.Tx;
-import com.peony.engine.framework.data.tx.TxCacheService;
+import com.peony.engine.framework.data.tx.*;
 import com.peony.engine.framework.security.MonitorNumType;
 import com.peony.engine.framework.security.MonitorService;
 import com.peony.engine.framework.security.exception.MMException;
@@ -94,7 +91,7 @@ public class TxDataInnerService {
         String key = KeyParser.parseKeyForObject(entityClass,condition,params);
         Object object = null;
         if(txCacheService.isInTx()){
-            TxCacheService.PrepareCachedData prepareCachedData = txCacheService.get(key);
+            PrepareCachedData prepareCachedData = txCacheService.get(key);
             if(prepareCachedData != null){
                 monitorService.addMonitorNum(MonitorNumType.TxCacheHitNum,1);
                 if(prepareCachedData.getOperType() != OperType.Delete){

@@ -251,6 +251,7 @@ public final class Server {
         }catch (Throwable e){
             log.error("start error!",e);
 //            log.error(DeployService.startError);
+            e.printStackTrace();
             System.exit(1);
         }
 

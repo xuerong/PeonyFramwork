@@ -5,8 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -122,4 +125,60 @@ public class ObjectUtil {
         }
         return fieldMap;
     }
+
+    /**
+     * 获取类的方法，包括父类的私有方法
+     * @param clazz
+     * @param methodName
+     * @param classes
+     * @return
+     * @throws Exception
+     */
+    public static Method getMethod(Class clazz, String methodName,
+                                   final Class[] classes) throws Exception {
+        Method method = null;
+        try {
+            method = clazz.getDeclaredMethod(methodName, classes);
+        } catch (NoSuchMethodException e) {
+            try {
+                method = clazz.getMethod(methodName, classes);
+            } catch (NoSuchMethodException ex) {
+                if (clazz.getSuperclass() == null) {
+                    return method;
+                } else {
+                    method = getMethod(clazz.getSuperclass(), methodName,
+                            classes);
+                }
+            }
+        }
+        return method;
+    }
+
+    /**
+     * 获取所有属性，包括父类的私有属性
+     * @param clazz
+     * @param _static
+     * @param _final
+     * @return
+     * @throws Exception
+     */
+    public static List<Field> getFields(Class clazz, boolean _static,boolean _final)  {
+        List<Field> ret = new ArrayList<>();
+
+        while (clazz != null){
+            Field[] fields = clazz.getDeclaredFields();
+            for(Field field:fields){
+                if(!_static && Modifier.isStatic(field.getModifiers())){
+                    continue;
+                }
+                if(!_final && Modifier.isFinal(field.getModifiers())){
+                    continue;
+                }
+                ret.add(field);
+            }
+            clazz = clazz.getSuperclass();
+        }
+        return ret;
+    }
+
 }

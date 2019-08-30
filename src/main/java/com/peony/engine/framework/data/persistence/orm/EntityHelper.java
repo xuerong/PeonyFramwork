@@ -25,6 +25,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.security.ProtectionDomain;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -64,6 +65,11 @@ public class EntityHelper {
      * 用于快速复制类的复制器
      */
     private static final Map<Class<?>,BeanCopier> beanCopierMap = new HashMap<>();
+
+    /**
+     *
+     */
+    static Map<Class,EntityCopier> entityCopierMap = new HashMap<>();
 
     /**
      * 生成字节码的方式,用于快速把对象的值取出来，根据需求
@@ -262,9 +268,10 @@ public class EntityHelper {
         EntityHelper.getMethodMap.put(entityClass,getMethodMap);
         EntityHelper.getPkMethodMap.put(entityClass,getPkMethodMap);
         generateEntityParser(entityClass,getMethodStringMap,fieldClassMap);
-        // TODO 对于非基本类型，会出错，所以，要判断一下比如timestamp
-        BeanCopier beanCopier = BeanCopier.create(entityClass,entityClass,false);
-        beanCopierMap.put(entityClass,beanCopier);
+        //
+        Class copierCls = appendEventHandler(entityClass);
+        EntityCopier entityCopier = (EntityCopier)copierCls.newInstance();
+        entityCopierMap.put(entityClass,entityCopier);
 
     }
 
@@ -310,21 +317,152 @@ public class EntityHelper {
      * @return
      */
     public static <T> T copyEntity(T entity){
-        Class<?> entityClass = entity.getClass();
-        BeanCopier  beanCopier = beanCopierMap.get(entityClass);
-        if(beanCopier == null){
-            throw new MMException("beanCopier is not exist!entityClass = {}",entityClass);
+        return fastCopy(entity);
+    }
+
+    /**
+     * 可以拷贝任何的对象，第一次拷贝时会创建拷贝器，效率较低，之后的拷贝接近于直接定义的效率
+     * 不要修改方法签名
+     * @param object
+     * @param <T>
+     * @return
+     */
+    public static <T> T fastCopy(T object){
+        Class type = object.getClass();
+        if(type.isPrimitive() || type == String.class){
+            return object;
         }
-        try {
-            Object object = entityClass.newInstance();
-            beanCopier.copy(entity,object,null);
-            return (T)object;
-        } catch (InstantiationException e) {
-            log.error(entityClass+" has no construct method",e);
-        } catch (IllegalAccessException e) {
-            log.error("",e);
+        EntityCopier entityCopier = entityCopierMap.get(object.getClass());
+        if(entityCopier == null){
+            try{
+                Class copierCls = appendEventHandler(object.getClass());
+                entityCopier = (EntityCopier)copierCls.newInstance();
+                entityCopierMap.put(object.getClass(),entityCopier);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
         }
-        throw new MMException("copyEntity error!entityClass={}",entityClass);
+        return entityCopier.copy(object);
+    }
+
+
+    private static Class appendEventHandler(Class clazz) throws Exception{
+
+        ClassPool pool = ClassPool.getDefault();
+        CtClass oldClass = pool.get(clazz.getName());
+        CtClass ct = pool.makeClass(oldClass.getName() + "$Copier", oldClass); //这里需要生成一个新类，并且继承自原来的类
+        CtClass superCt = pool.get(EntityCopier.class.getName());  //需要实现RequestHandler接口
+        ct.addInterface(superCt);
+
+
+        //添加handler方法，在其中添上switch...case段
+        StringBuilder sb = new StringBuilder("public Object copy(Object object){");
+//        sb.append("int event = $1.getEvent();");//$1.getOpcode();");
+        sb.append(clazz.getName()+" from = ("+clazz.getName()+")object;");
+        sb.append(clazz.getName()+" entity = new "+clazz.getName()+"();");
+
+        List<Field> fields = ObjectUtil.getFields(clazz,false,false);
+        if(fields != null){
+            for(Field field:fields){
+                if(Modifier.isStatic(field.getModifiers())){
+                    continue;
+                }
+                if(Modifier.isFinal(field.getModifiers())){
+                    continue;
+                }
+
+                String upper = firstToUpperCase(field.getName());
+                // 判断getset方法
+                String getStr = "get"+upper;
+                Method getMethod = clazz.getMethod(getStr);
+                if(getMethod == null){
+                    // 实际执行不到，getMethod 拿不到就会抛异常
+                    throw new RuntimeException(getStr+" is not exist in class +"+clazz.getName());
+                }
+
+                String setStr = "set"+upper;
+                Method setMethod = clazz.getMethod(setStr,field.getType());
+                if(setMethod == null){
+                    throw new RuntimeException(setStr+" is not exist in class +"+clazz.getName());
+                }
+
+                if(field.getType().isPrimitive() || field.getType() == String.class) {
+                    sb.append("entity.set" + upper + "(from.get" + upper + "());");
+                }else{
+                    sb.append("if(from.get" + upper + "() == null){");
+                    sb.append("entity.set" + upper + "(null);");
+                    sb.append("}else{");
+                    if(field.getType().isArray()){
+
+                        StringBuilder oriSb = new StringBuilder("[]");
+                        Class type =  field.getType().getComponentType();
+                        while (type.isArray()){
+                            oriSb.append("[]");
+                            type =  type.getComponentType();
+                        }
+                        oriSb.insert(0,type.getName());
+                        sb.append(oriSb).append(" ori0 = ").append("from.get" + upper + "();");
+
+                        sb.append(createArray(field.getType(),0));
+
+                        sb.append("entity.set" + upper + "(v0);");
+
+                    }else{
+                        sb.append("entity.set" + upper + "(("+field.getType().getName()+")"+EntityHelper.class.getName()+".fastCopy("+"from.get" + upper + "()));");
+                    }
+                    sb.append("}");
+                }
+            }
+        }
+        sb.append("return entity;");
+        sb.append("}");
+//        System.out.println(sb);
+        CtMethod method = CtMethod.make(sb.toString(), ct);
+        ct.addMethod(method);
+        return ct.toClass(clazz.getClassLoader(), (ProtectionDomain)null);
+//        return null;
+    }
+    private static StringBuilder createArray(Class componentType,int hierarchy){
+        StringBuilder sb = new StringBuilder();
+
+        StringBuilder oriSb = new StringBuilder("[]");
+        Class type =  componentType.getComponentType();
+        StringBuilder newSb = new StringBuilder("[ori").append(hierarchy).append(".length]");
+        while (type.isArray()){
+            oriSb.append("[]");
+            newSb.append("[]");
+            type =  type.getComponentType();
+        }
+        oriSb.insert(0,type.getName());
+        newSb.insert(0,type.getName());
+
+        sb.append(oriSb);
+        sb.append(" v").append(hierarchy).append(" = new ").append(newSb).append(";");
+
+        sb.append("for (int i").append(hierarchy).append("=0;i").append(hierarchy).append("<ori").append(hierarchy).append(".length;i").append(hierarchy).append("++){");
+//        Class componentType =  field.getType().getComponentType();
+        if(componentType.getComponentType().isArray()){
+            sb.append(oriSb.substring(0,oriSb.length()-2)).append(" ori").append(hierarchy+1).append(" = ori").
+                    append(hierarchy).append("[i").append(hierarchy).append("];");
+            sb.append(createArray(componentType.getComponentType(),hierarchy+1));
+            sb.append("v").append(hierarchy).append("[i").append(hierarchy).append("] = v").append(hierarchy+1).append(";");
+        } else {
+            if(componentType.getComponentType().isPrimitive()){
+                sb.append(" v").append(hierarchy).append("[i").append(hierarchy).append("]=ori").append(hierarchy).append("[i").append(hierarchy).append("];");
+            }else{
+                sb.append(" v").append(hierarchy).append("[i").append(hierarchy).append("]=("+type.getName()+")"+EntityHelper.class.getName()+".fastCopy(ori").append(hierarchy).append("[i").append(hierarchy).append("]);");
+            }
+        }
+        sb.append("}");
+        return sb;
+    }
+
+    private static String firstToUpperCase(String str){
+        return str.substring(0,1).toUpperCase()+((str.length()>1)?(str.substring(1,str.length())):"");
+    }
+
+    public static interface EntityCopier{
+        <T> T copy(Object object);
     }
 
 

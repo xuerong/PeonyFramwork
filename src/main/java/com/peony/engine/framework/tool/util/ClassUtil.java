@@ -6,6 +6,9 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 类操作工具类
@@ -62,9 +65,18 @@ public class ClassUtil {
      */
     public static final char JVM_SHORT = 'S';
 
+    /**
+     * MethodSignature 缓存
+     */
+    public static final Map<Method,String> methodSignatureCache = new ConcurrentHashMap<>();
+
     public static String getMethodSignature(Method method){
         if(method == null){
             return null;
+        }
+        String signature = methodSignatureCache.get(method);
+        if(signature != null){
+            return signature;
         }
         StringBuilder sb = new StringBuilder();
         sb.append(method.getDeclaringClass().getName());
@@ -72,7 +84,9 @@ public class ClassUtil {
         for(Class<?> ptype:method.getParameterTypes()){
             sb.append(ptype.getName());
         }
-        return sb.toString();
+        signature = sb.toString();
+        methodSignatureCache.put(method,signature);
+        return signature;
     }
 
     /**
