@@ -1,6 +1,7 @@
 package com.peony.engine.framework.data.cache;
 
 import com.peony.engine.framework.data.persistence.orm.EntityHelper;
+import com.peony.engine.framework.data.persistence.orm.MMMethod;
 import com.peony.engine.framework.security.exception.MMException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,20 +28,18 @@ public class KeyParser {
     // TODO 这个方法用的比较多，可以考虑用增加字节码的方式给对象添加函数，来获取key，而不是用invoke
     public static String parseKey(Object entity){
         Class<?> cls = entity.getClass();
-        Map<String,Method> pkMethodMap = EntityHelper.getPkGetMethodMap(cls);
+        Map<String, MMMethod> pkMethodMap = EntityHelper.getPkGetMethodMap(cls);
         if(pkMethodMap.size() == 0){
             throw new MMException("没找到主键方法"+cls.getName());
         }
         StringBuilder sb = new StringBuilder(cls.getName());
 
         try {
-            for(Method method : pkMethodMap.values()){
+            for(MMMethod method : pkMethodMap.values()){
                 appendWithTrans(sb,parseParamToString(method.invoke(entity)),SEPARATOR);
             }
 
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return sb.toString();
@@ -55,7 +54,7 @@ public class KeyParser {
             return entityClass.getName();
         }
         // 判断条件中的主键
-        Map<String,Method> pkMethodMap = EntityHelper.getPkGetMethodMap(entityClass);
+        Map<String,MMMethod> pkMethodMap = EntityHelper.getPkGetMethodMap(entityClass);
 
         if(pkMethodMap == null || pkMethodMap.isEmpty()) {
             throw new MMException("没找到主键方法 "+entityClass.getName());
@@ -117,11 +116,11 @@ public class KeyParser {
             log.warn("listKey is Illegal : listKey = "+listKey);
             return false;
         }
-        Map<String,Method> getMethodMap = EntityHelper.getGetMethodMap(object.getClass());
+        Map<String,MMMethod> getMethodMap = EntityHelper.getGetMethodMap(object.getClass());
         try {
             int i=0;
             for(String fieldName : fieldNames){
-                Method method = getMethodMap.get(fieldName);
+                MMMethod method = getMethodMap.get(fieldName);
                 if(method == null){
                     log.warn("listKey is Illegal : fieldName is not exist in getMethodMap , fieldName = "+fieldName);
                     return false;
@@ -132,7 +131,7 @@ public class KeyParser {
                 }
                 i++;
             }
-        } catch (IllegalAccessException |InvocationTargetException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return false;
         }

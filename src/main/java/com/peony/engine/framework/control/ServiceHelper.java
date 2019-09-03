@@ -426,7 +426,7 @@ public final class ServiceHelper {
                     body.append(String.format("\t\tObject object = remoteService.remoteCallSyn(serverId, %s.class,\"%s\",\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),ClassUtil.getMethodSignature(oldMethod),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
 
                     //body.append(String.format("\t\treturn (%s)object;", oldMethod.getReturnType().getName()));
-                    body.append("\t\treturn "+parseBaseTypeStrToObjectTypeStr(oldMethod.getReturnType().getName()));
+                    body.append("\t\treturn "+ parseObjectTypeStrToBaseTypeStr(oldMethod.getReturnType().getName(),"object"));
 
                 } else {
 //                    body.append(String.format("remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
@@ -528,25 +528,38 @@ public final class ServiceHelper {
         return paramStr;
     }
 
-    public static String parseBaseTypeStrToObjectTypeStr(String typeStr) {
+    public static String parseObjectTypeStrToBaseTypeStr(String typeStr,String objectStr) {
         if (typeStr.equals("byte")) {
-            return "object==null?0:((Byte)object).byteValue();";
+            return objectStr+"==null?0:((Byte)"+objectStr+").byteValue()";
         } else if (typeStr.equals("short")) {
-            return "object==null?0:((Short)object).shortValue();";//"Short";
+            return objectStr+"==null?0:((Short)"+objectStr+").shortValue()";//"Short";
         } else if (typeStr.equals("long")) {
-            return "object==null?0:((Long)object).longValue();";//"Long";
+            return objectStr+"==null?0:((Long)"+objectStr+").longValue()";//"Long";
         } else if (typeStr.equals("int")) {
-            return "object==null?0:((Integer)object).intValue();";//"Integer";
+            return objectStr+"==null?0:((Integer)"+objectStr+").intValue()";//"Integer";
         } else if (typeStr.equals("float")) {
-            return "object==null?0:((Float)object).floatValue();";//"Float";
+            return objectStr+"==null?0:((Float)"+objectStr+").floatValue()";//"Float";
         } else if (typeStr.equals("double")) {
-            return "object==null?0:((Double)object).doubleValue();";//"Double";
+            return objectStr+"==null?0:((Double)"+objectStr+").doubleValue()";//"Double";
         } else if (typeStr.equals("char")) {
-            return "object==null?0:((Character)object).charValue();";//"Character";
+            return objectStr+"==null?0:((Character)"+objectStr+").charValue()";//"Character";
         } else if (typeStr.equals("boolean")) {
-            return "object==null?false:((Boolean)object).booleanValue();";//"Boolean";
+            return objectStr+"==null?false:((Boolean)"+objectStr+").booleanValue()";//"Boolean";
         }
-        return "(" + typeStr + ")object;";
+        return "(" + typeStr + ")"+objectStr+"";
+    }
+
+    public static String arrayToStr(Class cls){
+        if(!cls.isArray()){
+            return cls.getName();
+        }
+        StringBuilder sb = new StringBuilder();
+        while (cls.isArray()){
+            sb.append("[]");
+            cls = cls.getComponentType();
+        }
+        sb.insert(0,cls.getName());
+        return sb.toString();
     }
 
     //get set

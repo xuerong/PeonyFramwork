@@ -369,7 +369,7 @@ service.IdService.selfUseRule = false
                 sb.append(invokeStr);
             } else {
                 sb.append("Object object = " + invokeStr);
-                sb.append("return " + ServiceHelper.parseBaseTypeStrToObjectTypeStr(ctMethod.getReturnType().getName()));
+                sb.append("return " + ServiceHelper.parseObjectTypeStrToBaseTypeStr(ctMethod.getReturnType().getName(),"object"));
             }
             sb.append("}");
             log.info("==============================================\n"+sb.toString());

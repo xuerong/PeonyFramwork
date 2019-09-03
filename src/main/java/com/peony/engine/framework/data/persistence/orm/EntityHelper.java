@@ -53,13 +53,13 @@ public class EntityHelper {
     /**
      * DBEntity类与所有的get方法
      */
-    private static final Map<Class<?>,Map<String,Method>> getMethodMap = new HashMap<>();
+    private static final Map<Class<?>,Map<String,MMMethod>> getMethodMap = new HashMap<>();
 
     /**
      * DBEntity类与所有的主键的get方法
      * fieldName-method
      */
-    private static final Map<Class<?>,Map<String,Method>> getPkMethodMap = new HashMap<>();
+    private static final Map<Class<?>,Map<String,MMMethod>> getPkMethodMap = new HashMap<>();
 
     /**
      * 用于快速复制类的复制器
@@ -76,10 +76,16 @@ public class EntityHelper {
      */
     private static final Map<Class<?>,EntityParser> entityParserMap = new HashMap<>();
 
-    public static Map<String,Method> getGetMethodMap(Class<?> entityClass){
+    /**
+     *
+     * 根据method生成的效率更高的method invoke调用
+     */
+    private static final Map<Method,MMMethod> methodInvokeMap = new HashMap<>();
+
+    public static Map<String,MMMethod> getGetMethodMap(Class<?> entityClass){
         return getMethodMap.get(entityClass);
     }
-    public static Map<String,Method> getPkGetMethodMap(Class<?> entityClass){
+    public static Map<String,MMMethod> getPkGetMethodMap(Class<?> entityClass){
         return getPkMethodMap.get(entityClass);
     }
 
@@ -107,7 +113,7 @@ public class EntityHelper {
      * @return
      */
     public static ConditionItem parsePkCondition(Object object){
-        Map<String,Method> map = getPkGetMethodMap(object.getClass());
+        Map<String,MMMethod> map = getPkGetMethodMap(object.getClass());
         if(map == null || map.size() == 0){
             throw new MMException("getPkGetMethodMap is null , class = "+object.getClass());
         }
@@ -116,11 +122,11 @@ public class EntityHelper {
         StringBuilder sb = new StringBuilder();
         int i=0;
         try {
-            for(Map.Entry<String,Method> entry : map.entrySet()){
+            for(Map.Entry<String,MMMethod> entry : map.entrySet()){
                 sb.append(entry.getKey()+"=? and ");
                 params[i++] = entry.getValue().invoke(object);
             }
-        }catch (IllegalAccessException |InvocationTargetException e){
+        }catch (Exception e){
             throw new MMException(e);
         }
         String condition = "";
@@ -228,9 +234,9 @@ public class EntityHelper {
         entityClassFieldMapMap.put(entityClass, fieldMap);
         // ------------------initEntityGetMethods
         Set<String> set = fieldMap.keySet();
-        Map<String,Method> getMethodMap = new HashMap<>(set.size());
+        Map<String,MMMethod> getMethodMap = new HashMap<>(set.size());
         Map<String,String> getMethodStringMap = new HashMap<>(set.size());
-        Map<String,Method> getPkMethodMap = new LinkedHashMap<>(set.size()); // 需要维持顺序，第一个是用于分表的主键
+        Map<String,MMMethod> getPkMethodMap = new LinkedHashMap<>(set.size()); // 需要维持顺序，第一个是用于分表的主键
 //        DBEntity dbEntity = entityClass.getAnnotation(DBEntity.class);
         String[] pks = dbEntity.pks();
         if(pks == null || pks.length==0){
@@ -251,7 +257,7 @@ public class EntityHelper {
                 method = null;
             }
             if (method != null) {
-                getMethodMap.put(fieldName,method);
+                getMethodMap.put(fieldName,getMMMethod(method));
                 getMethodStringMap.put(fieldName,methodName);
 //                if(pkList.contains(fieldName)){
 //                    getPkMethodMap.put(fieldName,method);
@@ -307,6 +313,68 @@ public class EntityHelper {
 
         entityParserMap.put(cls,(EntityParser)ct.toClass().newInstance());
     }
+
+    public static MMMethod getMMMethod(Method method){
+        MMMethod mmMethod = methodInvokeMap.get(method);
+        if(mmMethod == null){
+            try{
+                mmMethod = generateMethod(method);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+            methodInvokeMap.put(method,mmMethod);
+        }
+        return mmMethod;
+    }
+
+    private static MMMethod generateMethod(Method method) throws Exception{
+        // public Map<String,Object> toMap(Object entity);
+        String clsName = method.getDeclaringClass().getName();
+        StringBuilder sb = new StringBuilder("public Object invoke(Object obj, Object[] args){");
+        sb.append(clsName+" object = ("+clsName+")obj;");
+//        System.out.println(method.getReturnType());
+        if(method.getReturnType() == void.class || method.getReturnType() == Void.class){
+            sb.append("object."+method.getName()+"(");
+            Class[] params = method.getParameterTypes();
+            for(int i=0;i<params.length;i++){
+                Class paramCls = params[i];
+                if(i>0){
+                    sb.append(",");
+                }
+                sb.append(ServiceHelper.parseObjectTypeStrToBaseTypeStr(paramCls.getName(),"args["+i+"]"));
+            }
+            sb.append(");");
+            sb.append("return null;");
+        }else{
+            sb.append(ServiceHelper.arrayToStr(method.getReturnType())+" ret = object."+method.getName()+"(");
+            Class[] params = method.getParameterTypes();
+            for(int i=0;i<params.length;i++){
+                Class paramCls = params[i];
+                if(i>0){
+                    sb.append(",");
+                }
+//                sb.append("Object object = args[").append(i).append("];");
+                sb.append(ServiceHelper.parseObjectTypeStrToBaseTypeStr(paramCls.getName(),"args["+i+"]"));
+            }
+            sb.append(");");
+            sb.append("return "+ServiceHelper.parseBaseTypeStrToObjectTypeStr(method.getReturnType().getName(),"ret")+";");
+        }
+        sb.append("}");
+
+//        System.out.println(sb.toString());
+
+        ClassPool pool = ClassPool.getDefault();
+
+        CtClass ct = pool.makeClass(method.getDeclaringClass().getSimpleName()+method.getName()+"NewMethod"); //这里需要生成一个新类，并且继承自原来的类
+        CtClass superCt = pool.get(MMMethod.class.getName());
+        ct.addInterface(superCt);
+
+        CtMethod newMethod = CtMethod.make(sb.toString(), ct);
+        ct.addMethod(newMethod);
+
+        return (MMMethod)ct.toClass().newInstance();
+    }
+
 
 
 

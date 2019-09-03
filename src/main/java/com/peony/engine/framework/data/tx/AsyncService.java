@@ -12,6 +12,7 @@ import com.peony.engine.framework.data.cache.CacheEntity;
 import com.peony.engine.framework.data.cache.KeyParser;
 import com.peony.engine.framework.data.persistence.orm.DataSet;
 import com.peony.engine.framework.data.persistence.orm.EntityHelper;
+import com.peony.engine.framework.data.persistence.orm.MMMethod;
 import com.peony.engine.framework.security.MonitorNumType;
 import com.peony.engine.framework.security.MonitorService;
 import com.peony.engine.framework.security.exception.MMException;
@@ -201,7 +202,7 @@ public class AsyncService {
                         // 如果是非主键的list，则标记起来
 //                        String[] fieldNames = fieldKey.split(KeyParser.SEPARATOR);
                         List<String> fieldNames = KeyParser.split(fieldKey,KeyParser.SEPARATOR);
-                        Map<String,Method> pkGetMethodMap = EntityHelper.getPkGetMethodMap(entityClass);
+                        Map<String, MMMethod> pkGetMethodMap = EntityHelper.getPkGetMethodMap(entityClass);
                         for(String fieldName : fieldNames){
                             if(!pkGetMethodMap.containsKey(fieldName)){
 //                                nonPkListKey.add(fieldKey);
@@ -319,7 +320,7 @@ public class AsyncService {
         Map<String,Map<String,String>> fieldMap = listKeyIndex.get(cls);
 //        Map<String,Map<String,String>> fieldMap = listKeyIndex.get(asyncData.getObject().getClass());
         if(fieldMap != null) {
-            Map<String,Method> getMethodMap = null;
+            Map<String,MMMethod> getMethodMap = null;
             for (Map.Entry<String, Map<String, String>> entry : fieldMap.entrySet()) {
                 if (entry.getKey().equals("")) { // 是全表
                     String listKey = entry.getValue().get("");
@@ -461,11 +462,11 @@ public class AsyncService {
 //        }
     }
 
-    private String getValueKey(List<String> fieldNames,Map<String,Method> getMethodMap,Object object){
+    private String getValueKey(List<String> fieldNames,Map<String,MMMethod> getMethodMap,Object object){
         StringBuilder valueSb = new StringBuilder();
         try {
             for (String fieldName : fieldNames) {
-                Method method = getMethodMap.get(fieldName);
+                MMMethod method = getMethodMap.get(fieldName);
                 if (method == null) {
                     log.error("listKey is Illegal : fieldName is not exist in getMethodMap , fieldName = " + fieldName);
                 }
@@ -477,7 +478,7 @@ public class AsyncService {
 
 //                valueSb.append(KeyParser.parseParamToString(method.invoke(object)));
             }
-        } catch (IllegalAccessException |InvocationTargetException e) {
+        } catch (Exception e) {
             log.error("listKey is Illegal while invoke getMethodMap,entityClass={}",object.getClass(),e);
         }
         String valueKey = valueSb.toString();
@@ -535,14 +536,12 @@ public class AsyncService {
 
         @Override
         public String toString(){
-
-
-            Map<String,Method> methodMap = EntityHelper.getGetMethodMap(object.getClass());
+            Map<String,MMMethod> methodMap = EntityHelper.getGetMethodMap(object.getClass());
             StringBuilder sb = null;
             if(methodMap != null){
                 sb = new StringBuilder();
                 try {
-                    for (Map.Entry<String, Method> entry : methodMap.entrySet()) {
+                    for (Map.Entry<String, MMMethod> entry : methodMap.entrySet()) {
                         Object value = entry.getValue().invoke(object);
                         sb.append(entry.getKey()).append("=").append(value).append(";");
                     }
