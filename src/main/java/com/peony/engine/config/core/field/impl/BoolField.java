@@ -16,6 +16,7 @@ public class BoolField extends SingleField<Boolean> {
         if (rawVal == null) {
             return false;
         }
-        return Boolean.parseBoolean(rawVal.trim());
+        rawVal = rawVal.trim();
+        return rawVal.equals("1") || Boolean.parseBoolean(rawVal);
     }
 }

@@ -25,7 +25,7 @@ public class KeyParser {
     static {
         // 要校验所有的DBEntity，确保Class.getName()不能有一样的
     }
-    // TODO 这个方法用的比较多，可以考虑用增加字节码的方式给对象添加函数，来获取key，而不是用invoke
+    //
     public static String parseKey(Object entity){
         Class<?> cls = entity.getClass();
         Map<String, MMMethod> pkMethodMap = EntityHelper.getPkGetMethodMap(cls);

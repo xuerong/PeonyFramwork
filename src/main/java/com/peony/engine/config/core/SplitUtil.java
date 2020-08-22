@@ -119,7 +119,7 @@ public class SplitUtil {
      * @return
      */
     public static <K, V> Map<K, V> convertContentToMap(String content, Class<K> kClass, Class<V> vClass) {
-        return convertContentToMap(content, SEPARATOR_1, SEPARATOR_2, kClass, vClass);
+        return convertContentToMap(content, SEPARATOR_2, SEPARATOR_1, kClass, vClass);
     }
 
     public static <K, V> Map<K, V> convertContentToMap(String content, String separator1, String separator2, Class<K> kClass, Class<V> vClass) {
@@ -156,10 +156,10 @@ public class SplitUtil {
             return ret;
         }
         Map<K, List<V>> map = new HashMap<>();
-        String[] entryArray = StringUtils.splitByWholeSeparator(content, SEPARATOR_1);
+        String[] entryArray = StringUtils.splitByWholeSeparator(content, SEPARATOR_2);
         if (entryArray != null && entryArray.length != 0) {
             for (String entry : entryArray) {
-                String[] keyValueArray = StringUtils.splitByWholeSeparator(entry, SEPARATOR_2);
+                String[] keyValueArray = StringUtils.splitByWholeSeparator(entry, SEPARATOR_1);
                 if (keyValueArray.length == 2) {
                     map.put(convert(kClass, keyValueArray[0]), ImmutableList.copyOf(convertContentToList(keyValueArray[1], SEPARATOR_3, vClass)));
                 }

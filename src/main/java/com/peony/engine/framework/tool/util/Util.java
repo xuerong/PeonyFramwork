@@ -469,4 +469,27 @@ public final class Util {
         }
         return sb.toString();
     }
+
+    /**
+     * 从list中随机选出num个
+     * @param base
+     * @param num
+     * @return
+     */
+    public static <T> List<T> getRandomFrom(List<T> base,int num){
+        if(base.size()<=num){
+            return base;
+        }
+        //
+        int baseSize = base.size();
+        Random random = new Random();
+        for(int i=0;i<num;i++){
+            int a = random.nextInt(baseSize-i);
+            T selectValue = base.get(a+i);
+            base.set(a+i,base.get(i));
+            base.set(i,selectValue);
+        }
+        return base.subList(0,num);
+    }
+
 }

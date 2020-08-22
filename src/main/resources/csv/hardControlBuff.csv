@@ -1,0 +1,4 @@
+id`name`round`buffTag
+int`string`int`array<int>
+1`硬控`2`
+2`石化`2`1

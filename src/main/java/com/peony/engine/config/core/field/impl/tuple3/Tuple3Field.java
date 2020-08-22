@@ -26,7 +26,7 @@ public abstract class Tuple3Field<F, S, T> extends ThreePartField<Tuple3<F, S, T
         if (rawVal == null) {
             return null;
         }
-        return SplitUtil.convertContentToTuple3(rawVal, SplitUtil.SEPARATOR_2, (Class<F>) arguments[0], (Class<S>) arguments[1], (Class<T>) arguments[2]);
+        return SplitUtil.convertContentToTuple3(rawVal, SplitUtil.SEPARATOR_1, (Class<F>) arguments[0], (Class<S>) arguments[1], (Class<T>) arguments[2]);
     }
 
     @Override

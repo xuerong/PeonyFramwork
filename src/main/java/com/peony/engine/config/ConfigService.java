@@ -289,7 +289,7 @@ public class ConfigService {
         Map<Class<?>, ConfigContainer<?, IConfig<?>>> containers = new ConcurrentHashMap<>();
         for (File f : new File(CONFIG_PATH).listFiles((dir, name) -> name.endsWith(".csv"))) {
             // 配置文件读取解析
-            String fileName = f.getName().toLowerCase();
+            String fileName = f.getName(); // TODO 这里也删除了小写转换
             fileName = fileName.substring(0, fileName.indexOf("."));
 
             if (!FIELDNAME_PATTERN.matcher(fileName).matches()) {
@@ -411,7 +411,7 @@ public class ConfigService {
         CSVReader csvReader = null;
         List<IConfig<?>> dataList = Lists.newArrayList();
         try {
-            String tableName = file.getName().toLowerCase();
+            String tableName = file.getName();
             tableName = tableName.substring(0, tableName.indexOf("."));
 
             Class<?> containerClass = getContainerClass(tableName);

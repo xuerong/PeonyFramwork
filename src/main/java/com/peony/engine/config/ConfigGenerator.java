@@ -199,7 +199,7 @@ public class ConfigGenerator {
         CSVReader csvReader = null;
         ConfigMetaData metaData = new ConfigMetaData();
         try {
-            String tableName = file.getName().toLowerCase();
+            String tableName = file.getName(); // TODO 这里做了个修改，取消了小写转换，不知道之前为啥有小写转换
             tableName = tableName.substring(0, tableName.indexOf("."));
 
             metaData.setOrignFileName(tableName);

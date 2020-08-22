@@ -42,9 +42,8 @@ def excel2csv(excel):
         # sheet 跳过中文标签
         if contain_zh(table.name):
             continue
-
         nrows = table.nrows
-        if nrows < 4:
+        if nrows < 3:
             continue
 
         types = table.row_values(1)

@@ -1,0 +1,7 @@
+id`name`targetType`targetSkillId`targetEffectType`targetEffectId`attachEffectIdListMap
+int`string`tuple3<int,int,int>`int`int`int`map<int,array<int>>
+1`卢恩魔法效果`6;0;0`1`1`10`1;17|5;1,2
+2`女神诅咒`6;0;0`1`1`10`2;6
+3`女神诅咒`6;0;0`6`1`20`2;6
+4`女神诅咒`6;0;0`1`1`10`1;22
+5`女神诅咒`6;0;0`6`1`20`1;22

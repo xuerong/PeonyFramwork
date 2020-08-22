@@ -1,0 +1,6 @@
+id`name`buffType`targetType`buffIds`rate`canDodged
+int`string`int`tuple3<int,int,int>`array<int>`int`bool
+3`永恒之枪效果2,永恒之枪效果3`1`1;0;0`13;14`10000`0
+4`普通硬控`2`1;0;0`1`1000`0
+5`毒蛇剑阵：流血，中毒buff`1`1;0;0`15;16`10000`0
+6`女神诅咒：20.5%石化目标`2`1;0;0`2`2050`0

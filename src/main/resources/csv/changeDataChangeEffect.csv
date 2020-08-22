@@ -1,0 +1,6 @@
+id`name`targetType`targetSkillId`targetEffectId`newTargetType`changeType`changeValue
+int`string`tuple3<int,int,int>`int`int`tuple3<int,int,int>`int`long
+1`卢恩魔法效果2：目标技能伤害-20%`1;0;0`2`12`0;0;0`1`2000
+2`卢恩魔法效果3：自身技能伤害+20%`6;0;0`2`12`0;0;0`1`-2000
+3`英灵指引效果3：自身技能伤害+40%`6;0;0`2`12`0;0;0`1`-4000
+4`蛇发女妖：自身攻击目标随机3个，76%伤害`6;0;0`1`10`4;0;3`2`-7600
