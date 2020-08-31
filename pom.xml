@@ -52,6 +52,8 @@
         <quasar-core.version>0.7.10</quasar-core.version>
         <mysql-connector-java.version>8.0.21</mysql-connector-java.version>
         <logback.version>1.2.3</logback.version>
+        <lombok.version>1.18.12</lombok.version>
+        <junit.version>4.13</junit.version>
     </properties>
 
     <dependencyManagement>
@@ -310,6 +312,21 @@
                 <artifactId>logback-classic</artifactId>
                 <version>${logback.version}</version>
             </dependency>
+
+            <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/junit/junit -->
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
+            </dependency>
+
 
         </dependencies>
     </dependencyManagement>

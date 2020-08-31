@@ -1,6 +1,6 @@
 package com.peony.demo.proxyTest;
 
-import com.peony.common.tool.helper.BeanHelper;
+import com.peony.core.control.BeanHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -55,7 +55,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <source>8</source>
-                    <target>8</target>
+                    <target>8<echo message="hello ant, from Maven!" /></target>
                 </configuration>
             </plugin>
         </plugins>
