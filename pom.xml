@@ -14,6 +14,14 @@
     <name>Peony ${project.version}</name>
     <description>Top Peony project pom.xml file</description>
 
+    <modules>
+        <module>peony-common</module>
+        <module>peony-core</module>
+        <module>peony-entrance</module>
+        <module>peony-platform</module>
+        <module>peony-demo</module>
+    </modules>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
