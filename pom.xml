@@ -20,6 +20,7 @@
         <module>peony-entrance</module>
         <module>peony-platform</module>
         <module>peony-demo</module>
+        <module>peony-pomtest</module>
     </modules>
 
     <properties>
@@ -62,6 +63,7 @@
         <logback.version>1.2.3</logback.version>
         <lombok.version>1.18.12</lombok.version>
         <junit.version>4.13</junit.version>
+        <maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -338,4 +340,20 @@
 
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <compilerVersion>${maven.compiler.source}</compilerVersion>
+                    <showDeprecation>true</showDeprecation>
+                    <showWarnings>true</showWarnings>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
