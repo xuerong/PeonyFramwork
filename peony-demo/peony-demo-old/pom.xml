@@ -5,9 +5,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <parent>
-        <groupId>com.peony.peony</groupId>
+        <groupId>com.github.xuerong</groupId>
         <artifactId>peony-demo</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.0-RELEASE</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 

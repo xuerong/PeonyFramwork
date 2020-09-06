@@ -6,13 +6,14 @@
 
     <modelVersion>4.0.0</modelVersion>
     <inceptionYear>2018</inceptionYear>
-    <groupId>com.peony.peony</groupId>
+    <groupId>com.github.xuerong</groupId>
     <artifactId>peony-all</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0-RELEASE</version>
     <packaging>pom</packaging>
 
     <name>Peony ${project.version}</name>
     <description>Top Peony project pom.xml file</description>
+    <url>https://github.com/xuerong/PeonyFramwork</url>
 
     <modules>
         <module>peony-common</module>
@@ -20,7 +21,6 @@
         <module>peony-entrance</module>
         <module>peony-platform</module>
         <module>peony-demo</module>
-        <module>peony-pomtest</module>
     </modules>
 
     <properties>
@@ -356,4 +356,149 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- 开源签名证书 -->
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <!-- 仓库信息 https://github.com/xuerong/PeonyFramwork.git-->
+    <scm>
+        <connection>scm:git:git@github.com:xuerong/PeonyFramwork.git</connection>
+        <developerConnection>scm:git:git@github.com:xuerong/PeonyFramwork.git
+        </developerConnection>
+        <url>http://github.com/xuerong/PeonyFramwork/tree/master</url>
+    </scm>
+
+
+    <!-- 开发人员信息 -->
+    <developers>
+        <developer>
+            <name>xuerong</name>
+            <email>861180416@qq.com</email>
+            <organization>https://github.com/xuerong</organization>
+            <timezone>+8</timezone>
+        </developer>
+    </developers>
+
+    <!-- 发布管理信息 -->
+    <distributionManagement>
+        <repository>
+            <!-- 这里的id必须要和全局配置中的release id 一致 -->
+            <id>sonatype_releases</id>
+            <name>Nexus Release Repository</name>
+            <!-- 这里就是在创建issue成功后，对方回复的release发布地址-->
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        </repository>
+        <snapshotRepository>
+            <!-- 这里的id必须要和全局配置中的snapshot id 一致 -->
+            <id>sonatype_snapshots</id>
+            <name>Nexus Snapshot Repository</name>
+            <!-- 这里就是在创建issue成功后，对方回复的snapshot发布地址-->
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <!-- 使用个人资料：由于生成javadoc和源jar以及使用GPG签署组件是一个相当耗时的过程，因此这些执行通常与正常的构建配置隔离并移动到配置文件中。然后，在通过激活配置文件执行部署时，将使用此配置文件。 -->
+    <profiles>
+        <profile>
+            <id>sonatype_releases</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- 要生成Javadoc和Source jar文件，您必须配置javadoc和源Maven插件 -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>2.2.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6.7</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <!-- 这里的id必须要和全局配置中的release id 一致 -->
+                            <serverId>sonatype_releases</serverId>
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <!-- 如果希望发布后自动执行close和release操作，此处可以调整为true -->
+                            <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                        </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>2.9.1</version>
+                        <configuration>
+                            <show>private</show>
+                            <nohelp>true</nohelp>
+                            <charset>UTF-8</charset>
+                            <encoding>UTF-8</encoding>
+                            <docencoding>UTF-8</docencoding>
+                            <additionalparam>-Xdoclint:none</additionalparam>
+                            <!-- TODO 临时解决不规范的javadoc生成报错,后面要规范化后把这行去掉 -->
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!--  必须配置GPG插件用于使用以下配置对组件进行签名 -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.5</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <!-- 【注】snapshotRepository 与 repository 中的 id 一定要与 setting.xml 中 server 的 id 保持一致！ -->
+            <!-- 发布管理信息 -->
+            <distributionManagement>
+                <repository>
+                    <!-- 这里的id必须要和全局配置中的release id 一致 -->
+                    <id>sonatype_releases</id>
+                    <name>Nexus Release Repository</name>
+                    <!-- 这里就是在创建issue成功后，对方回复的release发布地址-->
+                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+                </repository>
+                <snapshotRepository>
+                    <!-- 这里的id必须要和全局配置中的snapshot id 一致 -->
+                    <id>sonatype_snapshots</id>
+                    <name>Nexus Snapshot Repository</name>
+                    <!-- 这里就是在创建issue成功后，对方回复的snapshot发布地址-->
+                    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+                </snapshotRepository>
+            </distributionManagement>
+        </profile>
+    </profiles>
+
+
 </project>
