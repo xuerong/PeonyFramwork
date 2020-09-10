@@ -212,6 +212,7 @@ public final class EngineConfigure {
                 "com.peony.common",
                 "com.peony.core",
                 "com.peony.entrance",
+                "com.peony.platform",
                 getString("appPackage")};
     }
 

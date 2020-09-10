@@ -21,6 +21,7 @@
         <module>peony-entrance</module>
         <module>peony-platform</module>
         <module>peony-demo</module>
+        <module>peony-starter</module>
     </modules>
 
     <properties>
@@ -31,8 +32,9 @@
         <slf4j-api.version>1.7.7</slf4j-api.version>
         <fastjson.version>1.2.73</fastjson.version>
         <commons-lang3.version>3.4</commons-lang3.version>
-        <jetty-server.version>9.4.31.v20200723</jetty-server.version>
-        <jetty-webapp.version>9.4.31.v20200723</jetty-webapp.version>
+        <jetty-server.version>9.3.10.v20160621</jetty-server.version>
+        <jetty-webapp.version>9.3.11.v20160721</jetty-webapp.version>
+        <jetty-jsp.version>9.2.10.v20150310</jetty-jsp.version>
         <cglib.version>3.3.0</cglib.version>
         <trove4j.version>3.0.3</trove4j.version>
         <netty-all.version>4.1.42.Final</netty-all.version>
@@ -124,6 +126,12 @@
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-webapp</artifactId>
                 <version>${jetty-webapp.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-jsp</artifactId>
+                <version>${jetty-jsp.version}</version>
             </dependency>
 
             <!-- https://mvnrepository.com/artifact/cglib/cglib -->
