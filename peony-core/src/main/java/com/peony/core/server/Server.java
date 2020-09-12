@@ -41,7 +41,7 @@ public final class Server {
      * 初始化所有helper
      * 启动游戏主循环
      **/
-    public static void init(EngineConfigure configure) {
+    private static void init(EngineConfigure configure) {
         Server.configure = configure;
         Server.serverId = configure.getInteger("serverId");
 
@@ -51,17 +51,26 @@ public final class Server {
         }
     }
 
-    public static void init(String serverTypeStr) {
+    private static void init(String serverTypeStr) {
         init(new EngineConfigure(serverTypeStr));
     }
 
-    public static void init() {
+    private static void init() {
         init(new EngineConfigure());
     }
 
     public static void start() {
-        log.info("服务器启动开始!");
+        try{
+            doStart();
+        }catch (Throwable e){
+            log.error("start error!",e);
+            System.exit(1);
+        }
+    }
 
+    private static void doStart() {
+        log.info("服务器启动开始!");
+        init();
 //        URL resource = Server.class.getClassLoader().getResource("./config/csv");
 //        if(resource == null){
 //            resource = Server.class.getClassLoader().getResource("./csv");

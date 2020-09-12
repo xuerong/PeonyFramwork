@@ -14,8 +14,6 @@ public class Main {
     public static void main(String[] args){
         try{
             log.info("start server begin!");
-            EngineConfigure configure = new EngineConfigure();
-            Server.init(configure);
             Server.start();
             log.info("start server end!");
         }catch (Throwable e){
