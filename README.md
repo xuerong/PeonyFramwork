@@ -114,9 +114,8 @@ public class Main {
 4. 在com.peony.peony.peonydemo下面创建背包功能的包bag
 #### 二. 在bag包下面定义一个背包存储类"DBEntity"，如下：
 ```$xslt
-package com.myApp.bag;
+package com.peony.peony.peonydemo.bag;
 
-import com.alibaba.fastjson.JSONObject;
 import com.peony.core.data.persistence.orm.annotation.DBEntity;
 
 import java.io.Serializable;
@@ -159,16 +158,17 @@ public class BagItem implements Serializable {
 * 表不用手动创建，系统启动时会自动在数据库中创建，大多数的修改也会进行同步，所以不要声明不需要存储数据库的字段
 #### 三. 在bag包下面定义一个背包处理服务类"Service"，如下：
 ```$xslt
-package com.myApp.bag;
+package com.peony.peony.peonydemo.bag;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.peony.common.exception.ToClientException;
 import com.peony.core.control.annotation.Request;
 import com.peony.core.control.annotation.Service;
 import com.peony.core.data.DataService;
 import com.peony.core.data.entity.session.Session;
 import com.peony.core.data.tx.Tx;
-import com.peony.common.exception.ToClientException;
 import com.peony.core.server.SysConstantDefine;
 
 import java.util.List;
@@ -248,10 +248,14 @@ public class BagService {
 Session中有玩家基本信息，包括玩家账号`session.getUid()`
 * 注解@Tx可以确保整个方法的执行在服务层事务中，确保业务失败的数据回滚和并发情况下的数据一致问题
 #### 四. 前端调用
-* 本地启动服务器
-* 打开websocket在线工具：http://www.blue-zero.com/WebSocket/
-* 在地址输入框中输入：ws://localhost:9002/websocket，点击连接。如果出现"连接已建立，正在等待数据..."，说明websocket连接成功
-* 在发送消息框中输入登录消息如下：
+​1. 本地启动服务器
+
+​2. 打开websocket在线工具：http://www.blue-zero.com/WebSocket/
+
+​3. 在地址输入框中输入：ws://localhost:9002/websocket，点击连接。如果出现"连接已建立，正在等待数据..."，说明websocket连接成
+
+​4. 在发送消息框中输入登录消息如下：
+
 ```$xslt
 {
     "id": "102", 
@@ -262,6 +266,7 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 ```
 其中，id为登录消息协议号，accountId为登录的账号<br>
 点击发送，可得到登录成功的返回：
+
 ```$xslt
 {
     "data": {
@@ -273,7 +278,9 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 }
 ```
 其中newUser标识为新用户，serverTime为服务器时间，id和accountId同上
-* 登陆完成后，发送添加道具的接口 
+
+​5. 登陆完成后，发送添加道具的接口 
+
 ```$xslt
 {
     "id": "20012", 
@@ -284,7 +291,8 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 }
 ```
 
-* 可以收到回复  
+可以收到回复  
+
 ```$xslt
 {
     "data": {
@@ -294,7 +302,7 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 }
 ```
 
-* 然后就可以进行背包信息的获取了，发送消息
+6. 然后就可以进行背包信息的获取了，发送消息
 ```$xslt
 {
     "id": "20011", 
