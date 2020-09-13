@@ -44,7 +44,7 @@ public class NetEventService {
 
     private Map<Integer, NetEventListenerHandler> handlerMap = null;
     // 最多平均每个线程有10个请求等待处理
-    private final ThreadPoolExecutor executor = ThreadPoolHelper.newThreadPoolExecutor("PpeonyNetEvent",64,1024,65536);
+    private final ThreadPoolExecutor executor = ThreadPoolHelper.newThreadPoolExecutor("PeonyNetEvent",32,256,65536);
 
     // 所有的serverClient 不包括自己 TODO 一个server可能既是这个server又是那个server
     private Map<Integer, ServerClient> serverClients = new ConcurrentHashMap<>();
@@ -63,7 +63,7 @@ public class NetEventService {
         });
 
         selfAddress = getServerKey(Util.getHostAddress(), Server.getEngineConfigure().getNetEventPort());
-        System.err.println("selfAddress " + selfAddress);
+        logger.info("net event address " + selfAddress);
 
     }
 

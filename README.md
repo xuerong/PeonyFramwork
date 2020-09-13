@@ -1,5 +1,5 @@
 ```diff
-- 目前架构的代码结构正在调整，按照教程无法正常启动，因此给您带来的不便敬请原谅。谢谢关注！
+- 目前架构的代码结构正在调整，教程中存在部分错误，因此给您带来的不便敬请原谅。谢谢关注！
 ```
 # 欢迎来到PeonyFramwork
 
@@ -33,11 +33,41 @@ PeonyFramwork是一个优秀的java后端框架，上手简单，使用灵活方
 
 # 启动框架
 
-1、用idea，Open->选择根目录的build.gradle文件->把项目作为gradle项目打开 <br>
-2、找到src->main->resources->mmserver.properties文件，修改里面的数据库配置，包括数据库连接`jdbc.url`，用户名`jdbc.username`和密码`jdbc.password`。（不用创建表）<br>
-当MySQL的版本小于6时，需要修改`jdbc.driver=com.mysql.jdbc.Driver`，否则，使用`jdbc.driver=com.mysql.cj.jdbc.Driver`<br>
-3、找到启动类com.peony.engine.framework.server.Server，运行。<br>
-成功启动的标志为：
+1、新建一个maven项目，导入peony <br>
+
+```
+<dependency>
+    <groupId>com.github.xuerong</groupId>
+    <artifactId>peony-starter</artifactId>
+    <version>1.0.0-RELEASE</version>
+</dependency>
+```
+
+2、在resource中创建peony配置文件mmserver.properties，添加数据库配置。（不用创建表）<br>
+
+```
+jdbc.type=mysql
+# Mysql 版本<= Mysql5
+# jdbc.driver=com.mysql.jdbc.Driver
+# Mysql 版本>= Mysql6
+jdbc.driver=com.mysql.cj.jdbc.Driver
+jdbc.url=jdbc:mysql://localhost:3306/peony?autoReconnect=true&charset=utf8mb4&characterEncoding=utf-8&useSSL=false
+jdbc.username=root
+jdbc.password=admin123
+```
+
+3、创建Main类，在main方法中调用peony的启动方法。<br>
+
+```
+public class Main {
+    public static void main(String[] args){
+        Server.start();
+    }
+}
+```
+
+4、右击，启动。启动成功的标志如下：
+
 ```$xslt
 -------------------------------------------------------------
 |                      Congratulations                      |
@@ -45,12 +75,43 @@ PeonyFramwork是一个优秀的java后端框架，上手简单，使用灵活方
 -------------------------------------------------------------
 ```
 
+5、peony使用的日志为logback，默认日志级别为DEBUG。启动日志较多，可在resource中添加logback.xml调整日志级别为INFO。
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false" scan="true" scanPeriod="30 second">
+    <!-- 控制台打印 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder charset="utf-8">
+            <pattern>[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %logger{36} - %m%n</pattern>
+        </encoder>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
+```
+
 # 基本使用
+
 以下以框架提供的消息入口WebSocketEntrance和json协议为例，实现一个简单的背包功能<br>
 #### 一、创建应用包
-1. 在com包(位于src/main/java下面)下面创建应用包myApp
-2. 打开resources（位于src/main下面）的应用配置文件mmserver.properties，修改appPackage属性的值为com.myApp
-3. 在com.myApp下面创建背包功能的包bag
+1. 创建应用包。比如”com.peony.peony.peonydemo“。
+
+2. 在mmserver.properties中添加应用包配置。
+
+   ```
+   appPackage = com.peony.peony.peonydemo
+   ```
+
+3. 在mmserver.properties中添加入口配置。
+
+   ```
+   entrance.request.port = 9002
+   entrance.request.class = com.peony.entrance.websocket_json.WebSocketEntrance
+   ```
+
+4. 在com.peony.peony.peonydemo下面创建背包功能的包bag
 #### 二. 在bag包下面定义一个背包存储类"DBEntity"，如下：
 ```$xslt
 package com.myApp.bag;
@@ -66,15 +127,8 @@ public class BagItem implements Serializable {
     private int itemId; // 物品id
     private int num; // 物品数量
 
-    public JSONObject toJson(){
-        JSONObject ret = new JSONObject();
-        ret.put("itemId",itemId);
-        ret.put("num",num);
-        return ret;
-    }
-
     // get set 方法
-
+    
     public String getUid() {
         return uid;
     }
@@ -123,18 +177,27 @@ import java.util.List;
 public class BagService {
 
     private DataService dataService;
+    
     /**
      * 协议，获取背包列表
      */
     @Request(opcode = 20011)
-    public JSONObject BagInfo(JSONObject req, Session session) {
+    public JSONObject getBagInfos(JSONObject req, Session session) {
         List<BagItem> bagItemList = dataService.selectList(BagItem.class,"uid=?",session.getUid());
+        JSONArray array= JSONArray.parseArray(JSON.toJSONString(bagItemList));
         JSONObject ret = new JSONObject();
-        JSONArray array = new JSONArray();
-        for(BagItem bagItem : bagItemList){
-            array.add(bagItem.toJson());
-        }
         ret.put("bagItems",array);
+        return ret;
+    }
+    
+    /**
+     * 协议，添加背包信息
+     */
+    @Request(opcode = 20012)
+    public JSONObject addBagInfo(JSONObject req, Session session) {
+        int currNum = addItem(session.getUid(),req.getInteger("itemId"),req.getInteger("num"));
+        JSONObject ret = new JSONObject();
+        ret.put("currNum",currNum);
         return ret;
     }
 
@@ -210,7 +273,28 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 }
 ```
 其中newUser标识为新用户，serverTime为服务器时间，id和accountId同上
-* 登录完成后，就可以进行背包信息的获取了，发送消息
+* 登陆完成后，发送添加道具的接口 
+```$xslt
+{
+    "id": "20012", 
+    "data": {
+        "itemId":1,
+        "num":2
+    }
+}
+```
+
+* 可以收到回复  
+```$xslt
+{
+    "data": {
+        "currNum": 2
+    }, 
+    "id": 20012
+}
+```
+
+* 然后就可以进行背包信息的获取了，发送消息
 ```$xslt
 {
     "id": "20011", 
@@ -223,11 +307,16 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 ```$xslt
 {
     "data": {
-        "bagItems": [ ]
+        "bagItems": [
+            {
+                "itemId": 1, 
+                "uid": "test1", 
+                "num": 2
+            }
+        ]
     }, 
     "id": 20011
 }
 ```
-由于背包中为空，所以bagItems返回一个空数据，您可自行实现一个添加物品到背包的协议进行测试
 # 框架详述
 **[框架详述](https://github.com/xuerong/PeonyFramwork/wiki)**

@@ -39,6 +39,17 @@ import java.util.regex.Pattern;
  */
 public class EntityHelper {
     private static final Logger log = LoggerFactory.getLogger(EntityHelper.class);
+
+    // 数据库表自动创建的一些配置
+    // 没有则创建
+    private static final boolean DATABASETABLE_CREATEIFNOTEXIST = true;
+    // 缺少字段则添加
+    private static final boolean DATABASETABLE_ADDIFABSENT = true;
+    // 类型不同则修改：包括编码格式
+    private static final boolean DATABASETABLE_MODIFYIFTYPEDIFFERENT = true;
+    // 多出字段则删除：不建议
+    private static final boolean DATABASETABLE_DELETEIFMORE = false;
+
     /**
      * 实体类 => 表名
      */
@@ -552,10 +563,10 @@ public class EntityHelper {
             log.warn("\ntable {} is not exist",dbEntity.tableName());
         }
 
-        boolean createIfNotExist = ConfigHelper.getBoolean("databasetable.createIfNotExist");
-        boolean addIfAbsent = ConfigHelper.getBoolean("databasetable.addIfAbsent");
-        boolean modifyIfTypeDifferent = ConfigHelper.getBoolean("databasetable.modifyIfTypeDifferent");
-        boolean deleteIfMore = ConfigHelper.getBoolean("databasetable.deleteIfMore");
+        boolean createIfNotExist = ConfigHelper.getBoolean("databasetable.createIfNotExist",DATABASETABLE_CREATEIFNOTEXIST);
+        boolean addIfAbsent = ConfigHelper.getBoolean("databasetable.addIfAbsent",DATABASETABLE_ADDIFABSENT);
+        boolean modifyIfTypeDifferent = ConfigHelper.getBoolean("databasetable.modifyIfTypeDifferent",DATABASETABLE_MODIFYIFTYPEDIFFERENT);
+        boolean deleteIfMore = ConfigHelper.getBoolean("databasetable.deleteIfMore",DATABASETABLE_DELETEIFMORE);
 
         boolean syncPriKey = createIfNotExist;
 

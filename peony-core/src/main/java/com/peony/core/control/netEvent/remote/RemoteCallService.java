@@ -34,7 +34,7 @@ public class RemoteCallService {
     private static final Logger logger = LoggerFactory.getLogger(RemoteCallService.class);
     private NetEventService netEventService;
     private MonitorService monitorService;
-    private ExecutorService executorService = ThreadPoolHelper.newThreadPoolExecutor("PpeonyRemoteCall",64,1024,65536);
+    private ExecutorService executorService = ThreadPoolHelper.newThreadPoolExecutor("PpeonyRemoteCall",32,256,65536);
     ConcurrentLinkedDeque<Integer> timeQueue = new ConcurrentLinkedDeque<>();
     private Map<String,Method> remoteMethodIndex;
 
@@ -192,6 +192,7 @@ public class RemoteCallService {
     public void remoteCallAsync(int serverId, Class serviceClass, String methodName,String methodSignature,  Object[] params) {
         executorService.execute(()->{
             try{
+                // TODO 这个地方要做一个真正的异步的能力，之后，就把线程池线程数量降下来
                 remoteCallSyn(serverId, serviceClass, methodName, methodSignature,params, null);
             }catch (Throwable e){
                 logger.error("remoteCallAsync error!",e);

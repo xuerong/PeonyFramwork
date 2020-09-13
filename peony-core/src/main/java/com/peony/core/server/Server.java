@@ -43,9 +43,9 @@ public final class Server {
      **/
     private static void init(EngineConfigure configure) {
         Server.configure = configure;
-        Server.serverId = configure.getInteger("serverId");
+        Server.serverId = configure.getInteger("serverId",1);
 
-        if(configure.getInteger("serverId") == null) {
+        if(Server.serverId == null) {
             log.error("mmserver.properties 缺少配置[服务器 id] serverId ");
             throw new MMException(MMException.ExceptionType.StartUpFail,"mmserver.properties 缺少配置[服务器 id] serverId");
         }

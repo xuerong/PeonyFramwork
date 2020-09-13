@@ -63,6 +63,9 @@ public class PropsUtil {
         Map<String,Properties> result = new HashMap<>();
         try {
             URL url = ClassUtil.getClassLoader().getResource(dirPath);
+            if(url == null){
+                return new HashMap<>();
+            }
             File file = new File(url.toURI());
             String[] fileList = file.list();
             for (String fileName : fileList) {

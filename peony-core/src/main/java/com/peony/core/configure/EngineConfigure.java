@@ -11,15 +11,19 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by Administrator on 2015/11/16.
  */
 public final class EngineConfigure {
+
+    private static final String FRAMEBEAN_DATASOURCEFACTORY_DEFAULT = "com.peony.core.data.persistence.ds.impl.HikariDataSourceFactory";
+    private static final String FRAMEBEAN_DATAACCESSOR_DEFAULT = "com.peony.core.data.persistence.dao.impl.DefaultDataAccessor";
+
+    private static final String FRAMEBEAN_CACHECENTER_DEFAULT = "com.peony.core.data.cache.LRUMapCacheCenter";
+
+
     private static final Logger log = LoggerFactory.getLogger(EngineConfigure.class);
     private Map<Class<?>,Class<?>> configureBeans=new HashMap<Class<?>,Class<?>>();
     private String defaultRequestController;
@@ -43,9 +47,9 @@ public final class EngineConfigure {
             // 从配置文件中取server类型，如果没有，就是默认类型nodeServer
         }
         // 初始化配置：从配置文件中读取
-        configureBeans.put(DataSourceFactory.class,getBeanFromConfigure("frameBean.dataSourceFactory"));
-        configureBeans.put(DataAccessor.class,getBeanFromConfigure("frameBean.dataAccessor"));
-        configureBeans.put(CacheCenter.class,getBeanFromConfigure("frameBean.cacheCenter"));
+        configureBeans.put(DataSourceFactory.class,getBeanFromConfigure("frameBean.dataSourceFactory",FRAMEBEAN_DATASOURCEFACTORY_DEFAULT));
+        configureBeans.put(DataAccessor.class,getBeanFromConfigure("frameBean.dataAccessor",FRAMEBEAN_DATAACCESSOR_DEFAULT));
+        configureBeans.put(CacheCenter.class,getBeanFromConfigure("frameBean.cacheCenter",FRAMEBEAN_CACHECENTER_DEFAULT));
 
         defaultRequestController="DefaultRequestController";
         // 初始化入口
@@ -109,9 +113,9 @@ public final class EngineConfigure {
                 requestEntrance = configure;
             }
         }
-        if(netEventEntrance == null){
-            throw new MMException("configure has no netEventEntrance");
-        }
+//        if(netEventEntrance == null){
+//            throw new MMException("configure has no netEventEntrance");
+//        }
 //        if(requestEntrance == null){
 //            throw new MMException("configure has no requestEntrance");
 //        }
@@ -124,8 +128,8 @@ public final class EngineConfigure {
         return netEventEntrance;
     }
 
-    private Class<?> getBeanFromConfigure(String beanType){
-        String classPath= ConfigHelper.getString(beanType);
+    private Class<?> getBeanFromConfigure(String beanType,String defaultBeanType){
+        String classPath= ConfigHelper.getString(beanType,defaultBeanType);
         if(StringUtils.isEmpty(classPath)){
             throw new RuntimeException("class bean set is Invalid ,value is "+classPath);
         }
@@ -167,7 +171,7 @@ public final class EngineConfigure {
         return Integer.parseInt(val);
     }
 
-    public int getInt(String key, int defVal) {
+    public int getInteger(String key, int defVal) {
         String val = ConfigHelper.getString(key);
         if(StringUtils.isBlank(val)) {
             return defVal;
@@ -192,6 +196,9 @@ public final class EngineConfigure {
         return true;
     }
     public int getNetEventPort(){
+        if(netEventEntrance == null){
+            return -1;
+        }
         return netEventEntrance.getPort();
     }
     public int getRequestPort(){
@@ -208,12 +215,16 @@ public final class EngineConfigure {
     }
 
     public String[] getAllPackets(){
-        return new String[]{
-                "com.peony.common",
-                "com.peony.core",
-                "com.peony.entrance",
-                "com.peony.platform",
-                getString("appPackage")};
+        List<String> stringList = new ArrayList<>();
+        stringList.add("com.peony.common");
+        stringList.add("com.peony.core");
+        stringList.add("com.peony.entrance");
+        stringList.add("com.peony.platform");
+        String appPackage = getString("appPackage");
+        if(StringUtils.isNotBlank(appPackage)){
+            stringList.add(appPackage);
+        }
+        return stringList.toArray(new String[stringList.size()]);
     }
 
 }

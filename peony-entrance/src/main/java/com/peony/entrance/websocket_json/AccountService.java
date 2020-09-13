@@ -3,11 +3,7 @@ package com.peony.entrance.websocket_json;
 import com.alibaba.fastjson.JSONObject;
 import com.peony.core.control.annotation.Request;
 import com.peony.core.control.annotation.Service;
-import com.peony.core.control.annotation.Updatable;
 import com.peony.core.control.event.EventService;
-import com.peony.core.control.statistics.Statistics;
-import com.peony.core.control.statistics.StatisticsData;
-import com.peony.core.control.statistics.StatisticsStore;
 import com.peony.core.data.DataService;
 import com.peony.core.data.entity.account.*;
 import com.peony.core.data.entity.session.Session;
@@ -16,7 +12,7 @@ import com.peony.common.exception.MMException;
 import com.peony.core.server.IdService;
 import com.peony.core.server.SysConstantDefine;
 import com.peony.core.server.SystemLog;
-import com.peony.common.tool.util.Util;
+import com.peony.entrance.util.IpCountryUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.AttributeKey;
 import org.apache.commons.lang3.StringUtils;
@@ -68,9 +64,10 @@ public class AccountService {
             }
         }
         if(ip != null){
-            String country = Util.getCountryCode(ip);
-            data.put("country",country);
-            SystemLog.log("ip:"+ip+",country:"+country);
+            // TODO
+//            String country = IpCountryUtil.getCountryCode(ip);
+//            data.put("country",country);
+//            SystemLog.log("ip:"+ip+",country:"+country);
         }else {
             log.error("ip=null");
         }

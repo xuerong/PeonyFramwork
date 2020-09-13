@@ -54,7 +54,7 @@ public class EventService{
     /**
      * 执行异步事件的线程池
      */
-    private final ThreadPoolExecutor executor = ThreadPoolHelper.newThreadPoolExecutor("PpeonyEvent",16,1024,1024);
+    private final ThreadPoolExecutor executor = ThreadPoolHelper.newThreadPoolExecutor("PpeonyEvent",16,64,65536);
 
     /**
      * 普通事件处理器的缓存

@@ -209,9 +209,10 @@ public final class ServiceHelper {
                 Service service = serviceClass.getAnnotation(Service.class);
 
                 // 远程方法处理
-                if(!Server.getEngineConfigure().getBoolean("server.is.test", false)) {
-                    newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
-                }
+//                if(!Server.getEngineConfigure().getBoolean("server.is.test", false)) {
+//                    newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
+//                }
+                newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
 
                 if (requestMap.containsKey(serviceClass)) {
                     newServiceClass = generateRequestHandlerClass(newServiceClass, serviceClass);
@@ -426,7 +427,7 @@ public final class ServiceHelper {
                     body.append(String.format("\t\tObject object = remoteService.remoteCallSyn(serverId, %s.class,\"%s\",\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),ClassUtil.getMethodSignature(oldMethod),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));
 
                     //body.append(String.format("\t\treturn (%s)object;", oldMethod.getReturnType().getName()));
-                    body.append("\t\treturn "+ parseObjectTypeStrToBaseTypeStr(oldMethod.getReturnType().getName(),"object"));
+                    body.append("\t\treturn "+ parseObjectTypeStrToBaseTypeStr(oldMethod.getReturnType().getName(),"object")).append(";");
 
                 } else {
 //                    body.append(String.format("remoteService.remoteCallSyn(serverId, %s.class,\"%s\",$args,%s);\n", serviceClass.getName(), ctMethod.getName(),RemoteExceptionHandler.class.getName()+"."+remote.remoteExceptionHandler().name()));

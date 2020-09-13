@@ -79,7 +79,7 @@ public class EhCacheHelper {
                 if(cache == null){
                     // FIXME 这个设置需要考虑一下
                     cache = cacheManager.createCache(cacheKey,
-                            CacheConfigurationBuilder.newCacheConfigurationBuilder(String.class, CacheEntity.class, ResourcePoolsBuilder.heap(Server.getEngineConfigure().getInteger("cacheCapacity"))).build());
+                            CacheConfigurationBuilder.newCacheConfigurationBuilder(String.class, CacheEntity.class, ResourcePoolsBuilder.heap(Server.getEngineConfigure().getInteger("cacheCapacity",3000000))).build());
                     cacheMap.put(cacheKey,cache);
                 }
             }

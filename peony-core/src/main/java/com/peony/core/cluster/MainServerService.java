@@ -28,7 +28,7 @@ public class MainServerService {
 
     public void init(){
         Map<String, String> mainServerMap = ConfigHelper.getMap("mainServer");
-        if(!mainServerMap.get("mainServer.use").trim().equals("true")){
+        if(!"true".equals(mainServerMap.get("mainServer.use"))){
             return;
         }
         ServerInfo mainServerInfo = Server.getEngineConfigure().getMainServerInfo();
