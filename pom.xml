@@ -8,7 +8,7 @@
     <inceptionYear>2018</inceptionYear>
     <groupId>com.github.xuerong</groupId>
     <artifactId>peony-all</artifactId>
-    <version>1.0.0-RELEASE</version>
+    <version>1.0.1-RELEASE</version>
     <packaging>pom</packaging>
 
     <name>Peony ${project.version}</name>

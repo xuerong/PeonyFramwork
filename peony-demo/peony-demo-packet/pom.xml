@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.github.xuerong</groupId>
         <artifactId>peony-demo</artifactId>
-        <version>1.0.0-RELEASE</version>
+        <version>1.0.1-RELEASE</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>

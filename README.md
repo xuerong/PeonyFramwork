@@ -39,7 +39,7 @@ PeonyFramwork是一个优秀的java后端框架，上手简单，使用灵活方
 <dependency>
     <groupId>com.github.xuerong</groupId>
     <artifactId>peony-starter</artifactId>
-    <version>1.0.0-RELEASE</version>
+    <version>1.0.1-RELEASE</version>
 </dependency>
 ```
 
