@@ -228,13 +228,12 @@ public class BagService {
         BagItem bagItem =  dataService.selectObject(BagItem.class,"uid=? and itemId=?",uid,itemId);
         if(bagItem == null){
             throw new ToClientException(SysConstantDefine.InvalidParam,"item is not enough1,itemId={}",itemId);
-        }else{
-            if(bagItem.getNum()<num){
-                throw new ToClientException(SysConstantDefine.InvalidParam,"item is not enough2,itemId={}",itemId);
-            }
-            bagItem.setNum(bagItem.getNum()-num);
-            dataService.update(bagItem);
         }
+        if(bagItem.getNum()<num){
+            throw new ToClientException(SysConstantDefine.InvalidParam,"item is not enough2,itemId={}",itemId);
+        }
+        bagItem.setNum(bagItem.getNum()-num);
+        dataService.update(bagItem);
         return bagItem.getNum();
     }
 }
