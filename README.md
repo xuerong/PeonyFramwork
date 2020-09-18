@@ -1,6 +1,3 @@
-```diff
-- 目前架构的代码结构正在调整，教程中存在部分错误，因此给您带来的不便敬请原谅。谢谢关注！
-```
 # 欢迎来到PeonyFramwork
 
 > 我将在PeonyFramwork上尝试这样一种架构思想：1、开发与部署分离；2、更智能的部署能力。 
@@ -29,13 +26,13 @@ PeonyFramwork是一个优秀的java后端框架，上手简单，使用灵活方
 5. 数据库异步更新：数据的增加，删除和修改是通过异步方式实现的
 6. 数据库表自动更新：数据库中的表可以根据业务中的数据对象自动创建，修改，无需手动写sql进行数据库表的创建修改等操作
 7. Service组件规范与定制型配置[倡导通用型组件]（还未实现）
-#### 下面是如何下载和启动PeonyFramwork，以及基本的使用；如需了解更详细框架使用和原理，请转到[PeonyFramwork Wiki](https://github.com/xuerong/PeonyFramwork/wiki)
+#### 下面是如何启动PeonyFramwork，以及基本的使用；如需了解更详细框架使用和原理，请转到[PeonyFramwork Wiki](https://github.com/xuerong/PeonyFramwork/wiki)
 
 # 启动框架
 
 1、新建一个maven项目，导入peony <br>
 
-```
+```xml
 <dependency>
     <groupId>com.github.xuerong</groupId>
     <artifactId>peony-starter</artifactId>
@@ -45,7 +42,7 @@ PeonyFramwork是一个优秀的java后端框架，上手简单，使用灵活方
 
 2、在resource中创建peony配置文件mmserver.properties，添加数据库配置。（不用创建表）<br>
 
-```
+```properties
 jdbc.type=mysql
 # Mysql 版本<= Mysql5
 # jdbc.driver=com.mysql.jdbc.Driver
@@ -58,7 +55,7 @@ jdbc.password=admin123
 
 3、创建Main类，在main方法中调用peony的启动方法。<br>
 
-```
+```java
 public class Main {
     public static void main(String[] args){
         Server.start();
@@ -77,7 +74,7 @@ public class Main {
 
 5、peony使用的日志为logback，默认日志级别为DEBUG。启动日志较多，可在resource中添加logback.xml调整日志级别为INFO。
 
-```
+```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration debug="false" scan="true" scanPeriod="30 second">
     <!-- 控制台打印 -->
@@ -100,20 +97,20 @@ public class Main {
 
 2. 在mmserver.properties中添加应用包配置。
 
-   ```
+   ```properties
    appPackage = com.peony.peony.peonydemo
    ```
 
 3. 在mmserver.properties中添加入口配置。
 
-   ```
+   ```properties
    entrance.request.port = 9002
    entrance.request.class = com.peony.entrance.websocket_json.WebSocketEntrance
    ```
 
 4. 在com.peony.peony.peonydemo下面创建背包功能的包bag
 #### 二. 在bag包下面定义一个背包存储类"DBEntity"，如下：
-```$xslt
+```java
 package com.peony.peony.peonydemo.bag;
 
 import com.peony.core.data.persistence.orm.annotation.DBEntity;
@@ -157,7 +154,7 @@ public class BagItem implements Serializable {
 * @DBEntity声明的类必须继承Serializable接口，并对参数实现get set方法
 * 表不用手动创建，系统启动时会自动在数据库中创建，大多数的修改也会进行同步，所以不要声明不需要存储数据库的字段
 #### 三. 在bag包下面定义一个背包处理服务类"Service"，如下：
-```$xslt
+```java
 package com.peony.peony.peonydemo.bag;
 
 import com.alibaba.fastjson.JSON;
@@ -247,15 +244,15 @@ public class BagService {
 Session中有玩家基本信息，包括玩家账号`session.getUid()`
 * 注解@Tx可以确保整个方法的执行在服务层事务中，确保业务失败的数据回滚和并发情况下的数据一致问题
 #### 四. 前端调用
-​1. 本地启动服务器
+1. 本地启动服务器
 
-​2. 打开websocket在线工具：http://www.blue-zero.com/WebSocket/
+2. 打开websocket在线工具：http://www.blue-zero.com/WebSocket/
 
-​3. 在地址输入框中输入：ws://localhost:9002/websocket，点击连接。如果出现"连接已建立，正在等待数据..."，说明websocket连接成
+3. 在地址输入框中输入：ws://localhost:9002/websocket，点击连接。如果出现"连接已建立，正在等待数据..."，说明websocket连接成
 
-​4. 在发送消息框中输入登录消息如下：
+4. 在发送消息框中输入登录消息如下：
 
-```$xslt
+```json
 {
     "id": "102", 
     "data": {
@@ -266,7 +263,7 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 其中，id为登录消息协议号，accountId为登录的账号<br>
 点击发送，可得到登录成功的返回：
 
-```$xslt
+```json
 {
     "data": {
         "accountId": "test2", 
@@ -278,9 +275,9 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 ```
 其中newUser标识为新用户，serverTime为服务器时间，id和accountId同上
 
-​5. 登陆完成后，发送添加道具的接口 
+5. 登陆完成后，发送添加道具的接口 
 
-```$xslt
+```json
 {
     "id": "20012", 
     "data": {
@@ -292,7 +289,7 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 
 可以收到回复  
 
-```$xslt
+```json
 {
     "data": {
         "currNum": 2
@@ -302,7 +299,7 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 ```
 
 6. 然后就可以进行背包信息的获取了，发送消息
-```$xslt
+```json
 {
     "id": "20011", 
     "data": {
@@ -311,7 +308,7 @@ Session中有玩家基本信息，包括玩家账号`session.getUid()`
 }
 ```
 可收到消息：
-```$xslt
+```json
 {
     "data": {
         "bagItems": [
