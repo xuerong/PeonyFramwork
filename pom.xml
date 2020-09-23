@@ -22,12 +22,14 @@
         <module>peony-platform</module>
         <module>peony-demo</module>
         <module>peony-starter</module>
+        <module>peony-cluster</module>
     </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>
 
         <slf4j-api.version>1.7.7</slf4j-api.version>
         <fastjson.version>1.2.73</fastjson.version>
@@ -65,7 +67,7 @@
         <logback.version>1.2.3</logback.version>
         <lombok.version>1.18.12</lombok.version>
         <junit.version>4.13</junit.version>
-        <maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>
+        <dubbo.version>2.7.5</dubbo.version>
     </properties>
 
     <dependencyManagement>
@@ -345,6 +347,11 @@
                 <version>${junit.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.apache.dubbo</groupId>
+                <artifactId>dubbo</artifactId>
+                <version>${dubbo.version}</version>
+            </dependency>
 
         </dependencies>
     </dependencyManagement>
