@@ -2,6 +2,9 @@ package com.peony.common.tool.thread;
 
 import java.util.concurrent.*;
 
+/**
+ * FIXME 这个类的参数设置，需要重新看一下
+ */
 public final class ThreadPoolHelper {
     /**
      * 创建一个线程池

@@ -24,9 +24,6 @@ import java.util.Map;
 public final class BeanHelper {
     private static final Logger log = LoggerFactory.getLogger(BeanHelper.class);
     private final static Map<Class<?>,Object> frameBeans=new HashMap<Class<?>,Object>();
-    private final static Map<Class<?>,Object> engineBeans=new HashMap<Class<?>,Object>();
-    private final static Map<Class<?>,Object> userBeans=new HashMap<Class<?>,Object>();
-
 
     private final static Map<String,Object> serviceBeansByName = new HashMap<>();
     private final static Map<Class<?>,Object> serviceBeans=new HashMap<Class<?>,Object>();
