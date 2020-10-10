@@ -5,6 +5,7 @@ import com.maxmind.geoip2.exception.AddressNotFoundException;
 import com.maxmind.geoip2.model.CountryResponse;
 import com.maxmind.geoip2.record.Country;
 import com.peony.common.exception.MMException;
+import javassist.ClassPool;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -439,5 +440,4 @@ public final class Util {
         }
         return base.subList(0,num);
     }
-
 }

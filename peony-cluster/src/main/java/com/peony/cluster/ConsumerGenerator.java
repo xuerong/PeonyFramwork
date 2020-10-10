@@ -1,6 +1,7 @@
 package com.peony.cluster;
 
 import javassist.CannotCompileException;
+import javassist.ClassClassPath;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtField;
@@ -19,9 +20,9 @@ import java.lang.reflect.Field;
  * @since 2020/9/27
  */
 public class ConsumerGenerator {
-    public static Object generateConsumer(Object object) throws NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException, NoSuchFieldException {
+    public static Object generateConsumer(Class<?> serviceClass, Object object) throws NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException, NoSuchFieldException {
         // 生成代理接口
-        Class<?> proxyInterface = DubboHelper.generateProxyInterface(object);
+        Class<?> proxyInterface = DubboHelper.generateProxyInterface(serviceClass);
         // 生成代理类
         Class<?> proxyClass = generateProxy(object,proxyInterface);
         // 生成代理对象

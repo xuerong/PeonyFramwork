@@ -2,9 +2,9 @@ package com.peony.cluster;
 
 import com.peony.cluster.servicerole.IServiceRoleConfig;
 import com.peony.cluster.servicerole.ServiceRole;
+import com.peony.cluster.servicerole.impl.NacosServiceRoleConfig;
 import com.peony.common.exception.MMException;
 import com.peony.common.tool.util.Util;
-import com.peony.core.control.BeanHelper;
 import javassist.CannotCompileException;
 import javassist.NotFoundException;
 import org.slf4j.Logger;
@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 集群服务：开发与部署分离，提供一个部署时可配置的集群部署能力
@@ -46,7 +45,7 @@ import java.util.Set;
  * 2    |   com.Service2        0.0.0.2         0.0.0.11,0.0.0.12   -:0.0.0.3
  * 3    |   com.Service3        0.0.0.3             0.0.0.2         -:0.0.0.11,0.0.0.12
  * ---------------------------------------------------------------
- *
+ * <p>
  * 当服务类型变化的时候：
  * 1、没有出现再变化列表的，就等于没有变化：这里注意一点，对于由有配置变成没有配置，属于变化，需要带进来
  * 2、对于Updatable注解，对于None和Consumer，要关闭
@@ -58,85 +57,87 @@ import java.util.Set;
  */
 public class ClusterHelper {
     private static Logger logger = LoggerFactory.getLogger(ClusterHelper.class);
-    private static IServiceRoleConfig serviceRoleConfig;
+    // FIXME 这个采用注入的方式
+    private static IServiceRoleConfig serviceRoleConfig = new NacosServiceRoleConfig();
 
     private static Map<Class<?>, ServiceRole> serviceRoleMap = new HashMap<>();
 
-    public static void init() {
+    public static Map<Class<?>, ServiceRole> getServiceRoleMap() {
+        return serviceRoleMap;
+    }
+
+    /**
+     * 这里提供从IServiceRoleConfig拿取服务信息，并转换的能力
+     *
+     */
+    public static void init(ClusterBeanCallback clusterBeanCallback) {
         // 从配置中心拉取
         Map<String, ServiceRole> serviceRoleMap = serviceRoleConfig.getServiceRoles();
-        handleServiceRoleOfConfig(serviceRoleMap,true);
-        serviceRoleConfig.subscribe((roleMap)->{
-            handleServiceRoleOfConfig(roleMap,false);
+        transServiceClass(serviceRoleMap);
+        serviceRoleConfig.subscribe((roleMap) -> {
+            Map<Class<?>,ServiceRole> modify = transServiceClass(roleMap);
+            clusterBeanCallback.handle(modify);
+            //
         });
     }
-    private static void handleServiceRoleOfConfig(Map<String, ServiceRole> serviceRoleMap,boolean init){
-        Map<Class<?>, Object>  serviceBeans = BeanHelper.getServiceBeans();
+
+    private static synchronized Map<Class<?>,ServiceRole> transServiceClass(Map<String, ServiceRole> serviceRoleMap){
+        Map<Class<?>,ServiceRole> modify = new HashMap<>();
         for (Map.Entry<String, ServiceRole> entry : serviceRoleMap.entrySet()) {
             try {
-
                 Class<?> cls = Class.forName(entry.getKey());
-                Object bean = serviceBeans.get(cls);
-                if(bean == null){
-                    logger.warn("service bean is not exist , config may error! key = {}",entry.getKey());
-                    continue;
+                ServiceRole serviceRole = ClusterHelper.serviceRoleMap.get(cls);
+                if(serviceRole == null || serviceRole != entry.getValue()){
+                    ClusterHelper.serviceRoleMap.put(cls,entry.getValue());
+                    modify.put(cls,entry.getValue());
                 }
-                ServiceRole old = ClusterHelper.serviceRoleMap.put(cls, entry.getValue());
-                if(!init){
-                    if(old == entry.getValue()){
-                        continue;
-                    }
-                    // TODO 如果不是初始化，需要替换旧的
-                    if(old == null){
-                        // TODO 按照现在role处理
-                        continue;
-                    }
-                    switch (old){
-                        case None: // TODO 移除掉
-                            break;
-                        case Provider:break; // 重新生成，并提供
-                        case Consumer:break; // 重新生成
-                        case RunSelf:break; // 重新生成
-                    }
-                }else{
-                    Object newBean = parseService(cls,bean);
-                    if(newBean == null){
-                        //
-                    }
-                }
-            } catch (ClassNotFoundException e) {
+            }catch (ClassNotFoundException e) {
                 logger.error("class is not exist on cluster init,key = {}", entry.getKey(), e);
-            } catch (NoSuchFieldException | CannotCompileException | InstantiationException | NotFoundException | IllegalAccessException e){
-                logger.error("class parse fail on cluster init,key = {}", entry.getKey(), e);
             }
         }
+        return modify;
     }
 
-    static Object parseService(Class<?> serviceClass,Object bean) throws NoSuchFieldException, CannotCompileException, InstantiationException, NotFoundException, IllegalAccessException {
+//    public static Map<Class<?>, Object> build(Map<Class<?>, Object> serviceRoleMap) {
+//        Map<Class<?>, Object> ret = new HashMap<>();
+//        for (Map.Entry<Class<?>, Object> entry : serviceRoleMap.entrySet()) {
+//            try {
+//                Class<?> cls = entry.getKey();
+//                Object bean = entry.getValue();
+//                Object newBean = parseService(cls, bean);
+//                ret.put(cls, newBean);
+//            } catch (NoSuchFieldException | CannotCompileException | InstantiationException | NotFoundException | IllegalAccessException e) {
+//                logger.error("class parse fail on cluster init,key = {}", entry.getKey(), e);
+//            }
+//        }
+//        return ret;
+//    }
+
+    public static Object parseService(Class<?> serviceClass, Object bean) throws NoSuchFieldException, CannotCompileException, InstantiationException, NotFoundException, IllegalAccessException {
         ServiceRole serviceRole = serviceRoleMap.get(serviceClass);
-        if(serviceRole == null){
+        if (serviceRole == null) {
             // 没有任何配置，普通代理
             return bean;
         }
-        switch (serviceRole){
+        switch (serviceRole) {
             case None:
                 // 不在本机上对该服务提供能力
                 return null;
             case RunSelf:
                 // 本机是该服务的自提供者之一
                 return bean;
-            case Consumer:{
+            case Consumer: {
                 // 本机是该服务的消费者之一
-                bean = ConsumerGenerator.generateConsumer(bean);
+                bean = ConsumerGenerator.generateConsumer(serviceClass, bean);
                 return bean;
             }
-            case Provider:{
+            case Provider: {
                 // 本机是该服务的提供者之一
-                bean = ProviderGenerator.generateProvider(bean);
+                bean = ProviderGenerator.generateProvider(serviceClass, bean);
                 return bean;
             }
         }
-        throw new MMException("service role error! serviceRole = {}",serviceRole);
+        throw new MMException("service role error! serviceRole = {}", serviceRole);
     }
 
     // TODO 这种获取IP的方式不对
@@ -144,8 +145,5 @@ public class ClusterHelper {
         String ip = Util.getHostAddress();
         return ip;
     }
-
-
-
 
 }

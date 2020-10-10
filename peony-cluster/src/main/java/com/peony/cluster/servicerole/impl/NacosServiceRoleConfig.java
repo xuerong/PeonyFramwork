@@ -7,6 +7,7 @@ import com.peony.cluster.servicerole.RoleNotifier;
 import com.peony.cluster.servicerole.ServiceConfig;
 import com.peony.cluster.servicerole.ServiceRole;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -21,7 +22,13 @@ public class NacosServiceRoleConfig implements IServiceRoleConfig {
      */
     @Override
     public Map<String, ServiceRole> getServiceRoles() {
-        return null;
+        Map<String, ServiceRole> ret = new HashMap<>();
+        if(System.getProperty("serverNum").equals("1")){
+            ret.put("com.peony.peony.peonydemo.bag.BagService",ServiceRole.Consumer);
+        }else{
+            ret.put("com.peony.peony.peonydemo.bag.BagService",ServiceRole.Provider);
+        }
+        return ret;
     }
 
     /**

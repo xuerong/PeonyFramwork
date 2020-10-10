@@ -1,6 +1,9 @@
 package com.peony.core.control;
 
 import com.google.api.client.util.Maps;
+import com.peony.cluster.ClusterBeanInfo;
+import com.peony.cluster.ClusterHelper;
+import com.peony.cluster.servicerole.ServiceRole;
 import com.peony.core.control.annotation.NetEventListener;
 import com.peony.core.control.annotation.Request;
 import com.peony.core.control.annotation.Service;
@@ -29,6 +32,7 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 import javassist.*;
 import javassist.bytecode.AnnotationsAttribute;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.common.bytecode.ClassGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,217 +105,231 @@ public final class ServiceHelper {
 
     static {
         try {
-            Map<Class<?>, List<Method>> requestMap = new HashMap<>();
-            Map<Class<?>, List<Method>> eventListenerMap = new HashMap<>();
-            Map<Class<?>, List<Method>> netEventListenerMap = new HashMap<>();
-            Map<Class<?>, List<Method>> updatableMap = new HashMap<>();
-            Map<Class<?>, List<Method>> remoteMap = new HashMap<>();
-            Map<Class<?>, List<Method>> monitorMap = new HashMap<>();
-
             List<Class<?>> serviceClasses = ClassHelper.getClassListByAnnotation(Service.class,
                     Server.getEngineConfigure().getAllPackets());
+            // 拿取 这里必须ClusterHelper init完成
+            Map<Class<?>, ServiceRole> serviceBeans = ClusterHelper.getServiceRoleMap();
+
+            ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+//            ClassPool pool = ClassPool.getDefault();
+//            ClassClassPath classPath = new ClassClassPath(ServiceHelper.class);
+//            pool.insertClassPath(classPath);
+
             for (Class<?> serviceClass : serviceClasses) {
-                serviceNameClassMap.put(serviceClass.getName(),serviceClass);
-                Service service = serviceClass.getAnnotation(Service.class);
-                String init = service.init();
-                // 判断是否是初始化方法和销毁方法
-                if(StringUtils.isEmpty(init)){
-                    log.info("service "+serviceClass.getName()+" has no init method");
+                ServiceRole serviceRole = serviceBeans.get(serviceClass);
+                if(serviceRole == ServiceRole.None){
+                    continue;
                 }
-                int initPriority = service.initPriority();
-                String destroy = service.destroy();
-                int destroyPriority = service.destroyPriority();
-                Method[] methods = serviceClass.getMethods();
-                for (Method method : methods) {
-
-                    // @Tx 参数检查.
-                    if (method.isAnnotationPresent(Tx.class)) {
-                        for (Class<?> p : method.getParameterTypes()) {
-                            if (p.isAnnotationPresent(DBEntity.class)) {
-                                throw new MMException(String.format("@Tx事物接口不允许用DBEntity实例当参数 Service: %s method: %s paraType: %s", serviceClass.getSimpleName(), method.getName(), p.getSimpleName()));
-                            }
-                        }
-                    }
-
-                    // 判断是否存在Request
-                    if (method.isAnnotationPresent(Request.class)) {
-                        addMethodToMap(requestMap, serviceClass, method);
-                    }
-
-                    if (method.isAnnotationPresent(EventListener.class)) {
-                        addMethodToMap(eventListenerMap, serviceClass, method);
-                    }
-
-                    if (method.isAnnotationPresent(NetEventListener.class)) {
-                        addMethodToMap(netEventListenerMap, serviceClass, method);
-                    }
-
-                    if (method.isAnnotationPresent(Updatable.class)) {
-                        addMethodToMap(updatableMap, serviceClass, method);
-                    }
-
-                    if (method.isAnnotationPresent(Remotable.class)) {
-                        addMethodToMap(remoteMap, serviceClass, method);
-                    }
-
-                    if (method.isAnnotationPresent(Monitor.class)) {
-                        addMethodToMap(monitorMap, serviceClass, method);
-                    }
-
-                    Gm gm = method.getAnnotation(Gm.class);
-                    if (gm != null) {
-                        Method old = gmMethod.put(gm.id(), method);
-                        if (old != null) {
-                            throw new MMException("gm id duplicate,id=" + gm.id() + " at " + method.getDeclaringClass().getName() + "." + method.getName()
-                                    + " and " + old.getDeclaringClass().getName() + "." + old.getName());
-                        }
-                    }
-
-                    Statistics statistics = method.getAnnotation(Statistics.class);
-                    if (statistics != null) {
-                        //检查方法的合法性
-                        Class[] parameterTypes = method.getParameterTypes();
-                        // 检查参数
-                        if (parameterTypes.length > 0) {
-                            throw new MMException("Method " + method.getName() + " Parameter Error");
-                        }
-                        // 检查返回值
-                        if (method.getReturnType() != StatisticsData.class) {
-                            throw new IllegalStateException("Method " + method.getName() + " ReturnType Error");
-                        }
-                        statisticsMethods.put(statistics.id(), method);
-                    }
-                    if(method.getName().equals(init)){
-                        initMethodMap.computeIfAbsent(initPriority,(k)->new HashMap<>()).put(serviceClass, method);
-                    }
-                    if(method.getName().equals(destroy)){
-                        destroyMethodMap.computeIfAbsent(destroyPriority,(k)->new HashMap<>()).put(serviceClass, method);
-                    }
-                }
+                handleOneClass(pool, serviceClass);
             }
-
-            ClassPool pool = ClassPool.getDefault();
-
             /**
              * 获取每个Service被引用的情况，并生成新的Class
              *
              * 这一步生成需要修改BeanHelper中的对应的类和实例化对象
              */
-            for (Class<?> serviceClass : serviceClasses) {
-                // 对于request，用opcode导航
-                List<Integer> opcodeList = null;
-                List<Integer> eventList = null;
-                List<Integer> eventSynList = null;
-                List<Integer> netEventList = null;
-
-                Class<?> newServiceClass = serviceClass;
-
-                Service service = serviceClass.getAnnotation(Service.class);
-
-                // 远程方法处理
-//                if(!Server.getEngineConfigure().getBoolean("server.is.test", false)) {
-//                    newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
-//                }
-                newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
-
-                if (requestMap.containsKey(serviceClass)) {
-                    newServiceClass = generateRequestHandlerClass(newServiceClass, serviceClass);
-                    opcodeList = new ArrayList<>();
-                    List<Method> methodList = requestMap.get(serviceClass);
-                    for (Method method : methodList) {
-                        Request request = method.getAnnotation(Request.class);
-                        opcodeList.add(request.opcode());
-                    }
-                }
-                if (eventListenerMap.containsKey(serviceClass)) {
-                    newServiceClass = generateEventListenerHandlerClass(newServiceClass, serviceClass);
-                    List<Method> methodList = eventListenerMap.get(serviceClass);
-                    for (Method method : methodList) {
-                        EventListener request = method.getAnnotation(EventListener.class);
-                        if(request.sync()){
-                            if(eventSynList == null){
-                                eventSynList = new ArrayList<>();
-                            }
-                            eventSynList.add(request.event());
-                        }else {
-                            if(eventList == null){
-                                eventList = new ArrayList<>();
-                            }
-                            eventList.add(request.event());
-                        }
-                    }
-                }
-                if (netEventListenerMap.containsKey(serviceClass)) {
-                    newServiceClass = generateNetEventListenerHandlerClass(newServiceClass, serviceClass);
-                    netEventList = new ArrayList<>();
-                    List<Method> methodList = netEventListenerMap.get((serviceClass));
-                    for (Method method : methodList) {
-                        NetEventListener netEventListener = method.getAnnotation(NetEventListener.class);
-                        netEventList.add(netEventListener.netEvent());
-                    }
-                }
-                if (updatableMap.containsKey(serviceClass)) {
-                    newServiceClass = generateUpdatableHandlerClass(newServiceClass, serviceClass);
-                }
-                if (monitorMap.containsKey(serviceClass)) {
-                    newServiceClass = generateMonitorHandlerClass(newServiceClass, serviceClass);
-                }
-
-                serviceClassMap.put(serviceClass, newServiceClass);
-                serviceOriginClass.put(newServiceClass, serviceClass);
-                // request
-                if (opcodeList != null) {
-                    for (int opcode : opcodeList) {
-                        requestHandlerClassMap.put(opcode, serviceClass);
-                    }
-                }
-                // event
-                if (eventList != null) {
-                    // 一个event可能对应多个类
-                    for (int event : eventList) {
-                        if (eventListenerHandlerClassMap.containsKey(event)) {
-                            Set<Class<?>> classes = eventListenerHandlerClassMap.get(event);
-                            classes.add(serviceClass);
-                        } else {
-                            Set<Class<?>> classes = new HashSet<>();
-                            classes.add(serviceClass);
-                            eventListenerHandlerClassMap.put(event, classes);
-                        }
-                    }
-                }
-                if (eventSynList != null) {
-                    // 一个event可能对应多个类
-                    for (int event : eventSynList) {
-                        if (eventSynListenerHandlerClassMap.containsKey(event)) {
-                            Set<Class<?>> classes = eventSynListenerHandlerClassMap.get(event);
-                            classes.add(serviceClass);
-                        } else {
-                            Set<Class<?>> classes = new HashSet<>();
-                            classes.add(serviceClass);
-                            eventSynListenerHandlerClassMap.put(event, classes);
-                        }
-                    }
-                }
-                // netEvent
-                if (netEventList != null) {
-                    // 一个netevent可能对应多个类
-                    for (int netEvent : netEventList) {
-                        netEventListenerHandlerClassMap.put(netEvent, serviceClass);
-                    }
-                }
-                // update
-                if (updatableMap.containsKey(serviceClass)) {
-                    updatableClassMap.put(serviceClass, updatableMap.get(serviceClass));
-                }
-                // monitor
-                if (monitorMap.containsKey(serviceClass)) {
-                    monitorClassMap.put(serviceClass, monitorMap.get(serviceClass));
-                }
-            }
+//            for (Class<?> serviceClass : serviceClasses) {
+//
+//            }
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("ServiceHelper init Exception",e);
         }
+    }
+
+    public static Class<?> handleOneClass(ClassPool pool, Class<?> serviceClass) throws Exception{
+        Map<Class<?>, List<Method>> requestMap = new HashMap<>();
+        Map<Class<?>, List<Method>> eventListenerMap = new HashMap<>();
+        Map<Class<?>, List<Method>> netEventListenerMap = new HashMap<>();
+        Map<Class<?>, List<Method>> updatableMap = new HashMap<>();
+        Map<Class<?>, List<Method>> remoteMap = new HashMap<>();
+        Map<Class<?>, List<Method>> monitorMap = new HashMap<>();
+
+        serviceNameClassMap.put(serviceClass.getName(),serviceClass);
+        Service service = serviceClass.getAnnotation(Service.class);
+        String init = service.init();
+        // 判断是否是初始化方法和销毁方法
+        if(StringUtils.isEmpty(init)){
+            log.info("service "+serviceClass.getName()+" has no init method");
+        }
+        int initPriority = service.initPriority();
+        String destroy = service.destroy();
+        int destroyPriority = service.destroyPriority();
+        Method[] methods = serviceClass.getMethods();
+        for (Method method : methods) {
+
+            // @Tx 参数检查.
+            if (method.isAnnotationPresent(Tx.class)) {
+                for (Class<?> p : method.getParameterTypes()) {
+                    if (p.isAnnotationPresent(DBEntity.class)) {
+                        throw new MMException(String.format("@Tx事物接口不允许用DBEntity实例当参数 Service: %s method: %s paraType: %s", serviceClass.getSimpleName(), method.getName(), p.getSimpleName()));
+                    }
+                }
+            }
+
+            // 判断是否存在Request
+            if (method.isAnnotationPresent(Request.class)) {
+                addMethodToMap(requestMap, serviceClass, method);
+            }
+
+            if (method.isAnnotationPresent(EventListener.class)) {
+                addMethodToMap(eventListenerMap, serviceClass, method);
+            }
+
+            if (method.isAnnotationPresent(NetEventListener.class)) {
+                addMethodToMap(netEventListenerMap, serviceClass, method);
+            }
+
+            if (method.isAnnotationPresent(Updatable.class)) {
+                addMethodToMap(updatableMap, serviceClass, method);
+            }
+
+            if (method.isAnnotationPresent(Remotable.class)) {
+                addMethodToMap(remoteMap, serviceClass, method);
+            }
+
+            if (method.isAnnotationPresent(Monitor.class)) {
+                addMethodToMap(monitorMap, serviceClass, method);
+            }
+
+            Gm gm = method.getAnnotation(Gm.class);
+            if (gm != null) {
+                Method old = gmMethod.put(gm.id(), method);
+                if (old != null) {
+                    throw new MMException("gm id duplicate,id=" + gm.id() + " at " + method.getDeclaringClass().getName() + "." + method.getName()
+                            + " and " + old.getDeclaringClass().getName() + "." + old.getName());
+                }
+            }
+
+            Statistics statistics = method.getAnnotation(Statistics.class);
+            if (statistics != null) {
+                //检查方法的合法性
+                Class[] parameterTypes = method.getParameterTypes();
+                // 检查参数
+                if (parameterTypes.length > 0) {
+                    throw new MMException("Method " + method.getName() + " Parameter Error");
+                }
+                // 检查返回值
+                if (method.getReturnType() != StatisticsData.class) {
+                    throw new IllegalStateException("Method " + method.getName() + " ReturnType Error");
+                }
+                statisticsMethods.put(statistics.id(), method);
+            }
+            if(method.getName().equals(init)){
+                initMethodMap.computeIfAbsent(initPriority,(k)->new HashMap<>()).put(serviceClass, method);
+            }
+            if(method.getName().equals(destroy)){
+                destroyMethodMap.computeIfAbsent(destroyPriority,(k)->new HashMap<>()).put(serviceClass, method);
+            }
+        }
+
+        // 对于request，用opcode导航
+        List<Integer> opcodeList = null;
+        List<Integer> eventList = null;
+        List<Integer> eventSynList = null;
+        List<Integer> netEventList = null;
+
+        Class<?> newServiceClass = serviceClass;
+
+        // 远程方法处理
+//                if(!Server.getEngineConfigure().getBoolean("server.is.test", false)) {
+//                    newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
+//                }
+        newServiceClass = genRemoteMethod(pool, serviceClass, newServiceClass);
+
+        if (requestMap.containsKey(serviceClass)) {
+            newServiceClass = generateRequestHandlerClass(newServiceClass, serviceClass);
+            opcodeList = new ArrayList<>();
+            List<Method> methodList = requestMap.get(serviceClass);
+            for (Method method : methodList) {
+                Request request = method.getAnnotation(Request.class);
+                opcodeList.add(request.opcode());
+            }
+        }
+        if (eventListenerMap.containsKey(serviceClass)) {
+            newServiceClass = generateEventListenerHandlerClass(newServiceClass, serviceClass);
+            List<Method> methodList = eventListenerMap.get(serviceClass);
+            for (Method method : methodList) {
+                EventListener request = method.getAnnotation(EventListener.class);
+                if(request.sync()){
+                    if(eventSynList == null){
+                        eventSynList = new ArrayList<>();
+                    }
+                    eventSynList.add(request.event());
+                }else {
+                    if(eventList == null){
+                        eventList = new ArrayList<>();
+                    }
+                    eventList.add(request.event());
+                }
+            }
+        }
+        if (netEventListenerMap.containsKey(serviceClass)) {
+            newServiceClass = generateNetEventListenerHandlerClass(newServiceClass, serviceClass);
+            netEventList = new ArrayList<>();
+            List<Method> methodList = netEventListenerMap.get((serviceClass));
+            for (Method method : methodList) {
+                NetEventListener netEventListener = method.getAnnotation(NetEventListener.class);
+                netEventList.add(netEventListener.netEvent());
+            }
+        }
+        if (updatableMap.containsKey(serviceClass)) {
+            newServiceClass = generateUpdatableHandlerClass(newServiceClass, serviceClass);
+        }
+        if (monitorMap.containsKey(serviceClass)) {
+            newServiceClass = generateMonitorHandlerClass(newServiceClass, serviceClass);
+        }
+
+        serviceClassMap.put(serviceClass, newServiceClass);
+        serviceOriginClass.put(newServiceClass, serviceClass);
+        // request
+        if (opcodeList != null) {
+            for (int opcode : opcodeList) {
+                requestHandlerClassMap.put(opcode, serviceClass);
+            }
+        }
+        // event
+        if (eventList != null) {
+            // 一个event可能对应多个类
+            for (int event : eventList) {
+                if (eventListenerHandlerClassMap.containsKey(event)) {
+                    Set<Class<?>> classes = eventListenerHandlerClassMap.get(event);
+                    classes.add(serviceClass);
+                } else {
+                    Set<Class<?>> classes = new HashSet<>();
+                    classes.add(serviceClass);
+                    eventListenerHandlerClassMap.put(event, classes);
+                }
+            }
+        }
+        if (eventSynList != null) {
+            // 一个event可能对应多个类
+            for (int event : eventSynList) {
+                if (eventSynListenerHandlerClassMap.containsKey(event)) {
+                    Set<Class<?>> classes = eventSynListenerHandlerClassMap.get(event);
+                    classes.add(serviceClass);
+                } else {
+                    Set<Class<?>> classes = new HashSet<>();
+                    classes.add(serviceClass);
+                    eventSynListenerHandlerClassMap.put(event, classes);
+                }
+            }
+        }
+        // netEvent
+        if (netEventList != null) {
+            // 一个netevent可能对应多个类
+            for (int netEvent : netEventList) {
+                netEventListenerHandlerClassMap.put(netEvent, serviceClass);
+            }
+        }
+        // update
+        if (updatableMap.containsKey(serviceClass)) {
+            updatableClassMap.put(serviceClass, updatableMap.get(serviceClass));
+        }
+        // monitor
+        if (monitorMap.containsKey(serviceClass)) {
+            monitorClassMap.put(serviceClass, monitorMap.get(serviceClass));
+        }
+        return newServiceClass;
     }
 
     /**
@@ -459,8 +477,8 @@ public final class ServiceHelper {
         return overrideMethod;
     }
 
-    private static String genArgsString(Method oldMethod) {
-        StringBuilder args = new StringBuilder("");
+    public static String genArgsString(Method oldMethod) {
+        StringBuilder args = new StringBuilder();
         for(int i=1; i <= oldMethod.getParameterCount(); i++) {
             args.append("$"+i).append(",");
         }
@@ -470,7 +488,7 @@ public final class ServiceHelper {
         return args.toString();
     }
 
-    private static String packDescreptor(Method current) {
+    public static String packDescreptor(Method current) {
         Class<?>[] parameterTypes = current.getParameterTypes();
         StringBuilder sb = new StringBuilder();
         sb.append("(");
@@ -671,7 +689,8 @@ public final class ServiceHelper {
             }
         }
         if (opMethods.size() > 0 ) {
-            ClassPool pool = ClassPool.getDefault();
+            ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+//            ClassPool pool = ClassPool.getDefault();
 
             CtClass oldClass = pool.get(clazz.getName());
 //			log.info("oldClass: " + oldClass);
@@ -751,7 +770,8 @@ public final class ServiceHelper {
             }
         }
         if (opMethods.size() > 0 || opSynMethods.size() > 0) {
-            ClassPool pool = ClassPool.getDefault();
+            ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+//            ClassPool pool = ClassPool.getDefault();
             CtClass oldClass = pool.get(clazz.getName());
             CtClass ct = pool.makeClass(oldClass.getName() + "$Proxy", oldClass); //这里需要生成一个新类，并且继承自原来的类
             CtClass superCt = pool.get(EventListenerHandler.class.getName());  //需要实现RequestHandler接口
@@ -851,7 +871,8 @@ public final class ServiceHelper {
             }
         }
         if (opMethods.size() > 0) {
-            ClassPool pool = ClassPool.getDefault();
+            ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+//            ClassPool pool = ClassPool.getDefault();
             CtClass oldClass = pool.get(clazz.getName());
             CtClass ct = pool.makeClass(oldClass.getName() + "$Proxy", oldClass); //这里需要生成一个新类，并且继承自原来的类
             CtClass superCt = pool.get(NetEventListenerHandler.class.getName());  //需要实现RequestHandler接口

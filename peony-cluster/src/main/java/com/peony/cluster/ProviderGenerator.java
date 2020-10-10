@@ -26,9 +26,9 @@ public class ProviderGenerator {
 
     private static final Condition STOP = LOCK.newCondition();
 
-    public static Object generateProvider(Object object) throws NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException {
+    public static Object generateProvider(Class<?> serviceClass, Object object) throws NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException {
         // 生成代理接口
-        Class<?> proxyInterface = DubboHelper.generateProxyInterface(object);
+        Class<?> proxyInterface = DubboHelper.generateProxyInterface(serviceClass);
         // 生成代理类
         Class<?> proxyClass = generateProxy(object,proxyInterface);
         // 生成代理对象

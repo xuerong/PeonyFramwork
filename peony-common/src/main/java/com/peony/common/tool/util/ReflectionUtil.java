@@ -3,6 +3,11 @@ package com.peony.common.tool.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Created by Administrator on 2015/11/13.
  * 反射工具
@@ -44,5 +49,22 @@ public final class ReflectionUtil {
             }
         }
         return result;
+    }
+
+    /**
+     * 获取本类声明的方法和包括父类在内的公有方法
+     *
+     * @param cls
+     * @return
+     */
+    public static Method[] getPublicAndDeclaredMethod(Class<?> cls){
+        List<Method> methodList = new ArrayList<>();
+        for(Method method : cls.getDeclaredMethods()){
+            methodList.add(method);
+        }
+        for(Method method : cls.getMethods()){
+            methodList.add(method);
+        }
+        return methodList.toArray(new Method[methodList.size()]);
     }
 }

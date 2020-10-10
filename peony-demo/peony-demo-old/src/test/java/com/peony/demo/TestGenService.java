@@ -3,6 +3,7 @@ package com.peony.demo;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
+import org.apache.dubbo.common.bytecode.ClassGenerator;
 import org.junit.Test;
 
 /**
@@ -13,7 +14,7 @@ public class TestGenService {
     @Test
     public void aaa() throws Exception{
 
-        genService(ClassPool.getDefault(),TestGenService.class,null);
+        genService(ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader()),TestGenService.class,null);
     }
 
     private static Class<?> genService(ClassPool pool, Class<?> serviceClass, Class<?> newServiceClass) throws Exception {

@@ -17,10 +17,10 @@ import java.util.List;
  * @since 2020/9/27
  */
 public class DubboHelper {
-    public static Class<?> generateProxyInterface(Object object) throws NotFoundException, CannotCompileException {
+    public static Class<?> generateProxyInterface(Class<?> serviceClass) throws NotFoundException, CannotCompileException {
         // 1、获取所有公有方法 ,根据公有方法生成接口
         ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader()); //获得类池
-        CtClass oldClass = pool.get(object.getClass().getName());
+        CtClass oldClass = pool.get(serviceClass.getName());
         CtMethod[] ctMethods = getMethodsWithoutObjectMethods(oldClass,pool);
         CtClass ct = pool.makeInterface(oldClass.getName()+"$ProxyInterface");
         //

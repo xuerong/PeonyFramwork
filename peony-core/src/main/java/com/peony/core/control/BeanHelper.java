@@ -1,5 +1,7 @@
 package com.peony.core.control;
 
+import com.peony.cluster.ClusterHelper;
+import com.peony.cluster.servicerole.ServiceRole;
 import com.peony.core.configure.EngineConfigure;
 import com.peony.core.configure.EntranceConfigure;
 import com.peony.core.control.annotation.Service;
@@ -7,6 +9,9 @@ import com.peony.core.control.aop.AopHelper;
 import com.peony.core.net.entrance.Entrance;
 import com.peony.common.exception.MMException;
 import com.peony.core.server.Server;
+import javassist.ClassPool;
+import javassist.LoaderClassPath;
+import org.apache.dubbo.common.bytecode.ClassGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,62 +52,102 @@ public final class BeanHelper {
      * */
     private static Map<Class<?>, Class<?>> configureBeans;
     static{
-        try {
-            // service
-            Map<Class<?>, Class<?>> serviceClassMap = ServiceHelper.getServiceClassMap();
-            for (Map.Entry<Class<?>, Class<?>> entry : serviceClassMap.entrySet()) {
-                Object serviceObject = newAopInstance(entry.getKey(), entry.getValue());
-                serviceBeans.put(entry.getKey(), serviceObject);
-                serviceBeansByName.put(entry.getKey().getName(),serviceObject);
-            }
-
-            // 框架Bean
-            EngineConfigure configure = Server.getEngineConfigure();
-            configureBeans = configure.getConfigureBeans();
-            for (Map.Entry<Class<?>, Class<?>> entry : configureBeans.entrySet()) {
-                // 由于在实例化一个的时候，可能用到另外一个，就在get的时候实例化了
-                // 首先看是否是service，如果是，从service中获取，否则，创建
-                if(!frameBeans.containsKey(entry.getKey())) {
-                    if(entry.getValue().getAnnotation(Service.class)!=null){
-                        Object object = serviceBeans.get(entry.getValue());// 注意：这里是value
-                        if(object == null){
-                            throw new MMException("service frameBean fail:"+entry.getValue());
+        synchronized (BeanHelper.class){
+            ClusterHelper.init((Map<Class<?>, ServiceRole> serviceRoleMap)->{
+                synchronized (BeanHelper.class){
+                    //
+                    for(Map.Entry<Class<?>, ServiceRole> entry : serviceRoleMap.entrySet()){
+                        if(entry.getValue() == ServiceRole.None){
+                            // FIXME 这里要移除
+                            continue;
                         }
-                        frameBeans.put(entry.getKey(), object);
-                    }else{
-                        Object object = newAopInstance(entry.getValue());
-                        frameBeans.put(entry.getKey(), object);
+                        // 这里重新生成
+                        try {
+                            ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+//                            ClassPool pool = ClassPool.getDefault();
+                            Class<?> newServiceClass = ServiceHelper.handleOneClass(pool, entry.getKey());
+                            Object serviceObject = newAopInstance(entry.getKey(), newServiceClass);
+                            serviceObject = ClusterHelper.parseService(entry.getKey(),serviceObject);
+                            // FIXME 调用替换能力
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
-            }
-            // Ioc: 如果bean中有声明的serviceBeans中存在的变量，则赋值
-            iocSetService();
-            // aop
-//            frameBeans.put(MyProxyTarget.class, newAopInstance(MyProxyTarget.class));
-            // net
-            Map<String, EntranceConfigure> entranceClassMap = configure.getEntranceClassMap();
-            for (EntranceConfigure entranceConfigure:entranceClassMap.values()) {
-
-                Entrance entrance = (Entrance)serviceBeans.get(entranceConfigure.getCls()) ; // 入口也可能声明为service
-                if(entrance == null){
-                    entrance = (Entrance) newAopInstance(entranceConfigure.getCls());
+            });
+            try {
+                // service
+                Map<Class<?>, Class<?>> serviceClassMap = ServiceHelper.getServiceClassMap();
+                for (Map.Entry<Class<?>, Class<?>> entry : serviceClassMap.entrySet()) {
+                    Object serviceObject = newAopInstance(entry.getKey(), entry.getValue());
+                    // 添加到ClassPool中
+                    ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+                    pool.appendClassPath(new LoaderClassPath(serviceObject.getClass().getClassLoader()));
+                    // 支持集群的
+                    serviceObject = ClusterHelper.parseService(entry.getKey(),serviceObject);
+                    if(serviceObject == null){
+                        // 这里应该不会出现，因为前面已经判断完了是否为None
+                        log.error("won't happened!");
+                        continue;
+                    }
+                    //
+                    serviceBeans.put(entry.getKey(), serviceObject);
+                    serviceBeansByName.put(entry.getKey().getName(),serviceObject);
                 }
-                Method nameMethod = Entrance.class.getMethod("setName",String.class);
-                nameMethod.invoke(entrance,entranceConfigure.getName());
-                Method portMethod = Entrance.class.getMethod("setPort",int.class);
-                portMethod.invoke(entrance,entranceConfigure.getPort());
 
-                entranceBeans.put(entranceConfigure.getName(),entrance);
+                // 框架Bean
+                EngineConfigure configure = Server.getEngineConfigure();
+                configureBeans = configure.getConfigureBeans();
+                for (Map.Entry<Class<?>, Class<?>> entry : configureBeans.entrySet()) {
+                    // 由于在实例化一个的时候，可能用到另外一个，就在get的时候实例化了
+                    // 首先看是否是service，如果是，从service中获取，否则，创建
+                    if(!frameBeans.containsKey(entry.getKey())) {
+                        if(entry.getValue().getAnnotation(Service.class)!=null){
+                            Object object = serviceBeans.get(entry.getValue());// 注意：这里是value
+                            if(object == null){
+                                throw new MMException("service frameBean fail:"+entry.getValue());
+                            }
+                            frameBeans.put(entry.getKey(), object);
+                        }else{
+                            Object object = newAopInstance(entry.getValue());
+                            frameBeans.put(entry.getKey(), object);
+                        }
+                    }
+                }
+                // Ioc: 如果bean中有声明的serviceBeans中存在的变量，则赋值
+                iocSetService();
+                // aop
+//            frameBeans.put(MyProxyTarget.class, newAopInstance(MyProxyTarget.class));
+                // net
+                Map<String, EntranceConfigure> entranceClassMap = configure.getEntranceClassMap();
+                for (EntranceConfigure entranceConfigure:entranceClassMap.values()) {
 
-                //-----ioc
-                iocSetObject(entranceConfigure.getCls(),entrance);
+                    Entrance entrance = (Entrance)serviceBeans.get(entranceConfigure.getCls()) ; // 入口也可能声明为service
+                    if(entrance == null){
+                        entrance = (Entrance) newAopInstance(entranceConfigure.getCls());
+                    }
+                    Method nameMethod = Entrance.class.getMethod("setName",String.class);
+                    nameMethod.invoke(entrance,entranceConfigure.getName());
+                    Method portMethod = Entrance.class.getMethod("setPort",int.class);
+                    portMethod.invoke(entrance,entranceConfigure.getPort());
+
+                    entranceBeans.put(entranceConfigure.getName(),entrance);
+
+                    //-----ioc
+                    iocSetObject(entranceConfigure.getCls(),entrance);
+                }
+
+            }catch (Throwable e){
+                e.printStackTrace();
+                log.error("init BeanHelper fail");
             }
-
-        }catch (Throwable e){
-            e.printStackTrace();
-            log.error("init BeanHelper fail");
         }
     }
+
+    private static void doCluster(){
+
+    }
+
     // 给beans中的对象的service变量赋值
     private static void iocSetService() throws Throwable{
         // service
@@ -183,4 +228,5 @@ public final class BeanHelper {
         }
         return (T)t;
     }
+
 }

@@ -18,6 +18,7 @@ import net.sf.cglib.beans.BeanCopier;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.common.bytecode.ClassGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -313,7 +314,8 @@ public class EntityHelper {
         sb.append("}");
 //        System.out.println(sb.toString());
 
-        ClassPool pool = ClassPool.getDefault();
+        ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+//        ClassPool pool = ClassPool.getDefault();
 
         CtClass ct = pool.makeClass(cls.getSimpleName()+"EntityParser"); //这里需要生成一个新类，并且继承自原来的类
         CtClass superCt = pool.get(EntityParser.class.getName());  //需要实现RequestHandler接口
@@ -374,8 +376,8 @@ public class EntityHelper {
         sb.append("}");
 
 //        System.out.println(sb.toString());
-
-        ClassPool pool = ClassPool.getDefault();
+        ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+//        ClassPool pool = ClassPool.getDefault();
 
         CtClass ct = pool.makeClass(method.getDeclaringClass().getSimpleName()+method.getName()+"NewMethod"); //这里需要生成一个新类，并且继承自原来的类
         CtClass superCt = pool.get(MMMethod.class.getName());
@@ -427,8 +429,8 @@ public class EntityHelper {
 
 
     private static Class appendEventHandler(Class clazz) throws Exception{
-
-        ClassPool pool = ClassPool.getDefault();
+        ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+//        ClassPool pool = ClassPool.getDefault();
         CtClass oldClass = pool.get(clazz.getName());
         CtClass ct = pool.makeClass(oldClass.getName() + "$Copier", oldClass); //这里需要生成一个新类，并且继承自原来的类
         CtClass superCt = pool.get(EntityCopier.class.getName());  //需要实现RequestHandler接口
