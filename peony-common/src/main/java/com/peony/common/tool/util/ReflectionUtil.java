@@ -4,9 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.lang.reflect.Modifier;
+import java.util.*;
 
 /**
  * Created by Administrator on 2015/11/13.
@@ -53,18 +52,28 @@ public final class ReflectionUtil {
 
     /**
      * 获取本类声明的方法和包括父类在内的公有方法
+     * 去掉静态的方法，去掉Object中的方法
      *
      * @param cls
      * @return
      */
     public static Method[] getPublicAndDeclaredMethod(Class<?> cls){
-        List<Method> methodList = new ArrayList<>();
+        Set<Method> methodSet = new HashSet<>();
         for(Method method : cls.getDeclaredMethods()){
-            methodList.add(method);
+            if (Modifier.isStatic(method.getModifiers())) {
+                continue;
+            }
+            methodSet.add(method);
         }
         for(Method method : cls.getMethods()){
-            methodList.add(method);
+            if (Modifier.isStatic(method.getModifiers())) {
+                continue;
+            }
+            methodSet.add(method);
         }
-        return methodList.toArray(new Method[methodList.size()]);
+        for(Method method : Object.class.getMethods()){
+            methodSet.remove(method);
+        }
+        return methodSet.toArray(new Method[methodSet.size()]);
     }
 }

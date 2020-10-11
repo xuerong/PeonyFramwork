@@ -67,10 +67,10 @@ public class ConsumerGenerator {
         CtMethod[] ctMethods = DubboHelper.getMethodsWithoutObjectMethods(oldClass,pool);
         for(CtMethod method : ctMethods){
             CtMethod proxyMethod = CtNewMethod.copy(method, proxyClazz, null);
-            for(Object attr: method.getMethodInfo().getAttributes()){
+            for(Object attr: method.getMethodInfo2().getAttributes()){
                 if(attr.getClass().isAssignableFrom(AnnotationsAttribute.class)){
                     AnnotationsAttribute attribute = (AnnotationsAttribute)attr;
-                    proxyMethod.getMethodInfo().addAttribute(attribute);
+                    proxyMethod.getMethodInfo2().addAttribute(attribute);
                 }
             }
             String argsString = genArgsString(method);

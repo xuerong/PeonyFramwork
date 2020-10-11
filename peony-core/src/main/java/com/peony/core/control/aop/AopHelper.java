@@ -41,6 +41,11 @@ public final class AopHelper {
      */
     private static Map<Class<?>, List<Proxy>> targetMap;
 
+    /**
+     * 切面执行所需要的参数
+     */
+    private final static Map<String, ProxyExecInfo> proxyMap = new HashMap<>();
+
     static {
         try {
             // 创建 Proxy Map（用于 存放切面类 与 切点类列表 的映射关系）
@@ -66,7 +71,7 @@ public final class AopHelper {
     public static <T> T getProxyObject(Class<?> keyCls, Class<T> newCls) {
         List<Proxy> proxyList = targetMap.get(keyCls);
         if (proxyList != null) {
-            return createProxyObject(newCls, proxyList);
+            return createProxyObject2(newCls, proxyList);
         }
         return ReflectionUtil.newInstance(newCls);
     }
@@ -81,7 +86,7 @@ public final class AopHelper {
     public static <T> T getProxyObject(Class<T> cls) {
         List<Proxy> proxyList = targetMap.get(cls);
         if (proxyList != null) {
-            return createProxyObject(cls, proxyList);
+            return createProxyObject2(cls, proxyList);
         }
         return ReflectionUtil.newInstance(cls);
     }
@@ -113,7 +118,6 @@ public final class AopHelper {
                         }
                     }
                     int size = proxyList.size();
-
                     // 执行切点方法
                     Object result = null;
                     try {
@@ -171,12 +175,129 @@ public final class AopHelper {
         return (T) enhancer.create();
     }
 
-    private static Map<String, ProxyExecInfo> proxyMap = new HashMap<>();
 
-    static class ProxyExecInfo {
-        Class<?> target;
-        Method method;
-        List<Proxy> proxyList = new ArrayList<>();
+
+    private static class ProxyExecInfo {
+        private Class<?> target;
+        private Method method;
+        private List<Proxy> proxyList = new ArrayList<>();
+    }
+
+    /**
+     * 给一个代类添加对应的代理列表，并实例化之。
+     *
+     * @param target    被代理的类
+     * @param proxyList 该类的代理类，每个代理类并不一定是对所有的方法进行代理
+     * @param <T>       被代理的类的实例
+     * @return 代理之后的类
+     */
+    private static <T> T createProxyObject2(final Class<?> target, final List<Proxy> proxyList) {
+        try {
+            //
+            ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
+            CtClass ctClazz = pool.get(target.getName());
+            CtClass proxyClazz = pool.makeClass(ctClazz.getName() + "$AOPProxy", ctClazz);
+            //
+            Method[] methods = ReflectionUtil.getPublicAndDeclaredMethod(target);
+            for (Method method : methods) {
+                String id = UUID.randomUUID().toString();
+                for (Proxy proxy : proxyList) {
+                    if (proxy.executeMethod(method)) {
+                        ProxyExecInfo proxyExecInfo = proxyMap.get(id);
+                        if (proxyExecInfo == null) {
+                            proxyExecInfo = new ProxyExecInfo();
+                            // TODO 这个地方不一定对，可能需要的是代理之后的类和方法对象
+                            proxyExecInfo.target = target;
+                            proxyExecInfo.method = method;
+                            proxyMap.put(id, proxyExecInfo);
+                        }
+                        proxyExecInfo.proxyList.add(proxy);
+                    }
+                }
+                if (!proxyMap.containsKey(id)) {
+                    // 不需要被代理
+                    continue;
+                }
+
+                CtMethod ctMethod = ctClazz.getMethod(method.getName(), ServiceHelper.packDescreptor(method));
+                CtMethod proxyMethod = CtNewMethod.copy(ctMethod, proxyClazz, null);
+                // 和父类的描述一致，因为新的方法如果使用本类（比如返回类型为ctClazz，返回值就会变成proxyClazz）
+                proxyMethod.getMethodInfo2().setDescriptor(ctMethod.getMethodInfo2().getDescriptor());
+                for (Object attr : ctMethod.getMethodInfo2().getAttributes()) {
+                    if (attr.getClass().isAssignableFrom(AnnotationsAttribute.class)) {
+                        AnnotationsAttribute attribute = (AnnotationsAttribute) attr;
+                        proxyMethod.getMethodInfo2().addAttribute(attribute);
+                    }
+                }
+                // 执行父类
+                StringBuilder body = new StringBuilder();
+                String argsString = ServiceHelper.genArgsString(method);
+
+                body.append("{\n");
+                // for循环，用于事务的支持
+                body.append("int txTimes = 1;");
+                body.append("while (true) {");
+                // 插入before
+                body.append("Object[] objs = new Object[" + method.getParameterCount() + "];");
+                Class<?>[] paramsTypes = method.getParameterTypes();
+                for (int i = 1; i <= method.getParameterCount(); i++) {
+//                body.append("objs["+i+"]=$"+i).append(";");
+                    body.append("objs[" + (i - 1) + "]=" + ServiceHelper.parseBaseTypeStrToObjectTypeStr(paramsTypes[i - 1].getName(), "$" + i)).append(";");
+                }
+                body.append("com.peony.core.control.aop.AopHelper.execProxyBefore(");
+                body.append("\"").append(id).append("\",").append("this,").append("objs");// .append("new java.lang.Object[]{").append(argsString).append("}");
+                body.append(");\n");
+                // 插入before end
+                if (method.getReturnType() != Void.TYPE) {
+                    body.append("\t\t" + method.getReturnType().getName()).append(" ret;");
+                }
+                body.append("try {");
+                if (method.getReturnType() != Void.TYPE) {
+                    body.append("ret = ");
+                }
+                body.append(String.format("super.%s(%s);\n", method.getName(), argsString));
+                body.append("} catch (Throwable e) {");
+                body.append("com.peony.core.control.aop.AopHelper.execProxyException(");
+                body.append("\"").append(id).append("\",").append("e").append(");");
+                body.append("throw e;");
+                body.append("}");
+                // 插入after
+                body.append("boolean goon = com.peony.core.control.aop.AopHelper.execProxyAfter(");
+                body.append("\"").append(id).append("\",").append("this,").append("objs,");// .append("new Object[]{").append(argsString).append("},");
+                if (method.getReturnType() != Void.TYPE) {
+//                body.append("ret,");
+                    body.append(ServiceHelper.parseBaseTypeStrToObjectTypeStr(method.getReturnType().getName(), "ret")).append(",");
+
+                } else {
+                    body.append("null,");
+                }
+                body.append("txTimes++");
+                body.append(");");
+
+                body.append("if(!goon){");
+                body.append("continue;");
+                body.append("}");
+                // 插入after end
+                if (method.getReturnType() != Void.TYPE) {
+                    body.append("\t\treturn ret;");
+//                body.append("\t\treturn ret;");
+                } else {
+                    body.append("\t\treturn;");
+                }
+                body.append("}");
+                body.append(String.format("\t}"));
+
+//            log.info("body:{}",body);
+
+                proxyMethod.setBody(body.toString());
+                proxyClazz.addMethod(proxyMethod);
+            }
+            Class<?> newServiceClass = proxyClazz.toClass();
+
+            return (T) newServiceClass.getDeclaredConstructor().newInstance();
+        }catch (Exception e){
+            throw new MMException("create proxy object error!target="+target.getName(),e);
+        }
     }
 
     public static void execProxyBefore(String id, Object targetObject, Object[] methodParams) {
@@ -185,7 +306,7 @@ public final class AopHelper {
             try {
                 proxy.before(targetObject, proxyExecInfo.target, proxyExecInfo.method, methodParams);
             } catch (Throwable e) {
-                e.printStackTrace();
+                log.error("aop execute before error!", e);
             }
         }
     }
@@ -222,95 +343,15 @@ public final class AopHelper {
         }
         return true;
     }
-
-    /**
-     * 给一个代类添加对应的代理列表，并实例化之。
-     *
-     * @param target    被代理的类
-     * @param proxyList 该类的代理类，每个代理类并不一定是对所有的方法进行代理
-     * @param <T>       被代理的类的实例
-     * @return 代理之后的类
-     */
-    private static <T> T createProxyObject2(final Class<?> target, final List<Proxy> proxyList) throws Exception {
-        //
-        ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
-        CtClass ctClazz = pool.get(target.getName());
-        CtClass proxyClazz = pool.makeClass(ctClazz.getName() + "$AOPProxy", ctClazz);
-        //
-        Method[] methods = ReflectionUtil.getPublicAndDeclaredMethod(target);
-        for (Method method : methods) {
-            String id = UUID.randomUUID().toString();
-            for (Proxy proxy : proxyList) {
-                if (proxy.executeMethod(method)) {
-                    ProxyExecInfo proxyExecInfo = proxyMap.get(id);
-                    if (proxyExecInfo == null) {
-                        proxyExecInfo = new ProxyExecInfo();
-                        // TODO 这个地方不一定对，可能需要的是代理之后的类和方法对象
-                        proxyExecInfo.target = target;
-                        proxyExecInfo.method = method;
-                        proxyMap.put(id, proxyExecInfo);
-                    }
-                    proxyExecInfo.proxyList.add(proxy);
-                }
+    public static void execProxyException(String id, Throwable e1) throws Throwable{
+        ProxyExecInfo proxyExecInfo = proxyMap.get(id);
+        for (Proxy proxy : proxyExecInfo.proxyList) {
+            try {
+                proxy.exceptionCatch(e1);
+            } catch (Throwable e2) {
+                log.error("代理类异常处理异常", e2);
             }
-            if (!proxyMap.containsKey(id)) {
-                // 不需要被代理
-                continue;
-            }
-            CtMethod ctMethod = ctClazz.getMethod(method.getName(), ServiceHelper.packDescreptor(method));
-            CtMethod proxyMethod = CtNewMethod.copy(ctMethod, proxyClazz, null);
-            for (Object attr : ctMethod.getMethodInfo().getAttributes()) {
-                if (attr.getClass().isAssignableFrom(AnnotationsAttribute.class)) {
-                    AnnotationsAttribute attribute = (AnnotationsAttribute) attr;
-                    proxyMethod.getMethodInfo().addAttribute(attribute);
-                }
-            }
-            // 执行父类
-            StringBuilder body = new StringBuilder();
-            String argsString = ServiceHelper.genArgsString(method);
-
-            body.append("{\n");
-            // for循环，用于事务的支持
-            body.append("int txTimes = 0;");
-            body.append("while (true) {");
-            // 插入before
-            body.append("com.peony.core.control.aop.AopHelper.execProxyBefore(");
-            body.append("\"").append(id).append("\",").append("this,").append("new Object[]{").append(argsString).append("}");
-            body.append(");");
-            // 插入before end
-            if (method.getReturnType() != Void.TYPE) {
-                body.append("\t\tObject ret = ");
-            }
-            body.append(String.format(" super.%s(%s);\n", method.getName(), argsString));
-            // 插入after
-            body.append("boolean goon = com.peony.core.control.aop.AopHelper.execProxyAfter(");
-            body.append("\"").append(id).append("\",").append("this,").append("new Object[]{").append(argsString).append("},");
-            if (method.getReturnType() != Void.TYPE) {
-                body.append("ret,");
-            }else{
-                body.append("null,");
-            }
-            body.append("txTimes++");
-            body.append(");");
-
-            body.append("if(!goon){");
-            body.append("continue;");
-            body.append("}");
-            // 插入after end
-            if (method.getReturnType() != Void.TYPE) {
-                body.append("\t\treturn ret;");
-            }else{
-                body.append("\t\treturn;");
-            }
-            body.append("}");
-            body.append(String.format("\t}"));
-
-            proxyMethod.setBody(body.toString());
-            proxyClazz.addMethod(proxyMethod);
         }
-        Class<?> newServiceClass = proxyClazz.toClass();
-//        newServiceClass.newInstance()
-        return (T)newServiceClass;
     }
 
 

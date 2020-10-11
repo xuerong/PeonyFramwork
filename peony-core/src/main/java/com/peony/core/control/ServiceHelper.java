@@ -493,11 +493,11 @@ public final class ServiceHelper {
         StringBuilder sb = new StringBuilder();
         sb.append("(");
         for (Class<?> pt : parameterTypes) {
-            sb.append(packDescreptor(pt));
+            sb.append(getDesc(pt));
         }
         sb.append(")");
         Class<?> returnType = current.getReturnType();
-        sb.append(packDescreptor(returnType));
+        sb.append(getDesc(returnType));
         return sb.toString();
     }
 
@@ -524,6 +524,55 @@ public final class ServiceHelper {
         } else {
             return "L" + pt.getName().replaceAll("\\.", "/") + ";";
         }
+    }
+    private static String getDesc(final Class<?> returnType) {
+        if (returnType.isPrimitive()) {
+            return getPrimitiveLetter(returnType);
+        }
+        if (returnType.isArray()) {
+            return "[" + getDesc(returnType.getComponentType());
+        }
+        return "L" + getType(returnType) + ";";
+    }
+    private static String getType(final Class<?> parameterType) {
+        if (parameterType.isArray()) {
+            return "[" + getDesc(parameterType.getComponentType());
+        }
+        if (!parameterType.isPrimitive()) {
+            final String clsName = parameterType.getName();
+            return clsName.replaceAll("\\.", "/");
+        }
+        return getPrimitiveLetter(parameterType);
+    }
+    private static String getPrimitiveLetter(final Class<?> type) {
+        if (Integer.TYPE.equals(type)) {
+            return "I";
+        }
+        if (Void.TYPE.equals(type)) {
+            return "V";
+        }
+        if (Boolean.TYPE.equals(type)) {
+            return "Z";
+        }
+        if (Character.TYPE.equals(type)) {
+            return "C";
+        }
+        if (Byte.TYPE.equals(type)) {
+            return "B";
+        }
+        if (Short.TYPE.equals(type)) {
+            return "S";
+        }
+        if (Float.TYPE.equals(type)) {
+            return "F";
+        }
+        if (Long.TYPE.equals(type)) {
+            return "J";
+        }
+        if (Double.TYPE.equals(type)) {
+            return "D";
+        }
+        throw new IllegalStateException("Type: " + type.getCanonicalName() + " is not a primitive type");
     }
 
     public static String parseBaseTypeStrToObjectTypeStr(String typeStr, String paramStr) {
