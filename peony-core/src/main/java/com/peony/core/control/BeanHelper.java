@@ -64,11 +64,11 @@ public final class BeanHelper {
                         // 这里重新生成
                         try {
                             ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader());
-//                            ClassPool pool = ClassPool.getDefault();
                             Class<?> newServiceClass = ServiceHelper.handleOneClass(pool, entry.getKey());
                             Object serviceObject = newAopInstance(entry.getKey(), newServiceClass);
                             serviceObject = ClusterHelper.parseService(entry.getKey(),serviceObject);
-                            // FIXME 调用替换能力
+                            // 调用替换能力
+                            replaceService(entry.getKey(), serviceObject);
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -115,7 +115,7 @@ public final class BeanHelper {
                     }
                 }
                 // Ioc: 如果bean中有声明的serviceBeans中存在的变量，则赋值
-                iocSetService();
+                iocSetService(null);
                 // aop
 //            frameBeans.put(MyProxyTarget.class, newAopInstance(MyProxyTarget.class));
                 // net
@@ -134,37 +134,81 @@ public final class BeanHelper {
                     entranceBeans.put(entranceConfigure.getName(),entrance);
 
                     //-----ioc
-                    iocSetObject(entranceConfigure.getCls(),entrance);
+                    iocSetObject(entranceConfigure.getCls(),entrance, null);
                 }
 
             }catch (Throwable e){
-                e.printStackTrace();
-                log.error("init BeanHelper fail");
+                log.error("init BeanHelper fail",e);
             }
         }
     }
 
-    private static void doCluster(){
-
+    /**
+     * 替换服务
+     * TODO 基于一致性风险，是否考虑 停止当前所有服务的运行
+     * 所有任务线程受控的基础上：
+     * 1、采用读写锁实现
+     * 2、采用令牌实现
+     */
+    private static void replaceService(Class<?> cls, Object serviceObject){
+        if(!serviceObject.getClass().isAssignableFrom(cls)){
+            log.error("object type {} is not assignable from cls {}", serviceObject.getClass().getName(), cls.getName());
+            return;
+        }
+        //
+        serviceBeans.put(cls, serviceObject);
+        serviceBeansByName.put(cls.getName(),serviceObject);
+        // 重新注入。包括：serviceBeans，frameBeans，entrance
+        try {
+            // serviceBeans，frameBeans
+            iocSetService(cls);
+            // entrance
+            EngineConfigure configure = Server.getEngineConfigure();
+            Map<String, EntranceConfigure> entranceClassMap = configure.getEntranceClassMap();
+            for (EntranceConfigure entranceConfigure:entranceClassMap.values()) {
+                Entrance entrance = entranceBeans.get(entranceConfigure.getName());
+                iocSetObject(entranceConfigure.getCls(),entrance, cls);
+            }
+        } catch (Throwable throwable) {
+            log.error("replace service error!", throwable);
+        }
     }
 
-    // 给beans中的对象的service变量赋值
-    private static void iocSetService() throws Throwable{
+    /**
+     * 给beans中的对象的service变量赋值
+     *
+     * @param targetCls 被注入参数类型, 如果为null，说明都注入
+     * @throws Throwable
+     */
+    private static void iocSetService(Class<?> targetCls) throws Throwable{
         // service
         for(Map.Entry<Class<?>,Object> entry : serviceBeans.entrySet()){
             Class<?> cls = entry.getKey();
-            iocSetObject(cls,entry.getValue());
+            iocSetObject(cls,entry.getValue(),targetCls);
         }
         // frame
         // ioc
         for (Map.Entry<Class<?>, Class<?>> entry : configureBeans.entrySet()) {
             Object object = frameBeans.get(entry.getKey());
-            iocSetObject(entry.getValue(),object);
+            iocSetObject(entry.getValue(),object, targetCls);
         }
     }
-    private static void iocSetObject(Class sourceClass,Object object) throws Throwable{
+
+    /**
+     * 为类型（或父类型）为sourceClass的object对象注入类型为targetCls的参数
+     * 如果targetCls为null，说明都注入
+     *
+     * @param sourceClass
+     * @param object
+     * @param targetCls
+     * @throws Throwable
+     */
+    private static void iocSetObject(Class sourceClass, Object object, Class<?> targetCls) throws Throwable{
         Field[] fields = sourceClass.getDeclaredFields();
         for(Field field : fields){
+            if(targetCls != null && field.getClass() != targetCls){
+                continue;
+            }
             Object service = serviceBeans.get(field.getType());
             if(service == null){
                 service = frameBeans.get(field.getType());

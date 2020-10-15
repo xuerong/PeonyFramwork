@@ -440,4 +440,34 @@ public final class Util {
         }
         return base.subList(0,num);
     }
+
+    /**
+     * 获取本机所有网卡的ip地址
+     * 包含127.0.0.1
+     *
+     * @throws Exception
+     */
+    public static Set<String> getLocalIPs() {
+        Set<String> ar = new HashSet<>();
+        try{
+            Enumeration netInterfaces = NetworkInterface.getNetworkInterfaces();
+            while (netInterfaces.hasMoreElements()) {
+                NetworkInterface ni = (NetworkInterface) netInterfaces.nextElement();
+                Enumeration cardipaddress = ni.getInetAddresses();
+                while (cardipaddress.hasMoreElements()) {
+                    InetAddress inetAddress = (InetAddress) cardipaddress.nextElement();
+                    String ip = inetAddress.getHostAddress();
+                    ar.add(ip); // 包含127.0.0.1
+                }
+            }
+        }catch (SocketException e){
+            log.warn("get local ips error!",e);
+        }
+
+        return ar;
+    }
+
+    public static boolean isLocalIp(String ip){
+        return getLocalIPs().contains(ip);
+    }
 }

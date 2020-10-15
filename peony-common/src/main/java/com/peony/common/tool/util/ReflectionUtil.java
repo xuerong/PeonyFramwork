@@ -20,7 +20,7 @@ public final class ReflectionUtil {
     public static <T> T newInstance(Class<T> cls){
         T instance=null;
         try {
-            instance= cls.newInstance();
+            instance= cls.getDeclaredConstructor().newInstance();
         }catch (Exception e){
             log.error("new instance failure",e);
             throw  new RuntimeException(e);

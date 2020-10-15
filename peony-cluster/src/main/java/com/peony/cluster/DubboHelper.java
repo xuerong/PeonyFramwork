@@ -8,7 +8,9 @@ import javassist.NotFoundException;
 import org.apache.dubbo.common.bytecode.ClassGenerator;
 import org.apache.dubbo.common.utils.ArrayUtils;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.security.CodeSource;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,6 +60,18 @@ public class DubboHelper {
         }
         Class<?> clz = ct.toClass();
         System.out.println(clz.getName());
+
+        try{
+            CodeSource codeSource = clz.getProtectionDomain().getCodeSource();
+            CodeSource codeSourceOri = serviceClass.getProtectionDomain().getCodeSource();
+            // 将动态生成的class的Location设置为原始class的，这里是为了屏蔽dubbo的报错
+            // 【at org.apache.dubbo.common.Version.getVersion(Version.java:182)】
+            Field field = CodeSource.class.getDeclaredField("location");
+            field.setAccessible(true);
+            field.set(codeSource,codeSourceOri.getLocation());
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
         return clz;
     }
