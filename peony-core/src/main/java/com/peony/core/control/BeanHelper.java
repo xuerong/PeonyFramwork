@@ -11,11 +11,13 @@ import com.peony.common.exception.MMException;
 import com.peony.core.server.Server;
 import javassist.ClassPool;
 import javassist.LoaderClassPath;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.common.bytecode.ClassGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,10 +30,10 @@ import java.util.Map;
  */
 public final class BeanHelper {
     private static final Logger log = LoggerFactory.getLogger(BeanHelper.class);
-    private final static Map<Class<?>,Object> frameBeans=new HashMap<Class<?>,Object>();
+    private final static Map<Class<?>,Object> frameBeans=new HashMap<>();
 
     private final static Map<String,Object> serviceBeansByName = new HashMap<>();
-    private final static Map<Class<?>,Object> serviceBeans=new HashMap<Class<?>,Object>();
+    private final static Map<Class<?>,Object> serviceBeans=new HashMap<>();
     private final static Map<String,Entrance> entranceBeans = new HashMap<>();
 
     public static Map<Class<?>, Object> getServiceBeans() {
@@ -58,7 +60,31 @@ public final class BeanHelper {
                     //
                     for(Map.Entry<Class<?>, ServiceRole> entry : serviceRoleMap.entrySet()){
                         if(entry.getValue() == ServiceRole.None){
-                            // FIXME 这里要移除
+                            // 移除
+                            Object obj = removeServiceRef(entry.getKey());
+                            if(obj == null){
+                                continue;
+                            }
+                            // 如果之前存在，则调用其destroy方法
+                            Service service = entry.getKey().getAnnotation(Service.class);
+                            if(service != null && StringUtils.isNotEmpty(service.destroy())){
+                                Method method = null;
+                                try {
+                                    method = entry.getKey().getDeclaredMethod(service.destroy());
+                                } catch (NoSuchMethodException e) {
+                                    log.error("destroy method is not exist!service={},method={}", entry.getKey().getName(), service.destroy(), e);
+                                }
+                                if(method != null){
+                                    try {
+                                        if(!method.isAccessible()){
+                                            method.setAccessible(true);
+                                        }
+                                        method.invoke(obj);
+                                    } catch (IllegalAccessException | InvocationTargetException e) {
+                                        log.error("exec destroy method error!service={},method={}", entry.getKey().getName(), service.destroy(), e);
+                                    }
+                                }
+                            }
                             continue;
                         }
                         // 这里重新生成
@@ -144,20 +170,39 @@ public final class BeanHelper {
     }
 
     /**
+     * 移除一个服务
+     *
+     * @param cls
+     * @return
+     */
+    private static Object removeServiceRef(Class<?> cls){
+        return replaceService(cls, null);
+    }
+
+    /**
      * 替换服务
      * TODO 基于一致性风险，是否考虑 停止当前所有服务的运行
      * 所有任务线程受控的基础上：
      * 1、采用读写锁实现
      * 2、采用令牌实现
+     *
+     * @return 原来的
      */
-    private static void replaceService(Class<?> cls, Object serviceObject){
-        if(!serviceObject.getClass().isAssignableFrom(cls)){
+    private static Object replaceService(Class<?> cls, Object serviceObject){
+        if(serviceObject != null && !serviceObject.getClass().isAssignableFrom(cls)){
             log.error("object type {} is not assignable from cls {}", serviceObject.getClass().getName(), cls.getName());
-            return;
+            return null;
         }
         //
-        serviceBeans.put(cls, serviceObject);
-        serviceBeansByName.put(cls.getName(),serviceObject);
+        Object old = null;
+        if(serviceObject == null){
+            old = serviceBeans.remove(cls);
+            serviceBeansByName.remove(cls.getName());
+        }else{
+            old = serviceBeans.put(cls, serviceObject);
+            serviceBeansByName.put(cls.getName(),serviceObject);
+        }
+
         // 重新注入。包括：serviceBeans，frameBeans，entrance
         try {
             // serviceBeans，frameBeans
@@ -170,8 +215,9 @@ public final class BeanHelper {
                 iocSetObject(entranceConfigure.getCls(),entrance, cls);
             }
         } catch (Throwable throwable) {
-            log.error("replace service error!", throwable);
+            log.error("replace service error! cls={}", cls, throwable);
         }
+        return old;
     }
 
     /**
@@ -209,6 +255,7 @@ public final class BeanHelper {
             if(targetCls != null && field.getClass() != targetCls){
                 continue;
             }
+
             Object service = serviceBeans.get(field.getType());
             if(service == null){
                 service = frameBeans.get(field.getType());
@@ -216,6 +263,10 @@ public final class BeanHelper {
             if(service != null){
                 field.setAccessible(true); // 可访问私有变量。
                 field.set(object,service);
+            }else if(ServiceHelper.containService(field.getType())){
+                // 设置为空
+                field.setAccessible(true); // 可访问私有变量。
+                field.set(object,null);
             }
         }
     }

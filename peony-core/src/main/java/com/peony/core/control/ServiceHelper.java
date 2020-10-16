@@ -103,6 +103,8 @@ public final class ServiceHelper {
     private static Map<String, Method> statisticsMethods = new HashMap<>();
     private static Map<String,Class> serviceNameClassMap = new HashMap<>();
 
+    private static Set<Class<?>> serviceClsSet = new HashSet<>();
+
     static {
         try {
             List<Class<?>> serviceClasses = ClassHelper.getClassListByAnnotation(Service.class,
@@ -116,6 +118,7 @@ public final class ServiceHelper {
 //            pool.insertClassPath(classPath);
 
             for (Class<?> serviceClass : serviceClasses) {
+                serviceClsSet.add(serviceClass);
                 ServiceRole serviceRole = serviceBeans.get(serviceClass);
                 if(serviceRole == ServiceRole.None){
                     continue;
@@ -993,5 +996,15 @@ public final class ServiceHelper {
 
     public static Class getServiceClassByName(String name){
         return serviceNameClassMap.get(name);
+    }
+
+    /**
+     * 是否属于Service
+     *
+     * @param cls
+     * @return
+     */
+    public static boolean containService(Class<?> cls){
+        return serviceClsSet.contains(cls);
     }
 }

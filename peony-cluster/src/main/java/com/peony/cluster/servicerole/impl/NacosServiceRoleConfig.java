@@ -44,7 +44,7 @@ import java.util.concurrent.Executor;
  * 3    |   com.Service3        0.0.0.3             0.0.0.2         -:0.0.0.11,0.0.0.12
  * ---------------------------------------------------------------
  *
- * @author z84150192
+ * @author xuerong
  * @since 2020/9/28
  */
 public class NacosServiceRoleConfig implements IServiceRoleConfig {

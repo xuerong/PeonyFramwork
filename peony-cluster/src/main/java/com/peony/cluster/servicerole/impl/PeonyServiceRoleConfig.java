@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author z84150192
+ * @author xuerong
  * @since 2020/10/14
  */
 public class PeonyServiceRoleConfig implements IServiceRoleConfig {
