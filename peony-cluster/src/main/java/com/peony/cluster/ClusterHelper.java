@@ -10,13 +10,17 @@ import com.peony.common.tool.util.Util;
 import javassist.CannotCompileException;
 import javassist.NotFoundException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.config.RegistryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * <p>
@@ -52,14 +56,42 @@ public class ClusterHelper {
 
     private static Map<Class<?>, ServiceRole> serviceRoleMap = new HashMap<>();
 
+    private static List<RegistryConfig> registryConfigs;
+
+    private static volatile boolean init = false;
+
     /**
      * 这里提供从IServiceRoleConfig拿取服务信息，并转换的能力
      *
      * @param clusterBeanCallback 当配置变化的时候，回调
      */
-    public static void init(ClusterBeanCallback clusterBeanCallback) {
+    public static synchronized void init(ClusterBeanCallback clusterBeanCallback) {
+        if(init){
+            logger.error("have initialized");
+            return;
+        }
+        init = true;
+        String registryAddressesStr = ConfigHelper.getString("dubbo.registry.address");
+        if(StringUtils.isEmpty(registryAddressesStr)){
+            registryAddressesStr = "nacos://127.0.0.1:8848";
+            logger.info("no dubbo.registry.address in config, use default value : {}", registryAddressesStr);
+        }else{
+            logger.info("find dubbo.registry.address in config, value = {}", registryAddressesStr);
+        }
+
+        String[] registryAddresses = registryAddressesStr.split("\\|");
+        registryConfigs = new ArrayList<>();
+        for(String registryAddress : registryAddresses){
+            RegistryConfig registry = new RegistryConfig();
+            registry.setProtocol("dubbo");
+            registry.setAddress(registryAddress);
+            registry.setGroup("generated-by-peony");
+            registryConfigs.add(registry);
+        }
+
         String serviceRoleConfigClassConfig = ConfigHelper.getString("service.role.config.class");
         if(StringUtils.isNotEmpty(serviceRoleConfigClassConfig)){
+            logger.info("find service.role.config.class in config, value = {}", serviceRoleConfigClassConfig);
             try{
                 Class cls = Class.forName(serviceRoleConfigClassConfig);
                 serviceRoleConfig = (IServiceRoleConfig)cls.getDeclaredConstructor().newInstance();
@@ -130,7 +162,7 @@ public class ClusterHelper {
         return modify;
     }
 
-    public static Object parseService(Class<?> serviceClass, Object bean) throws NoSuchFieldException, CannotCompileException, InstantiationException, NotFoundException, IllegalAccessException {
+    public static synchronized Object parseService(Class<?> serviceClass, Object bean) throws NoSuchFieldException, CannotCompileException, InstantiationException, NotFoundException, IllegalAccessException {
         ServiceRole serviceRole = serviceRoleMap.get(serviceClass);
         if (serviceRole == null) {
             // 没有任何配置，普通代理
@@ -145,19 +177,22 @@ public class ClusterHelper {
                 return bean;
             case Consumer: {
                 // 本机是该服务的消费者之一
-                bean = ConsumerGenerator.generateConsumer(serviceClass, bean);
+                bean = ConsumerGenerator.generateConsumer(serviceClass, bean, registryConfigs);
                 return bean;
             }
             case Provider: {
                 // 本机是该服务的提供者之一
-                bean = ProviderGenerator.generateProvider(serviceClass, bean);
+                bean = ProviderGenerator.generateProvider(serviceClass, bean, registryConfigs);
                 return bean;
             }
         }
         throw new MMException("service role error! serviceRole = {}", serviceRole);
     }
 
-    public static Map<Class<?>, ServiceRole> getServiceRoleMap() {
+    public synchronized static Map<Class<?>, ServiceRole> getServiceRoleMap() {
+        if(!init){
+            throw new MMException("cluster helper have not init!");
+        }
         return serviceRoleMap;
     }
 

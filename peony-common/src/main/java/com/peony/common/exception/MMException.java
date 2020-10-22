@@ -1,6 +1,9 @@
 package com.peony.common.exception;
 
 import com.peony.common.tool.util.MessageFormatter;
+import org.apache.commons.lang3.ArrayUtils;
+
+import java.util.Arrays;
 
 /**
  * Created by a on 2016/8/24.
@@ -15,31 +18,28 @@ public class MMException extends RuntimeException {
         super();
     }
     public MMException(String msg,Object... args) {
-        super(msg);
-        this.errMsg = MessageFormatter.arrayFormat(msg,args);
-//        printStackTrace();
+        this(null, msg, args);
     }
     public MMException(ExceptionType exceptionType,String msg,Object... args) {
-        super(msg);
         this.exceptionType = exceptionType;
+        if(ArrayUtils.isNotEmpty(args)){
+            if(args[args.length - 1].getClass().isAssignableFrom(Throwable.class)){
+                initCause((Throwable)args[args.length - 1]);
+                args = Arrays.copyOf(args, args.length - 1);
+            }
+        }
         this.errMsg = MessageFormatter.arrayFormat(msg,args);
-//        printStackTrace();
     }
 
     public MMException(String msg,Throwable cause) {
-        super(msg, cause);
-//        cause.printStackTrace();
+        this(null, msg, new Object[]{cause});
     }
 
     public MMException(Throwable cause) {
-        super(null, cause);
-        cause.printStackTrace();
+        this(null, cause);
     }
 
-    public void setMessage(String message){
-        this.errMsg = message;
-    }
-
+    @Override
     public String getMessage(){
         String tmp = this.errMsg;
         if (tmp==null && this.getCause()!=null){

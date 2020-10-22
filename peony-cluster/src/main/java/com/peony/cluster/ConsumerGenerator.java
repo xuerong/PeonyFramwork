@@ -1,5 +1,7 @@
 package com.peony.cluster;
 
+import com.peony.common.exception.MMException;
+import com.peony.common.tool.util.Util;
 import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -8,18 +10,26 @@ import javassist.CtMethod;
 import javassist.CtNewMethod;
 import javassist.NotFoundException;
 import javassist.bytecode.AnnotationsAttribute;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.common.bytecode.ClassGenerator;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.config.RegistryConfig;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author z84150192
  * @since 2020/9/27
  */
-public class ConsumerGenerator {
-    public static Object generateConsumer(Class<?> serviceClass, Object object) throws NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException, NoSuchFieldException {
+class ConsumerGenerator {
+    static Object generateConsumer(Class<?> serviceClass, Object object, List<? extends RegistryConfig> registries) throws NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException, NoSuchFieldException {
+        if(CollectionUtils.isEmpty(registries)){
+            throw new MMException("registries is empty!");
+        }
         // 生成代理接口
         Class<?> proxyInterface = DubboHelper.generateProxyInterface(serviceClass);
         // 生成代理类
@@ -34,12 +44,16 @@ public class ConsumerGenerator {
         field.setAccessible(true);
 
         ReferenceConfig referenceConfig = new ReferenceConfig();
-        referenceConfig.setUrl("dubbo://127.0.0.1:20880/"+proxyInterface.getName());
+//        referenceConfig.setUrl("dubbo://127.0.0.1:20880/"+proxyInterface.getName());
+        referenceConfig.setRegistries(registries);
+
+
         referenceConfig.setInterface(proxyInterface.getName());
         referenceConfig.setId(proxyInterface.getSimpleName());
         ApplicationConfig application = new ApplicationConfig();
-        application.setName("order-service");
+        application.setName(Util.humpToCenterLine(serviceClass.getSimpleName()));
         referenceConfig.setApplication(application);
+        referenceConfig.setCheck(false);
         Object obj = referenceConfig.get();
         System.out.println(obj);
         // 为代理对象赋值接口对应的dubbo代理对象

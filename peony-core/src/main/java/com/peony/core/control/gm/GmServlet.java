@@ -80,6 +80,7 @@ public class GmServlet extends HttpServlet {
             resp.setContentType("text/html;charset=utf-8");
             doGm(req, resp);
         }catch (Throwable e){
+            log.error("gm handle error!", e);
             resp.getWriter().write("error:"+e.getMessage());
         }
     }

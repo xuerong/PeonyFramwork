@@ -18,13 +18,13 @@ import java.util.List;
  * @author z84150192
  * @since 2020/9/27
  */
-public class DubboHelper {
-    public static Class<?> generateProxyInterface(Class<?> serviceClass) throws NotFoundException, CannotCompileException {
+class DubboHelper {
+    static Class<?> generateProxyInterface(Class<?> serviceClass) throws NotFoundException, CannotCompileException {
         // 1、获取所有公有方法 ,根据公有方法生成接口
         ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader()); //获得类池
         CtClass oldClass = pool.get(serviceClass.getName());
         CtMethod[] ctMethods = getMethodsWithoutObjectMethods(oldClass,pool);
-        CtClass ct = pool.makeInterface(oldClass.getName()+"$ProxyInterface");
+        CtClass ct = pool.makeInterface(oldClass.getName()+"_ProxyInterface");
         //
         for(CtMethod method : ctMethods){
             //
@@ -76,7 +76,7 @@ public class DubboHelper {
         return clz;
     }
 
-    public static CtMethod[] getMethodsWithoutObjectMethods(CtClass clz,ClassPool pool) throws NotFoundException {
+    static CtMethod[] getMethodsWithoutObjectMethods(CtClass clz,ClassPool pool) throws NotFoundException {
         CtClass objectClass = pool.get(Object.class.getName());
         CtMethod[] ctMethods = clz.getMethods();
 

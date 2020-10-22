@@ -1,9 +1,12 @@
 package com.peony.cluster;
 
+import com.peony.common.exception.MMException;
+import com.peony.common.tool.util.Util;
 import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.NotFoundException;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.dubbo.common.bytecode.ClassGenerator;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -13,6 +16,8 @@ import org.apache.dubbo.config.ProviderConfig;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.ServiceConfig;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -20,13 +25,16 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author z84150192
  * @since 2020/9/27
  */
-public class ProviderGenerator {
+class ProviderGenerator {
     private static final Logger logger = LoggerFactory.getLogger(ProviderGenerator.class);
     private static final ReentrantLock LOCK = new ReentrantLock();
 
     private static final Condition STOP = LOCK.newCondition();
 
-    public static Object generateProvider(Class<?> serviceClass, Object object) throws NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException {
+    static Object generateProvider(Class<?> serviceClass, Object object, List<? extends RegistryConfig> registries) throws NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException {
+        if(CollectionUtils.isEmpty(registries)){
+            throw new MMException("registries is empty!");
+        }
         // 生成代理接口
         Class<?> proxyInterface = DubboHelper.generateProxyInterface(serviceClass);
         // 生成代理类
@@ -38,16 +46,16 @@ public class ProviderGenerator {
         ProtocolConfig protocolConfig = new ProtocolConfig();
         protocolConfig.setName("dubbo");
         protocolConfig.setPort(20880);
+
         ProviderConfig provider = new ProviderConfig();
         provider.setExport(true);
         provider.setProtocol(protocolConfig);
         serviceConfig.setProvider(provider);
-        ApplicationConfig app = new ApplicationConfig("user-service");
+        ApplicationConfig app = new ApplicationConfig(Util.humpToCenterLine(serviceClass.getSimpleName()));
         serviceConfig.setApplication(app);
-        RegistryConfig registry = new RegistryConfig();
-        registry.setProtocol("dubbo");
-        registry.setAddress("N/A");
-        serviceConfig.setRegistry(registry);
+
+        serviceConfig.setRegistries(registries);
+
         serviceConfig.setGeneric(Boolean.TRUE.toString());
 
         serviceConfig.setInterface(proxyInterface);

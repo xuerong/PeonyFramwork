@@ -470,4 +470,26 @@ public final class Util {
     public static boolean isLocalIp(String ip){
         return getLocalIPs().contains(ip);
     }
+
+    /**
+     * 驼峰转中划线
+     **/
+    public static String humpToCenterLine(String str) {
+        StringBuilder sb = new StringBuilder();
+        int state = 0; //
+        int upToLower = 'A' - 'a';
+        for(char ch : str.toCharArray()){
+            if(ch >= 'A' && ch <= 'Z'){
+                if(state == 1){
+                    sb.append('-');
+                    state = 0;
+                }
+                sb.append((char)(ch-upToLower));
+            }else{
+                sb.append(ch);
+                state = 1;
+            }
+        }
+        return sb.toString();
+    }
 }

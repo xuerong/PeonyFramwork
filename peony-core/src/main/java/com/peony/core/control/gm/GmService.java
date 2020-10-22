@@ -103,7 +103,7 @@ public class GmService {
                 ToClientException toClientException = (ToClientException)e;
                 return "exception,errcode:"+toClientException.getErrCode()+",errMsg:"+toClientException.getMessage();
             }
-            throw new MMException(e);
+            throw new MMException("invoke gm error! id = {}, params={}", id, params, e);
         }
     }
 
