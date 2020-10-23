@@ -8,6 +8,8 @@ import com.alibaba.nacos.api.exception.NacosException;
 import com.peony.cluster.servicerole.IServiceRoleConfig;
 import com.peony.cluster.servicerole.RoleNotifier;
 import com.peony.cluster.servicerole.ServiceRole;
+import com.peony.common.exception.MMException;
+import com.peony.common.tool.helper.ConfigHelper;
 import com.peony.common.tool.util.Util;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -56,10 +58,17 @@ public class NacosServiceRoleConfig implements IServiceRoleConfig {
     private volatile boolean init = false;
 
     private String serverAddr = "localhost";
-    private String dataId = "spring-boot-dubbo-nacos-sample";
-    private String group = "mapping-com.gupaoedu.book.nacos.IHelloService";
+    private String dataId = "peony.service.config";
+    private String group = "peony.service.config";
 
     public synchronized void init(){
+        String nocosAddress = ConfigHelper.getString("service.config.nocos.address");
+        if(StringUtils.isEmpty(nocosAddress)){
+            throw new MMException("no service.config.nocos.address find in config!");
+        }
+        log.info("find service.config.nocos.address in config, value = {}", nocosAddress);
+        this.serverAddr = nocosAddress;
+
         try{
             Properties properties = new Properties();
             properties.put(PropertyKeyConst.SERVER_ADDR, serverAddr);
@@ -95,7 +104,7 @@ public class NacosServiceRoleConfig implements IServiceRoleConfig {
                 }
             });
         }catch (NacosException e){
-            log.error("",e);
+            throw new MMException("init service config center error[NacosServiceRoleConfig]! service.config.nocos.address = {}", serverAddr, e);
         }
     }
 
