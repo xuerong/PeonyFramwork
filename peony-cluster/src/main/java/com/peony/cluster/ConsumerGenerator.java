@@ -11,35 +11,33 @@ import javassist.CtNewMethod;
 import javassist.NotFoundException;
 import javassist.bytecode.AnnotationsAttribute;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.common.bytecode.ClassGenerator;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.RegistryConfig;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @author z84150192
+ * @author xuerong
  * @since 2020/9/27
  */
 class ConsumerGenerator {
     static Object generateConsumer(Class<?> serviceClass, Object object, List<? extends RegistryConfig> registries) throws NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException, NoSuchFieldException {
-        if(CollectionUtils.isEmpty(registries)){
+        if (CollectionUtils.isEmpty(registries)) {
             throw new MMException("registries is empty!");
         }
         // 生成代理接口
         Class<?> proxyInterface = DubboHelper.generateProxyInterface(serviceClass);
         // 生成代理类
-        Class<?> proxyClass = generateProxy(object,proxyInterface);
+        Class<?> proxyClass = generateProxy(object, proxyInterface);
         // 生成代理对象
         Object proxyObject = proxyClass.newInstance();
         // 生成接口对应的dubbo代理对象
         String tmpSimpleName = proxyInterface.getSimpleName();
-        String proxyInterfaceName = tmpSimpleName.substring(0,1).toLowerCase()
-                +tmpSimpleName.substring(1);
+        String proxyInterfaceName = tmpSimpleName.substring(0, 1).toLowerCase()
+                + tmpSimpleName.substring(1);
         Field field = proxyClass.getDeclaredField(proxyInterfaceName);
         field.setAccessible(true);
 
@@ -57,19 +55,19 @@ class ConsumerGenerator {
         Object obj = referenceConfig.get();
         System.out.println(obj);
         // 为代理对象赋值接口对应的dubbo代理对象
-        field.set(proxyObject,obj);
+        field.set(proxyObject, obj);
 
         return proxyObject;
     }
 
-    private static Class<?> generateProxy(Object object,Class<?> proxyInterface) throws CannotCompileException, NotFoundException {
+    private static Class<?> generateProxy(Object object, Class<?> proxyInterface) throws CannotCompileException, NotFoundException {
         ClassPool pool = ClassGenerator.getClassPool(Thread.currentThread().getContextClassLoader()); //获得类池
         CtClass oldClass = pool.get(object.getClass().getName());
         CtClass proxyClazz = pool.makeClass(oldClass.getName() + "$Proxy", oldClass);
         // 添加接口的引用
         String tmpSimpleName = proxyInterface.getSimpleName();
-        String proxyInterfaceName = tmpSimpleName.substring(0,1).toLowerCase()
-                +tmpSimpleName.substring(1);
+        String proxyInterfaceName = tmpSimpleName.substring(0, 1).toLowerCase()
+                + tmpSimpleName.substring(1);
         StringBuilder proxyInterfaceFieldString = new StringBuilder("private ");
         proxyInterfaceFieldString.append(proxyInterface.getName()).append(" ")
                 .append(proxyInterfaceName).append(";");
@@ -77,22 +75,22 @@ class ConsumerGenerator {
         CtField ctField = CtField.make(proxyInterfaceFieldString.toString(), proxyClazz);
         proxyClazz.addField(ctField);
         // 继承所有的公有方法，调用接口对应的方法
-        CtMethod[] ctMethods = DubboHelper.getMethodsWithoutObjectMethods(oldClass,pool);
-        for(CtMethod method : ctMethods){
+        CtMethod[] ctMethods = DubboHelper.getMethodsWithoutObjectMethods(oldClass, pool);
+        for (CtMethod method : ctMethods) {
             CtMethod proxyMethod = CtNewMethod.copy(method, proxyClazz, null);
-            for(Object attr: method.getMethodInfo2().getAttributes()){
-                if(attr.getClass().isAssignableFrom(AnnotationsAttribute.class)){
-                    AnnotationsAttribute attribute = (AnnotationsAttribute)attr;
+            for (Object attr : method.getMethodInfo2().getAttributes()) {
+                if (attr.getClass().isAssignableFrom(AnnotationsAttribute.class)) {
+                    AnnotationsAttribute attribute = (AnnotationsAttribute) attr;
                     proxyMethod.getMethodInfo2().addAttribute(attribute);
                 }
             }
             String argsString = genArgsString(method);
             // 方法体
             StringBuilder body = new StringBuilder("{");
-            if(method.getReturnType() == pool.get(void.class.getName())){
+            if (method.getReturnType() == pool.get(void.class.getName())) {
                 body.append(proxyInterfaceName).append(".").append(method.getName()).append("(")
                         .append(argsString).append(");");
-            }else{
+            } else {
                 body.append("return ").append(proxyInterfaceName).append(".").append(method.getName()).append("(")
                         .append(argsString).append(");");
             }
@@ -101,16 +99,16 @@ class ConsumerGenerator {
             proxyClazz.addMethod(proxyMethod);
         }
         Class<?> newProxyClazz = proxyClazz.toClass();
-        System.out.println(newProxyClazz.getName());
+//        System.out.println(newProxyClazz.getName());
         return newProxyClazz;
     }
 
-    private static String genArgsString(CtMethod oldMethod) throws NotFoundException{
+    private static String genArgsString(CtMethod oldMethod) throws NotFoundException {
         StringBuilder args = new StringBuilder("");
-        for(int i=1; i <= oldMethod.getParameterTypes().length; i++) {
-            args.append("$"+i).append(",");
+        for (int i = 1; i <= oldMethod.getParameterTypes().length; i++) {
+            args.append("$" + i).append(",");
         }
-        if(args.length() > 0) {
+        if (args.length() > 0) {
             args.deleteCharAt(args.length() - 1);
         }
         return args.toString();

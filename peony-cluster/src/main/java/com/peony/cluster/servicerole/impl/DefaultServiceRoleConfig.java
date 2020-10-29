@@ -8,6 +8,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * 默认的服务角色配置
+ * 所有的服务均在自己所在服务机器运行
+ *
  * @author xuerong
  * @since 2020/10/15
  */

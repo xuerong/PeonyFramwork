@@ -22,7 +22,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * @author z84150192
+ * @author xuerong
  * @since 2020/9/27
  */
 class ProviderGenerator {
@@ -65,15 +65,6 @@ class ProviderGenerator {
         serviceConfig.export();
 
         return proxyObject;
-
-//        try {
-//            LOCK.lock();
-//            STOP.await();
-//        } catch (InterruptedException e) {
-//            logger.warn("Dubbo service server stopped, interrupted by other thread!", e);
-//        } finally {
-//            LOCK.unlock();
-//        }
     }
 
     private static Class<?> generateProxy(Object object,Class<?> proxyInterface) throws NotFoundException, CannotCompileException {

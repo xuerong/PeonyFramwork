@@ -3,10 +3,8 @@ package com.peony.cluster;
 import com.peony.cluster.servicerole.IServiceRoleConfig;
 import com.peony.cluster.servicerole.ServiceRole;
 import com.peony.cluster.servicerole.impl.DefaultServiceRoleConfig;
-import com.peony.cluster.servicerole.impl.NacosServiceRoleConfig;
 import com.peony.common.exception.MMException;
 import com.peony.common.tool.helper.ConfigHelper;
-import com.peony.common.tool.util.Util;
 import javassist.CannotCompileException;
 import javassist.NotFoundException;
 import org.apache.commons.lang3.StringUtils;
@@ -20,7 +18,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * <p>
@@ -162,6 +159,18 @@ public class ClusterHelper {
         return modify;
     }
 
+    /**
+     * 根据serviceClass和原始bean生成代理bean
+     *
+     * @param serviceClass
+     * @param bean 原来的代理对象，已经实现了非集群相关能力
+     * @return
+     * @throws NoSuchFieldException
+     * @throws CannotCompileException
+     * @throws InstantiationException
+     * @throws NotFoundException
+     * @throws IllegalAccessException
+     */
     public static synchronized Object parseService(Class<?> serviceClass, Object bean) throws NoSuchFieldException, CannotCompileException, InstantiationException, NotFoundException, IllegalAccessException {
         ServiceRole serviceRole = serviceRoleMap.get(serviceClass);
         if (serviceRole == null) {
@@ -178,6 +187,7 @@ public class ClusterHelper {
             case Consumer: {
                 // 本机是该服务的消费者之一
                 bean = ConsumerGenerator.generateConsumer(serviceClass, bean, registryConfigs);
+                // FIXME 这里要取出其updatable能力
                 return bean;
             }
             case Provider: {

@@ -1,7 +1,6 @@
 package com.peony.core.control;
 
 import com.google.api.client.util.Maps;
-import com.peony.cluster.ClusterBeanInfo;
 import com.peony.cluster.ClusterHelper;
 import com.peony.cluster.servicerole.ServiceRole;
 import com.peony.core.control.annotation.NetEventListener;
