@@ -41,7 +41,7 @@
         <cglib.version>3.3.0</cglib.version>
         <trove4j.version>3.0.3</trove4j.version>
         <netty-all.version>4.1.42.Final</netty-all.version>
-        <guava.version>24.1.1-jre</guava.version>
+        <guava.version>29.0-jre</guava.version>
         <javassist.version>3.27.0-GA</javassist.version>
         <google-api-client.version>1.30.10</google-api-client.version>
         <ehcache.version>3.9.0</ehcache.version>
