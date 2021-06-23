@@ -35,7 +35,7 @@
         <slf4j-api.version>1.7.7</slf4j-api.version>
         <fastjson.version>1.2.73</fastjson.version>
         <commons-lang3.version>3.4</commons-lang3.version>
-        <jetty-server.version>9.3.28.v20191105</jetty-server.version>
+        <jetty-server.version>9.4.41.v20210516</jetty-server.version>
         <jetty-webapp.version>9.3.11.v20160721</jetty-webapp.version>
         <jetty-jsp.version>9.2.10.v20150310</jetty-jsp.version>
         <cglib.version>3.3.0</cglib.version>
