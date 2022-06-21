@@ -64,7 +64,7 @@
         <commons-dbcp2.version>2.7.0</commons-dbcp2.version>
         <HikariCP.version>3.4.2</HikariCP.version>
         <quasar-core.version>0.7.10</quasar-core.version>
-        <mysql-connector-java.version>8.0.21</mysql-connector-java.version>
+        <mysql-connector-java.version>8.0.28</mysql-connector-java.version>
         <logback.version>1.2.3</logback.version>
         <lombok.version>1.18.12</lombok.version>
         <junit.version>4.13</junit.version>
